@@ -3,7 +3,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Bricolage+Grotesque:opsz,wght@12..96,600;800&display=swap" rel="stylesheet">
 <style>
 /* Layout: sticky top bar with 3 areas (客戶 / 帳款 / 待辦); client list as scannable rows under status tabs; client detail slides in as a right-hand panel; renew/close/edit happen in a centered modal. */
 :root{
@@ -303,6 +303,103 @@ html{-webkit-text-size-adjust:100%}
   .kpis{gap:10px}
 }
 @media (max-width:640px){dl.kv .nil{display:none}}
+
+/* ===== v5 設計層：區塊要有主從，不是一堆長得一樣的白卡 ===== */
+:root{--hero:#17264A;--hero-mute:rgba(255,255,255,.68);--today:#FFD166;--f-num:"Bricolage Grotesque","Noto Sans TC",system-ui,sans-serif}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--hero:#243A63}}
+:root[data-theme="dark"]{--hero:#243A63}
+.s-todo{--rc:var(--c-todo);--rt:var(--muted)}.s-doing{--rc:var(--c-doing);--rt:var(--accent)}.s-wait{--rc:var(--c-wait);--rt:var(--warn)}
+.s-back{--rc:var(--c-back);--rt:var(--bad)}.s-acc{--rc:var(--c-acc);--rt:var(--ok)}.s-done{--rc:var(--c-done);--rt:var(--ok)}
+/* 主角區：深色大塊 */
+.hero{background:var(--hero);color:#fff;border-radius:22px;padding:18px 18px 16px;margin-bottom:18px;border:0}
+.hero-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.seg2{display:inline-flex;background:rgba(255,255,255,.14);border-radius:999px;padding:3px}
+.seg2 button{border:0;background:none;color:var(--hero-mute);padding:6px 16px;border-radius:999px;font-weight:700;cursor:pointer;min-height:36px}
+.seg2 button[aria-pressed="true"]{background:#fff;color:var(--hero)}
+.hnav{display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
+.hnav button{width:36px;height:36px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:18px;cursor:pointer}
+.hnav b{min-width:96px;text-align:center;font-weight:700}
+.hero-main{display:flex;align-items:flex-end;gap:12px;margin:20px 0 16px}
+.hnum{font:800 68px/.85 var(--f-num);letter-spacing:-.04em}
+.hlab{color:var(--hero-mute);font-size:15px;display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding-bottom:2px}
+.hback{border:0;background:none;color:var(--today);padding:0;font-weight:600;text-decoration:underline;cursor:pointer;min-height:24px}
+.wstrip{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:6px}
+.wd{border:0;border-radius:12px;background:rgba(255,255,255,.09);color:#fff;padding:8px 0 7px;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;min-height:62px;justify-content:center}
+.wd .wn{font-size:12px;color:var(--hero-mute)}.wd .wc{font:800 20px/1.15 var(--f-num)}.wd .wdt{font-size:11px;color:var(--hero-mute)}
+.wd:not(.has) .wc{opacity:.3}
+.wd.ok .wc{color:#7BE0A5}
+.wd.now{background:var(--today);color:#17264A}.wd.now .wn,.wd.now .wdt{color:rgba(23,38,74,.72)}.wd.now .wc{color:#17264A;opacity:1}
+.hstat{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:14px}
+.hstat b{font:800 17px var(--f-num);margin-left:2px}
+.hstat .z{opacity:.5}
+.hstat i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.d-todo{background:#B8C2D6}.d-back{background:#FF8A80}.d-ok{background:#7BE0A5}
+.hall{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.16);font-size:13px;color:var(--hero-mute)}
+/* 管理者總覽的主角區 */
+.hero-admin .muted,.hero-admin .kpis span{color:var(--hero-mute)}
+.hero-admin .big{font:800 56px/1 var(--f-num);letter-spacing:-.03em}
+.hero-admin .legend{background:rgba(255,255,255,.1);border-color:transparent;color:#fff}
+.hero-admin .seg{background:rgba(255,255,255,.18)}
+.hero-admin .kpis{border-top-color:rgba(255,255,255,.16)}
+.hero-admin .kpis b{font-family:var(--f-num);font-weight:800}
+.hero-admin{padding:0}.hero-admin .in{padding:18px}
+/* 往期未完成：警示帶 */
+.late{background:var(--bad-soft);border-radius:16px;margin-bottom:6px;overflow:hidden}
+.late > summary{padding:14px 16px;cursor:pointer;font-weight:700;color:var(--bad);display:flex;justify-content:space-between;align-items:center;list-style:none}
+.late > summary::-webkit-details-marker{display:none}
+.late > summary b{font:800 20px var(--f-num)}
+.late .tile{border-radius:0;background:transparent}
+.late .mrow{border-top-color:rgba(179,38,30,.15)}
+/* 日期／週別標題：放在底色上，不進卡片 */
+.grph{margin:24px 4px 8px;font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px;scroll-margin-top:70px}
+.grph span{margin-left:auto;font-weight:500;color:var(--muted);font-size:13px}
+.grph .tg{font-style:normal;background:var(--today);color:#17264A;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700}
+.tile{background:var(--surface);border-radius:16px;overflow:hidden}
+.mrow{padding:14px 16px 14px 20px;box-shadow:inset 5px 0 0 var(--rc,transparent)}
+.mmain b{font-size:16px;line-height:1.3}.mmain .sub{font-size:13px}
+.mside{gap:2px}
+.st{color:var(--rt,var(--muted));font-weight:700;font-size:12.5px}
+.qty{font:800 22px/1.1 var(--f-num)}.qty i{font-style:normal;font-weight:600;font-size:13px;color:var(--muted);margin-left:1px}
+.emptyday{padding:44px 16px;text-align:center;color:var(--muted)}
+/* 工作交付／客戶：每個客戶一塊，帶狀態色條 */
+.list.board{background:none;border:0;overflow:visible;display:flex;flex-direction:column;gap:10px}
+.list.board > .grp,.list.board > .trow,.list.board > .crow,.list.board > .empty{background:var(--surface);border:0;border-radius:16px;overflow:hidden}
+.trow,.crow{box-shadow:inset 5px 0 0 var(--rc,transparent)}
+.grp .grp-head{box-shadow:inset 5px 0 0 var(--rc,transparent)}
+.grp-body{background:var(--bg)}
+.grp-body .trow{box-shadow:inset 5px 0 0 var(--rc,transparent)}
+.grp-head b,.crow .nm{font-size:16.5px}
+/* 面板：資訊區塊用淡底，動作區塊用強調色，送交列釘在底部 */
+.sec.act{background:var(--accent-soft);border-color:transparent}
+.sec.act > header{border-bottom-color:rgba(31,56,100,.12)}
+.stickybar.submit{justify-content:space-between;gap:12px}
+.stickybar .barmsg{font-size:13px;color:var(--warn);flex:1;min-width:0}
+.stickybar .barmsg.ok{color:var(--ok);font-weight:600}
+.stickybar.submit .btn{min-height:46px;padding-inline:22px}
+@media (max-width:640px){
+  /* 底部分頁列：拇指好按；頂欄只剩店名和帳號 */
+  .top{padding-bottom:6px}
+  .top .wrap{padding-bottom:0}
+  .brand{padding-bottom:0}
+  .nav{position:fixed;left:0;right:0;bottom:0;z-index:15;width:auto;margin:0;padding:6px 8px max(6px,env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:space-around;gap:2px;overflow:visible;flex-wrap:nowrap;box-shadow:0 -6px 18px rgba(0,0,0,.06)}
+  .nav button{flex:1 1 0;min-width:0;position:relative;border:0;border-radius:12px;padding:10px 0;font-size:12.5px;text-align:center;letter-spacing:-.01em}
+  .nav button[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:700}
+  .nav .count{position:absolute;top:7px;right:calc(50% - 30px);margin:0;padding:0;width:8px;height:8px;font-size:0;background:var(--bad);color:transparent;border-radius:50%}
+  .moresheet{position:absolute;right:8px;bottom:calc(100% + 8px);background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.22);padding:6px;display:flex;flex-direction:column;min-width:150px}
+  .moresheet button{flex:none;text-align:left;padding:12px 14px;min-height:46px}
+  main{padding-block:12px 96px}
+  #toastroot{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  .hero{margin-inline:0;padding:16px 16px 14px}
+  .hnum{font-size:60px}
+  .hero-admin .tools{display:none}
+  /* 面板區塊：去框線、改成留白分隔 */
+  .pbody .sec:not(.act){border-color:transparent}
+  .pbody .sec > header{border-bottom:0;padding:14px 14px 4px}
+  .pbody .sec > header h3{font-size:13px;color:var(--muted);font-weight:700}
+  .pbody .sec .item:first-of-type{border-top:0}
+  .chk{padding:8px 0;border-bottom:1px solid var(--line)}.chk:last-child{border-bottom:0}
+  .counter input{font-family:var(--f-num);font-weight:800}
+}
 </style>
 
 <div class="top"><div class="wrap">
@@ -429,8 +526,17 @@ function renderNav(){
   const n=actionCount();
   const tl=taskList();
   const bn=isAdmin?tl.filter(t=>t.state==='待驗收').length:tl.filter(t=>t.state==='退回').length;
-  $('#nav').innerHTML=items.map(([k,t])=>{const c=k==='clients'?n:k==='board'?bn:k==='mine'?tl.filter(t=>isMine(t)&&(t.state==='退回'||t.late)).length:k==='notify'?computeAlerts().length:0;return `<button data-act="nav" data-v="${k}" ${view===k?'aria-current="page"':''}>${t}${c?`<span class="count">${c}</span>`:''}</button>`}).join('');
+  const cnt=k=>k==='clients'?n:k==='board'?bn:k==='mine'?tl.filter(t=>isMine(t)&&(t.state==='退回'||t.late)).length:k==='notify'?computeAlerts().length:0;
+  const btn=([k,t])=>{const c=cnt(k);return `<button data-act="nav" data-v="${k}" ${view===k?'aria-current="page"':''}>${t}${c?`<span class="count">${c}</span>`:''}</button>`};
+  const phone=window.matchMedia&&matchMedia('(max-width:640px)').matches;
+  if(phone&&items.length>5){
+    const main=items.slice(0,4),rest=items.slice(4);
+    const restOn=rest.some(([k])=>k===view),restN=rest.reduce((m,[k])=>m+cnt(k),0);
+    $('#nav').innerHTML=main.map(btn).join('')+`<button data-act="more" ${restOn?'aria-current="page"':''}>更多${restN?`<span class="count">${restN}</span>`:''}</button>`+(moreOpen?`<div class="moresheet">${rest.map(btn).join('')}</div>`:'');
+  }else $('#nav').innerHTML=items.map(btn).join('');
 }
+let moreOpen=false;
+if(window.matchMedia)matchMedia('(max-width:640px)').addEventListener('change',()=>{moreOpen=false;queue()});
 function deadlinePill(i){
   const st=i.c.status;
   if(st==='結案')return `<span class="pill mute">${i.c.closedAt?'結案 '+esc(i.c.closedAt):'已結案'}</span>`;
@@ -460,7 +566,8 @@ function clientRow(i){
   const c=i.c;
   const types=[...new Set(i.services.filter(s=>s.status!=='結束'||c.status==='結案').map(s=>s.type).filter(Boolean))];
   const m=isAdmin?i.services.reduce((t,s)=>t+monthlyOf(s),0):0;
-  return `<div class="crow" role="button" tabindex="0" data-act="open" data-code="${esc(c.code)}">
+  const rk=i.needs?'back':c.status==='進行中'?'doing':c.status==='結案'?'done':'todo';
+  return `<div class="crow s-${rk}" role="button" tabindex="0" data-act="open" data-code="${esc(c.code)}">
     <div><div><span class="code mono">${esc(c.code)}</span><span class="nm">${esc(c.brand||c.fullName||'（未命名）')}</span></div><div class="full">${esc(c.fullName&&c.fullName!==c.brand?c.fullName:(c.taxId?'統編 '+c.taxId:''))}</div>${c.brands?`<div class="full">旗下／別稱：${esc(c.brands)}</div>`:''}</div>
     <div class="stack">${statusPill(c)}${deadlinePill(i)}</div>
     <div class="chips">${types.map(t=>`<span class="chip">${esc(t)}</span>`).join('')||'<span class="muted">尚無服務</span>'}</div>
@@ -485,7 +592,7 @@ function renderClients(){
   const body=!loaded.clients?'<div class="empty">載入中…</div>':list.length?list.map(clientRow).join(''):
     `<div class="empty">${q?'找不到符合的客戶。':all.length?'這個分類目前沒有客戶。':'還沒有客戶資料。按右上方「新增客戶」建立第一筆。'}</div>`;
   const focus=document.activeElement&&document.activeElement.id==='q';
-  $('#main').innerHTML=`${banner}${sum}<div class="tools"><div class="tabs">${tabs}</div><span class="grow"></span><input type="search" id="q" placeholder="搜尋名稱、編號、統編" value="${esc(query)}" aria-label="搜尋客戶">${newBtn}</div><div class="list">${body}</div>`;
+  $('#main').innerHTML=`${banner}${sum}<div class="tools"><div class="tabs">${tabs}</div><span class="grow"></span><input type="search" id="q" placeholder="搜尋名稱、編號、統編" value="${esc(query)}" aria-label="搜尋客戶">${newBtn}</div><div class="list board">${body}</div>`;
   if(focus){const el=$('#q');el.focus();el.setSelectionRange(query.length,query.length)}
 }
 
@@ -1121,6 +1228,7 @@ function sopForm(key){
 }
 
 /* ---------- views ---------- */
+const STK={'待處理':'todo','進行中':'doing','待驗收':'wait','退回':'back','已驗收':'acc','已交付':'done'};
 function pillState(st){return `<span class="pill ${STATE_PILL[st]}">${st}</span>`}
 function periodBar(){
   return `<div class="pbar"><button class="btn sm" data-act="pshift" data-d="-1" aria-label="上個月">‹</button><b class="mono">${esc(period)}</b><button class="btn sm" data-act="pshift" data-d="1" aria-label="下個月">›</button>${period!==curPeriod()?'<button class="btn sm ghost" data-act="pnow">回到本月</button>':''}</div>`;
@@ -1148,25 +1256,34 @@ function renderMyDash(){
   const old=all.filter(t=>t.due&&t.due<from&&!sent(t)).sort((a,b)=>a.due.localeCompare(b.due));
   const cnt=f=>inR.filter(f).length;
   const todo=cnt(t=>['待處理','進行中'].includes(t.state)),back=cnt(t=>t.state==='退回'),done=cnt(sent);
-  const pct=inR.length?Math.round(done/inR.length*100):0;
-  const row=t=>`<div class="mrow" data-act="openTask" data-id="${esc(t.id)}" role="button" tabindex="0"><div class="mmain"><b>${esc(clientName(t.clientCode))}</b><span class="sub">${esc(t.title)}${t.due&&t.due<today&&!sent(t)?'・截止 '+md(t.due):''}</span></div><div class="mside">${pillState(t.state)}<span class="muted num">${t.done||0}／${t.target||0} ${unit(t.kind)}</span></div></div>`;
+  const row=t=>`<div class="mrow s-${STK[t.state]}" data-act="openTask" data-id="${esc(t.id)}" role="button" tabindex="0"><div class="mmain"><b>${esc(clientName(t.clientCode))}</b><span class="sub">${esc(t.title)}${t.due&&t.due<today&&!sent(t)?'　截止 '+md(t.due):''}</span></div><div class="mside"><span class="st">${t.state}</span><span class="qty">${t.done||0}<i>／${t.target||0}</i></span></div></div>`;
   const groups=new Map();
   inR.forEach(t=>{const k=wk?t.due:mondayOf(t.due);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(t)});
+  /* 週條：每週看 7 天各有幾項，每月看每週各有幾項 */
+  let keys=[];
+  if(wk){for(let i=0;i<7;i++)keys.push(addDays(ovWeek,i))}
+  else{for(let k=mondayOf(from);k<=to;k=addDays(k,7))keys.push(k)}
+  const strip=keys.map(k=>{
+    const ts=groups.get(k)||[],n=ts.length,ok=n&&ts.every(sent);
+    const now=wk?k===today:(today>=k&&today<=addDays(k,6));
+    const top=wk?WKN[new Date(toUTC(k)).getUTCDay()]:md(k);
+    const sub=wk?k.slice(8):'';
+    return `<button class="wd${now?' now':''}${n?' has':''}${ok?' ok':''}" data-act="ovday" data-k="${k}" aria-label="${top} ${n} 項"><span class="wn">${top}</span><span class="wc">${ok?'✓':(n||'·')}</span>${wk?`<span class="wdt">${sub}</span>`:''}</button>`}).join('');
   const gHTML=[...groups.entries()].map(([k,ts])=>{
-    const head=wk?`${wdName(k)}　${md(k)}${k===today?'<span class="pill info" style="margin-left:8px">今天</span>':''}`:`${md(k)} – ${md(addDays(k,6))}${(today>=k&&today<=addDays(k,6))?'<span class="pill info" style="margin-left:8px">本週</span>':''}`;
-    return `<section class="sec"><header><h3>${head}</h3><span class="muted">${ts.length} 項</span></header>${ts.map(row).join('')}</section>`}).join('');
+    const head=wk?`${wdName(k)}　${md(k)}${k===today?'<em class="tg">今天</em>':''}`:`${md(k)} – ${md(addDays(k,6))}${(today>=k&&today<=addDays(k,6))?'<em class="tg">本週</em>':''}`;
+    return `<h4 class="grph" id="g-${k}">${head}<span>${ts.length} 項</span></h4><div class="tile">${ts.map(row).join('')}</div>`}).join('');
   const total=all.length,openN=all.filter(t=>!sent(t)).length;
   $('#main').innerHTML=`
-  <div class="tools"><div class="tabs"><button data-act="ovmode" data-v="week" aria-pressed="${wk}">每週</button><button data-act="ovmode" data-v="month" aria-pressed="${!wk}">每月</button></div><span class="grow"></span>
-    <div class="pbar"><button class="btn sm" data-act="ovshift" data-d="-1" aria-label="上一個">‹</button><b class="mono">${label}</b><button class="btn sm" data-act="ovshift" data-d="1" aria-label="下一個">›</button>${isNow?'':`<button class="btn sm ghost" data-act="ovnow">${wk?'回本週':'回本月'}</button>`}</div></div>
-  <section class="sec"><div class="in ov">
-    <div class="ovtop"><div><span class="big">${inR.length}</span><span class="muted">項任務・${wk?'這週':'這個月'}要交</span></div><div class="ovpct">${done}／${inR.length} 已送交</div></div>
-    <div class="mini" style="height:8px"><i style="width:${pct}%"></i></div>
-    <div class="ovstats"><div><b>${todo}</b><span>待完成</span></div><div class="${back?'bad':''}"><b>${back}</b><span>被退回</span></div><div><b>${done}</b><span>已送交</span></div></div>
-    <div class="ovall muted">我的全部任務 ${total} 項：還沒完成 ${openN} 項，已送交 ${total-openN} 項</div>
-  </div></section>
-  ${old.length?`<details class="sec fold" ${old.length<=3?"open":""}><summary style="color:var(--bad)">往期還沒完成（${old.length}）</summary>${old.map(row).join('')}</details>`:''}
-  ${gHTML||`<div class="list"><div class="empty">${wk?'這週':'這個月'}沒有要交的任務。</div></div>`}`;
+  <section class="hero">
+    <div class="hero-top"><div class="seg2"><button data-act="ovmode" data-v="week" aria-pressed="${wk}">每週</button><button data-act="ovmode" data-v="month" aria-pressed="${!wk}">每月</button></div>
+      <div class="hnav"><button data-act="ovshift" data-d="-1" aria-label="上一個">‹</button><b>${label}</b><button data-act="ovshift" data-d="1" aria-label="下一個">›</button></div></div>
+    <div class="hero-main"><span class="hnum">${inR.length}</span><span class="hlab">${wk?'這週':'這個月'}要交的任務${isNow?'':`<button class="hback" data-act="ovnow">${wk?'回本週':'回本月'}</button>`}</span></div>
+    <div class="wstrip" style="--n:${keys.length}">${strip}</div>
+    <div class="hstat"><span class="${todo?'':'z'}"><i class="d-todo"></i>待完成 <b>${todo}</b></span><span class="${back?'':'z'}"><i class="d-back"></i>被退回 <b>${back}</b></span><span class="${done?'':'z'}"><i class="d-ok"></i>已送交 <b>${done}</b></span></div>
+    <div class="hall">我的全部任務 ${total} 項，還沒完成 ${openN} 項</div>
+  </section>
+  ${old.length?`<details class="late" ${old.length<=3?'open':''}><summary>往期還沒完成 <b>${old.length}</b></summary><div class="tile">${old.map(row).join('')}</div></details>`:''}
+  ${gHTML||`<div class="emptyday">${wk?'這週':'這個月'}沒有要交的任務。</div>`}`;
 }
 function renderDash(){
   const all=taskList();
@@ -1197,7 +1314,7 @@ function renderDash(){
   const empty=!total?`<div class="list"><div class="empty">${esc(period)} 還沒有任務。<br>${canWrite?'按「產生月任務」，系統會依各客戶詳情裡的「週期任務設定」建立，並自動設定截止日。要先在客戶詳情設定每個客戶要做哪些任務。':''}</div></div>`:'';
   $('#main').innerHTML=`<div class="tools">${periodBar()}<span class="grow"></span>${canWrite&&isAdmin?`<button class="btn" data-act="newTask">＋ 新增任務</button><button class="btn primary" data-act="genTasks">產生月任務</button>`:''}</div>
   ${carry?`<div class="note warn"><div><b>往期還有 ${carry} 項沒完成交付。</b></div><button class="btn sm" data-act="jumpOld">查看</button></div>`:''}
-  ${total?`<section class="sec"><div class="in">
+  ${total?`<section class="sec hero hero-admin"><div class="in">
     <div class="bighead"><span><b class="big num">${delivered}</b><span class="muted">／${total} 項已交付客戶</span></span><span class="muted">${total?Math.round(delivered/total*100):0}%</span></div>
     ${segBar(counts,total)}<div class="legends">${chips}</div>
     <div class="kpis"><div><b class="num">${gW.d}／${gW.t}</b><span>週文章（已驗收）</span></div><div><b class="num">${gR.d}／${gR.t}</b><span>月報告（已驗收）</span></div><div><b class="num">${gB.d}／${gB.t}</b><span>月部落文（已驗收）</span></div><div><b class="num" style="color:${late?'var(--bad)':'inherit'}">${late}</b><span>逾期未交付</span></div>${isAdmin?`<div><b class="num">${money(cost)}</b><span>員工成本（已驗收）／預估 ${money(costAll)}${noRate?`，${noRate} 項未設單價`:''}</span></div>`:''}</div></div></section>
@@ -1219,7 +1336,7 @@ function renderBoard(mine){
     const prog=Math.min(100,Math.round((t.done||0)/Math.max(1,t.target||1)*100));
     const who=inGrp?`<div><b>${esc(t.title)}</b>${boardAll?`<span class="muted" style="margin-left:6px">${esc(t.period)}</span>`:''}${mine?'':`<span class="pill own ${isMine(t)?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(ownerOf(t)))}</span>`}</div>`
       :`<div><span class="code mono">${esc(t.clientCode)}</span><b>${esc(clientName(t.clientCode))}</b>${clientAka(t.clientCode)?`<span class="muted" style="margin-left:6px">${esc(clientAka(t.clientCode))}</span>`:''}${mine?'':`<span class="pill own ${isMine(t)?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(ownerOf(t)))}</span>`}</div><div class="sub muted">${esc(t.title)}${boardAll?'・'+esc(t.period):''}</div>`;
-    return `<div class="trow${inGrp?' in-grp':''}" data-act="openTask" data-id="${esc(t.id)}" role="button" tabindex="0">
+    return `<div class="trow s-${STK[t.state]}${inGrp?' in-grp':''}" data-act="openTask" data-id="${esc(t.id)}" role="button" tabindex="0">
       <div style="min-width:0">${who}</div>
       <div><div class="num">${t.done||0}／${t.target||0} ${unit(t.kind)}</div><div class="mini"><i style="width:${prog}%"></i></div></div>
       <div class="num muted">SOP ${sopDone}／${sopN}</div>
@@ -1237,7 +1354,8 @@ function renderBoard(mine){
     const owners=[...new Set(ts.map(ownerOf))];const cfm=cnt(t=>t.state==='已交付'&&t.kind!=='月部落文'&&!t.confirmedAt);
     const due=ts.map(t=>t.due).filter(Boolean).sort()[0]||'';
     const pr=Math.round(doneN/ts.length*100);
-    const head=`<div class="trow grp-head" data-act="bgrp" data-id="${esc(code)}" role="button" tabindex="0" aria-expanded="${open}">
+    const dom=ret?'back':late?'back':wait?'wait':todoN?'doing':'done';
+    const head=`<div class="trow grp-head s-${dom}" data-act="bgrp" data-id="${esc(code)}" role="button" tabindex="0" aria-expanded="${open}">
       <div style="min-width:0"><div><span class="chev">${open?'▾':'▸'}</span><span class="code mono">${esc(code)}</span><b>${esc(clientName(code))}</b>${clientAka(code)?`<span class="muted" style="margin-left:6px">${esc(clientAka(code))}</span>`:''}${mine?'':owners.map(o=>`<span class="pill own ${o===meName()?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(o))}</span>`).join('')}</div><div class="sub muted">${ts.length} 項任務${boardAll?'・跨期別':''}</div></div>
       <div><div class="num">${doneN}／${ts.length} 項完成</div><div class="mini"><i style="width:${pr}%"></i></div></div>
       <div class="num muted"></div>
@@ -1247,7 +1365,7 @@ function renderBoard(mine){
   $('#main').innerHTML=`<div class="tools">${boardAll?'<b>所有期別未交付</b><button class="btn sm ghost" data-act="bperiod" data-v="cur">回到期別檢視</button>':periodBar()}<span class="grow"></span>${boardAll?'':'<button class="btn sm" data-act="bperiod" data-v="all">看所有往期未交付</button>'}${canWrite&&isAdmin?'<button class="btn ghost" data-act="taskNames">任務名稱</button><button class="btn" data-act="newTask">＋ 新增任務</button><button class="btn primary" data-act="genTasks">產生月任務</button>':''}</div>
   ${mine?`<div class="sumline"><span><b>${base.filter(t=>['待處理','進行中'].includes(t.state)).length}</b>待我完成</span><span><b>${base.filter(t=>t.state==='退回').length}</b>退回要修改</span><span><b>${base.filter(t=>t.state==='待驗收').length}</b>等驗收</span><span><b>${base.filter(t=>t.state==='已驗收'||t.state==='已交付').length}／${base.length}</b>已完成</span><span><b style="color:${base.some(t=>t.late)?'var(--bad)':'inherit'}">${base.filter(t=>t.late).length}</b>逾期</span></div>`:''}
   <div class="tools"><input type="search" id="bq" placeholder="搜尋客戶或任務" value="${esc(boardQuery)}" aria-label="搜尋任務" style="max-width:200px"><div class="tabs">${tabs}</div>${multi.length?`<button class="btn sm ghost" data-act="bexpand">${boardExpandAll?'全部收合':'全部展開'}</button>`:''}${mine?'':`<span class="grow"></span><div class="tabs">${[['all','全部負責人']].concat(activeUsers().map(u=>[u.name,u.name===meName()?'我的':u.display])).map(([k,n])=>`<button data-act="ofilter" data-v="${k}" aria-pressed="${ownerFilter===k}">${n}</button>`).join('')}</div>`}</div>
-  <div class="list">${list.length?rowsHTML:`<div class="empty">${base.length?'這個分類沒有任務。':(mine?'這個期別沒有指派給你的任務。':'這個期別還沒有任務。'+(isAdmin?'按「產生月任務」建立。':''))}</div>`}</div>`;
+  <div class="list board">${list.length?rowsHTML:`<div class="empty">${base.length?'這個分類沒有任務。':(mine?'這個期別沒有指派給你的任務。':'這個期別還沒有任務。'+(isAdmin?'按「產生月任務」建立。':''))}</div>`}</div>`;
 }
 function renderSop(){
   const keys=new Set(['default-週文章','default-月報告','default-月部落文','default-批量改寫',...Object.keys(S.sops)]);
@@ -1296,10 +1414,12 @@ function renderTaskPanel(){
   }else if(st==='已交付'){
     action=`<div class="in"><dl class="kv">${isBlog?`<dt>送客戶確認</dt><dd>${esc(t.sentAt||'—')}　${esc(t.sentVia||'')}</dd><dt>客戶確認</dt><dd>${esc(t.confirmedAt||'—')}${t.confirmNote?'　'+esc(t.confirmNote):''}</dd><dt>發佈日</dt><dd>${esc(t.deliveredAt||'')}</dd><dt>發佈連結</dt><dd>${pubL}</dd>`:`<dt>交付日</dt><dd>${esc(t.deliveredAt||'')}　${esc(t.deliveredVia||'')}</dd><dt>客戶確認</dt><dd>${t.confirmedAt?esc(t.confirmedAt)+(t.confirmNote?'　'+esc(t.confirmNote):''):'<span class="pill warn">等待客戶確認</span>'}</dd>`}${t.deliveredNote?`<dt>備註</dt><dd>${esc(t.deliveredNote)}</dd>`:''}</dl>${(!isBlog&&!t.confirmedAt&&canWrite)?'<div class="acts" style="justify-content:flex-start;margin-top:10px"><button class="btn primary" data-act="tconfirm">客戶已確認</button><button class="btn" data-act="trevise">客戶要求修改</button></div>':''}${isAdmin&&canWrite?'<div style="margin-top:10px"><button class="btn" data-act="trevoke">撤銷驗收與交付</button></div>':''}</div>`;
   }else{
-    action=`<div class="in">${miss.length?`<div class="infobox warn" style="margin-bottom:10px">送交前還需要：${miss.map(esc).join('、')}</div>`:''}${canWrite?`<button class="btn primary" data-act="tsubmit">送交驗收</button>`:''}</div>`;
+    action='';
   }
   const waits=taskList().filter(x=>x.state==='待驗收'&&x.id!==t.id).sort((x,y)=>(x.due||'').localeCompare(y.due||''));
-  const bar=(st==='待驗收'&&isAdmin&&canWrite)?`<div class="stickybar"><button class="btn primary" data-act="taccept">驗收通過</button><button class="btn bad" data-act="treject">退回</button><span class="grow"></span>${waits.length?`<button class="btn" data-act="tnext" data-id="${esc(waits[0].id)}">下一筆待驗收（${waits.length}）</button>`:'<span class="muted">沒有其他待驗收</span>'}</div>`:'';
+  const missShort=[];if(sop.filter((_,i)=>!chk[i]).length)missShort.push('SOP 沒勾完');if((t.done||0)<(t.target||0))missShort.push('數量');if(!links.length)missShort.push('連結');
+  const submitBar=(!action&&canWrite)?`<div class="stickybar submit"><div class="barmsg${miss.length?'':' ok'}">${miss.length?'還差：'+missShort.join('、'):'都完成了，可以送交'}</div><button class="btn primary" data-act="tsubmit">送交驗收</button></div>`:'';
+  const bar=submitBar||((st==='待驗收'&&isAdmin&&canWrite)?`<div class="stickybar"><button class="btn primary" data-act="taccept">驗收通過</button><button class="btn bad" data-act="treject">退回</button><span class="grow"></span>${waits.length?`<button class="btn" data-act="tnext" data-id="${esc(waits[0].id)}">下一筆待驗收（${waits.length}）</button>`:'<span class="muted">沒有其他待驗收</span>'}</div>`:'');
   const hist=(t.history||[]).map(h=>({at:h.at,text:h.text}));
   if(a)hist.push({at:a.at,text:(a.result==='pass'?'驗收通過':'退回：'+(a.reason||''))});
   hist.sort((x,y)=>y.at.localeCompare(x.at));
@@ -1314,7 +1434,7 @@ function renderTaskPanel(){
     <section class="sec"><header><h3>SOP 核對</h3><span class="muted">${chk.filter(Boolean).length}／${sop.length}</span></header><div class="in chks">${sopHTML||'<span class="muted">這個任務沒有 SOP 項目。</span>'}</div></section>
     <section class="sec"><header><h3>交付內容連結</h3><span class="muted">${links.length} 條</span></header>${linksHTML}${addLink}</section>
     <details class="sec fold" ${t.note?'open':''}><summary>備註${t.note?'':'（沒有可不填）'}</summary><div class="in"><textarea id="t_note" ${dis} placeholder="給管理者的說明，例如只能完成部分的原因">${esc(t.note||'')}</textarea></div></details>
-    <section class="sec"><header><h3>驗收與交付</h3></header>${action}</section>
+    ${action?`<section class="sec act"><header><h3>驗收與交付</h3></header>${action}</section>`:''}
     <details class="sec fold"><summary>紀錄（${hist.length}）</summary>${histHTML}</details>
    </div>${bar}</aside>`;
   const pn2=layer.querySelector('.panel');pn2.scrollTop=scroll;if(hadPanel)pn2.style.animation='none';
@@ -1424,7 +1544,8 @@ function channelForm(id){
 document.addEventListener('click',async e=>{
   const el=e.target.closest('[data-act]');if(!el)return;
   const a=el.dataset.act,code=el.dataset.code,id=el.dataset.id;
-  if(a==='nav'){view=el.dataset.v;openCode=null;openTask=null;boardQuery='';queue();return}
+  if(a==='more'){moreOpen=!moreOpen;queue();return}
+  if(a==='nav'){moreOpen=false;view=el.dataset.v;openCode=null;openTask=null;boardQuery='';queue();return}
   if(a==='tab'){tab=el.dataset.v;query='';queue();return}
   if(a==='open'){openCode=code;openTask=null;queue();return}
   if(a==='closePanel'){openCode=null;openTask=null;queue();return}
@@ -1433,6 +1554,7 @@ document.addEventListener('click',async e=>{
   if(a==='pnow'){period=curPeriod();queue();return}
   if(a==='goto'){view=el.dataset.v;openCode=null;openTask=null;queue();return}
   if(a==='goGen'){view='board';boardAll=false;period=el.dataset.p;openCode=null;openTask=null;queue();if(canWrite&&isAdmin)setTimeout(openGenerate,50);return}
+  if(a==='ovday'){const t=document.getElementById('g-'+el.dataset.k);if(t)t.scrollIntoView({behavior:'smooth',block:'start'});else toast('這天沒有任務');return}
   if(a==='ovmode'){ovMode=el.dataset.v;queue();return}
   if(a==='ovshift'){const d=Number(el.dataset.d);if(ovMode==='week')ovWeek=addDays(ovWeek,7*d);else{const [y,m]=ovMonth.split('-').map(Number);const n=new Date(Date.UTC(y,m-1+d,1));ovMonth=n.getUTCFullYear()+'-'+p2(n.getUTCMonth()+1)}queue();return}
   if(a==='ovnow'){ovWeek=null;ovMonth=null;queue();return}
