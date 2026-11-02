@@ -3,7 +3,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Bricolage+Grotesque:opsz,wght@12..96,600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 /* Layout: sticky top bar with 3 areas (客戶 / 帳款 / 待辦); client list as scannable rows under status tabs; client detail slides in as a right-hand panel; renew/close/edit happen in a centered modal. */
 :root{
@@ -304,102 +304,109 @@ html{-webkit-text-size-adjust:100%}
 }
 @media (max-width:640px){dl.kv .nil{display:none}}
 
-/* ===== v5 設計層：區塊要有主從，不是一堆長得一樣的白卡 ===== */
-:root{--hero:#17264A;--hero-mute:rgba(255,255,255,.68);--today:#FFD166;--f-num:"Bricolage Grotesque","Noto Sans TC",system-ui,sans-serif}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--hero:#243A63}}
-:root[data-theme="dark"]{--hero:#243A63}
-.s-todo{--rc:var(--c-todo);--rt:var(--muted)}.s-doing{--rc:var(--c-doing);--rt:var(--accent)}.s-wait{--rc:var(--c-wait);--rt:var(--warn)}
-.s-back{--rc:var(--c-back);--rt:var(--bad)}.s-acc{--rc:var(--c-acc);--rt:var(--ok)}.s-done{--rc:var(--c-done);--rt:var(--ok)}
-/* 主角區：深色大塊 */
-.hero{background:var(--hero);color:#fff;border-radius:22px;padding:18px 18px 16px;margin-bottom:18px;border:0}
-.hero-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-.seg2{display:inline-flex;background:rgba(255,255,255,.14);border-radius:999px;padding:3px}
-.seg2 button{border:0;background:none;color:var(--hero-mute);padding:6px 16px;border-radius:999px;font-weight:700;cursor:pointer;min-height:36px}
-.seg2 button[aria-pressed="true"]{background:#fff;color:var(--hero)}
-.hnav{display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
-.hnav button{width:36px;height:36px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:18px;cursor:pointer}
-.hnav b{min-width:96px;text-align:center;font-weight:700}
-.hero-main{display:flex;align-items:flex-end;gap:12px;margin:20px 0 16px}
-.hnum{font:800 68px/.85 var(--f-num);letter-spacing:-.04em}
-.hlab{color:var(--hero-mute);font-size:15px;display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding-bottom:2px}
-.hback{border:0;background:none;color:var(--today);padding:0;font-weight:600;text-decoration:underline;cursor:pointer;min-height:24px}
-.wstrip{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:6px}
-.wd{border:0;border-radius:12px;background:rgba(255,255,255,.09);color:#fff;padding:8px 0 7px;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;min-height:62px;justify-content:center}
-.wd .wn{font-size:12px;color:var(--hero-mute)}.wd .wc{font:800 20px/1.15 var(--f-num)}.wd .wdt{font-size:11px;color:var(--hero-mute)}
-.wd:not(.has) .wc{opacity:.3}
-.wd.ok .wc{color:#7BE0A5}
-.wd.now{background:var(--today);color:#17264A}.wd.now .wn,.wd.now .wdt{color:rgba(23,38,74,.72)}.wd.now .wc{color:#17264A;opacity:1}
-.hstat{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:14px}
-.hstat b{font:800 17px var(--f-num);margin-left:2px}
-.hstat .z{opacity:.5}
-.hstat i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
-.d-todo{background:#B8C2D6}.d-back{background:#FF8A80}.d-ok{background:#7BE0A5}
-.hall{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.16);font-size:13px;color:var(--hero-mute)}
-/* 管理者總覽的主角區 */
-.hero-admin .muted,.hero-admin .kpis span{color:var(--hero-mute)}
-.hero-admin .big{font:800 56px/1 var(--f-num);letter-spacing:-.03em}
-.hero-admin .legend{background:rgba(255,255,255,.1);border-color:transparent;color:#fff}
-.hero-admin .seg{background:rgba(255,255,255,.18)}
-.hero-admin .kpis{border-top-color:rgba(255,255,255,.16)}
-.hero-admin .kpis b{font-family:var(--f-num);font-weight:800}
-.hero-admin{padding:0}.hero-admin .in{padding:18px}
-/* 往期未完成：警示帶 */
-.late{background:var(--bad-soft);border-radius:16px;margin-bottom:6px;overflow:hidden}
-.late > summary{padding:14px 16px;cursor:pointer;font-weight:700;color:var(--bad);display:flex;justify-content:space-between;align-items:center;list-style:none}
+
+/* ===== v6：克制的後台風格——單一強調色、統一圓角、只用細線分隔、不用裝飾 ===== */
+:root{--bg:#F6F7F9;--ink:#101828;--muted:#667085;--line:#E4E7EC;--accent:#1F3864;--accent-soft:#EEF2F9;--hover:#F9FAFB;
+  --ok:#067647;--ok-soft:#ECFDF3;--warn:#B54708;--warn-soft:#FFF6E5;--bad:#B42318;--bad-soft:#FEF3F2}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--hover:#1B2639;--accent-soft:#223048}}
+:root[data-theme="dark"]{--hover:#1B2639;--accent-soft:#223048}
+body{line-height:1.6}
+h1,h2,h3{font-weight:600}
+.s-todo{--rt:var(--muted)}.s-doing{--rt:var(--accent)}.s-wait{--rt:var(--warn)}.s-back{--rt:var(--bad)}.s-acc,.s-done{--rt:var(--ok)}
+/* 按鈕與標籤 */
+.btn{border-color:#D0D5DD;border-radius:6px;font-weight:500;background:var(--surface)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn{border-color:var(--line)}}
+:root[data-theme="dark"] .btn{border-color:var(--line)}
+.btn:hover{border-color:#D0D5DD;background:var(--hover)}
+.btn.primary{background:var(--accent);border-color:var(--accent)}.btn.primary:hover{background:var(--accent);filter:brightness(1.12)}
+.pill{border-radius:4px;padding:1px 7px;font-weight:500}
+.pill.done{background:var(--ok-soft);color:var(--ok)}
+.chip{border-radius:4px}
+.tabs{gap:22px;flex-wrap:nowrap;overflow-x:auto;border-bottom:1px solid var(--line);scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;border:0;border-bottom:2px solid transparent;background:none;border-radius:0;padding:8px 0;margin-bottom:-1px;color:var(--muted);font-weight:500}
+.tabs button[aria-pressed="true"]{background:none;color:var(--ink);border-bottom-color:var(--accent)}
+.tabs .n{opacity:1;margin-left:5px;font-size:12px}
+.legend{border-radius:6px;padding:4px 10px}
+.note{border-left-width:1px;border-radius:8px}
+.note.bad{background:var(--bad-soft);border-color:transparent}.note.warn{background:var(--warn-soft);border-color:transparent}
+.list,.sec,.tablewrap,.modal{border-radius:8px}
+.crow:hover,.trow:hover,.qrow:hover,tr.click:hover,.todo:hover{background:var(--hover)}
+.grp-body{background:var(--hover)}
+.big{font-size:28px;font-weight:600}
+.kpis b{font-size:18px;font-weight:600}
+.sec.act{background:var(--hover)}
+.fold>summary{font-weight:600}
+/* 員工／僅交付總覽 */
+.ovhead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:2px 0 14px}
+.ovhead h1{margin:0;font-size:22px;line-height:1.25}
+.range{color:var(--muted);margin-top:2px;display:flex;gap:12px;align-items:center;font-variant-numeric:tabular-nums}
+.linkbtn{border:0;background:none;color:var(--accent);padding:0;cursor:pointer;font:inherit;text-decoration:underline;text-underline-offset:3px}
+.ovctl{display:flex;align-items:center;gap:16px}
+.utabs{display:flex;gap:18px}
+.utabs button{border:0;background:none;padding:6px 0;color:var(--muted);font-weight:500;border-bottom:2px solid transparent;cursor:pointer}
+.utabs button[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.stepper{display:flex;gap:6px}.stepper .btn{width:34px;padding:0;min-height:32px}
+.calstrip{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.cd{border:0;border-right:1px solid var(--line);background:none;padding:10px 2px 9px;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;position:relative;min-width:0}
+.cd:last-child{border-right:0}.cd:hover{background:var(--hover)}
+.cd-w{font-size:12.5px;color:var(--muted)}.cd-d{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.cd-n{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:3px}
+.cd-n.z{color:var(--muted);font-weight:400}.cd-n.ok{color:var(--ok);font-size:13px}
+.cd.now{background:var(--accent-soft)}
+.cd.now::after{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:var(--accent)}
+.cd.now .cd-w{color:var(--accent);font-weight:600}
+.ovsum{margin:14px 2px 18px;color:var(--muted);line-height:1.85}
+.ovsum b{color:var(--ink);font-weight:600}.ovsum b.bad{color:var(--bad)}
+.ledger{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:18px}
+.lhead{display:flex;justify-content:space-between;gap:10px;padding:9px 16px;background:var(--hover);border-top:1px solid var(--line);font-weight:600;font-size:13px;scroll-margin-top:70px}
+.ledger > .lhead:first-child{border-top:0}
+.lhead .tg{font-style:normal;color:var(--accent);margin-left:8px;font-size:12.5px}
+.lrow{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 16px;border-top:1px solid var(--line);cursor:pointer}
+.lhead + .lrow{border-top:0}
+.lrow:hover{background:var(--hover)}
+.lmain{min-width:0;display:flex;flex-direction:column;gap:1px}
+.lmain b{font-weight:600}.lmain span{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.lside{display:flex;flex-direction:column;align-items:flex-end;gap:1px;flex:none}
+.st{font-size:12.5px;font-weight:600;color:var(--rt,var(--muted))}
+.qty{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.late{margin-bottom:18px}
+.late > summary{display:flex;justify-content:space-between;padding:11px 16px;background:var(--bad-soft);color:var(--bad);font-weight:600;cursor:pointer;border-radius:8px;list-style:none}
+.late[open] > summary{border-radius:8px 8px 0 0}
 .late > summary::-webkit-details-marker{display:none}
-.late > summary b{font:800 20px var(--f-num)}
-.late .tile{border-radius:0;background:transparent}
-.late .mrow{border-top-color:rgba(179,38,30,.15)}
-/* 日期／週別標題：放在底色上，不進卡片 */
-.grph{margin:24px 4px 8px;font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px;scroll-margin-top:70px}
-.grph span{margin-left:auto;font-weight:500;color:var(--muted);font-size:13px}
-.grph .tg{font-style:normal;background:var(--today);color:#17264A;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700}
-.tile{background:var(--surface);border-radius:16px;overflow:hidden}
-.mrow{padding:14px 16px 14px 20px;box-shadow:inset 5px 0 0 var(--rc,transparent)}
-.mmain b{font-size:16px;line-height:1.3}.mmain .sub{font-size:13px}
-.mside{gap:2px}
-.st{color:var(--rt,var(--muted));font-weight:700;font-size:12.5px}
-.qty{font:800 22px/1.1 var(--f-num)}.qty i{font-style:normal;font-weight:600;font-size:13px;color:var(--muted);margin-left:1px}
-.emptyday{padding:44px 16px;text-align:center;color:var(--muted)}
-/* 工作交付／客戶：每個客戶一塊，帶狀態色條 */
-.list.board{background:none;border:0;overflow:visible;display:flex;flex-direction:column;gap:10px}
-.list.board > .grp,.list.board > .trow,.list.board > .crow,.list.board > .empty{background:var(--surface);border:0;border-radius:16px;overflow:hidden}
-.trow,.crow{box-shadow:inset 5px 0 0 var(--rc,transparent)}
-.grp .grp-head{box-shadow:inset 5px 0 0 var(--rc,transparent)}
-.grp-body{background:var(--bg)}
-.grp-body .trow{box-shadow:inset 5px 0 0 var(--rc,transparent)}
-.grp-head b,.crow .nm{font-size:16.5px}
-/* 面板：資訊區塊用淡底，動作區塊用強調色，送交列釘在底部 */
-.sec.act{background:var(--accent-soft);border-color:transparent}
-.sec.act > header{border-bottom-color:rgba(31,56,100,.12)}
+.late .ledger{border-top:0;border-radius:0 0 8px 8px;margin:0}
+.emptyday{padding:40px 16px;text-align:center;color:var(--muted)}
+/* 任務面板的底部送交列 */
 .stickybar.submit{justify-content:space-between;gap:12px}
 .stickybar .barmsg{font-size:13px;color:var(--warn);flex:1;min-width:0}
 .stickybar .barmsg.ok{color:var(--ok);font-weight:600}
-.stickybar.submit .btn{min-height:46px;padding-inline:22px}
+.stickybar.submit .btn{min-height:44px;padding-inline:22px}
 @media (max-width:640px){
-  /* 底部分頁列：拇指好按；頂欄只剩店名和帳號 */
-  .top{padding-bottom:6px}
-  .top .wrap{padding-bottom:0}
-  .brand{padding-bottom:0}
-  .nav{position:fixed;left:0;right:0;bottom:0;z-index:15;width:auto;margin:0;padding:6px 8px max(6px,env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:space-around;gap:2px;overflow:visible;flex-wrap:nowrap;box-shadow:0 -6px 18px rgba(0,0,0,.06)}
-  .nav button{flex:1 1 0;min-width:0;position:relative;border:0;border-radius:12px;padding:10px 0;font-size:12.5px;text-align:center;letter-spacing:-.01em}
-  .nav button[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:700}
-  .nav .count{position:absolute;top:7px;right:calc(50% - 30px);margin:0;padding:0;width:8px;height:8px;font-size:0;background:var(--bad);color:transparent;border-radius:50%}
-  .moresheet{position:absolute;right:8px;bottom:calc(100% + 8px);background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.22);padding:6px;display:flex;flex-direction:column;min-width:150px}
-  .moresheet button{flex:none;text-align:left;padding:12px 14px;min-height:46px}
-  main{padding-block:12px 96px}
-  #toastroot{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
-  .hero{margin-inline:0;padding:16px 16px 14px}
-  .hnum{font-size:60px}
-  .hero-admin .tools{display:none}
-  /* 面板區塊：去框線、改成留白分隔 */
-  .pbody .sec:not(.act){border-color:transparent}
-  .pbody .sec > header{border-bottom:0;padding:14px 14px 4px}
-  .pbody .sec > header h3{font-size:13px;color:var(--muted);font-weight:700}
-  .pbody .sec .item:first-of-type{border-top:0}
-  .chk{padding:8px 0;border-bottom:1px solid var(--line)}.chk:last-child{border-bottom:0}
-  .counter input{font-family:var(--f-num);font-weight:800}
+  /* 底部分頁列：只靠細線與文字色，不做膠囊 */
+  .top{padding-bottom:6px}.top .wrap{padding-bottom:0}.brand{padding-bottom:0}
+  .nav{position:fixed;left:0;right:0;bottom:0;z-index:15;width:auto;margin:0;padding:0 4px max(0px,env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line);display:flex;gap:0;overflow:visible;flex-wrap:nowrap}
+  .nav button{flex:1 1 0;min-width:0;position:relative;border:0;border-top:2px solid transparent;border-bottom:0;border-radius:0;padding:12px 0 11px;font-size:12.5px;text-align:center;color:var(--muted)}
+  .nav button[aria-current="page"]{color:var(--accent);border-top-color:var(--accent);font-weight:600;background:none}
+  .nav .count{position:absolute;top:8px;right:calc(50% - 30px);margin:0;padding:0;width:7px;height:7px;font-size:0;background:var(--bad);color:transparent;border-radius:50%}
+  .moresheet{position:absolute;right:8px;bottom:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(16,24,40,.14);padding:4px;display:flex;flex-direction:column;min-width:150px}
+  .moresheet button{flex:none;text-align:left;padding:12px 14px;min-height:46px;border-top:0;border-radius:6px}
+  .moresheet button[aria-current="page"]{background:var(--accent-soft)}
+  main{padding-block:14px 84px}
+  #toastroot{bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+  .ovhead h1{font-size:20px}
+  .ovctl{width:100%;justify-content:space-between}
+  .lrow{padding:13px 14px}.lhead{padding:9px 14px}
+  .pbody .sec > header h3{font-size:13px;color:var(--muted)}
 }
+
+/* v6b 細修 */
+:root{--f-mono:var(--f-sans)}
+.mono,.code,.legend b,.tabs .n,.num{font-variant-numeric:tabular-nums}
+.seg{height:8px;border-radius:4px;gap:1px}
+.legend{background:var(--surface);cursor:pointer}
+.trow{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) 72px minmax(0,.9fr) auto}
+.cd[disabled]{cursor:default}.cd[disabled]:hover{background:none}.cd.now[disabled]:hover{background:var(--accent-soft)}
+@media (max-width:820px){.trow{grid-template-columns:minmax(0,1fr) auto}}
 </style>
 
 <div class="top"><div class="wrap">
@@ -1256,34 +1263,32 @@ function renderMyDash(){
   const old=all.filter(t=>t.due&&t.due<from&&!sent(t)).sort((a,b)=>a.due.localeCompare(b.due));
   const cnt=f=>inR.filter(f).length;
   const todo=cnt(t=>['待處理','進行中'].includes(t.state)),back=cnt(t=>t.state==='退回'),done=cnt(sent);
-  const row=t=>`<div class="mrow s-${STK[t.state]}" data-act="openTask" data-id="${esc(t.id)}" role="button" tabindex="0"><div class="mmain"><b>${esc(clientName(t.clientCode))}</b><span class="sub">${esc(t.title)}${t.due&&t.due<today&&!sent(t)?'　截止 '+md(t.due):''}</span></div><div class="mside"><span class="st">${t.state}</span><span class="qty">${t.done||0}<i>／${t.target||0}</i></span></div></div>`;
+  const row=t=>`<div class="lrow" data-act="openTask" data-id="${esc(t.id)}" role="button" tabindex="0"><div class="lmain"><b>${esc(clientName(t.clientCode))}</b><span>${esc(t.title)}${t.due&&t.due<today&&!sent(t)?'　截止 '+md(t.due):''}</span></div><div class="lside"><span class="st s-${STK[t.state]}">${t.state}</span><span class="qty">${t.done||0} / ${t.target||0} ${unit(t.kind)}</span></div></div>`;
   const groups=new Map();
   inR.forEach(t=>{const k=wk?t.due:mondayOf(t.due);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(t)});
-  /* 週條：每週看 7 天各有幾項，每月看每週各有幾項 */
   let keys=[];
   if(wk){for(let i=0;i<7;i++)keys.push(addDays(ovWeek,i))}
   else{for(let k=mondayOf(from);k<=to;k=addDays(k,7))keys.push(k)}
   const strip=keys.map(k=>{
     const ts=groups.get(k)||[],n=ts.length,ok=n&&ts.every(sent);
     const now=wk?k===today:(today>=k&&today<=addDays(k,6));
-    const top=wk?WKN[new Date(toUTC(k)).getUTCDay()]:md(k);
-    const sub=wk?k.slice(8):'';
-    return `<button class="wd${now?' now':''}${n?' has':''}${ok?' ok':''}" data-act="ovday" data-k="${k}" aria-label="${top} ${n} 項"><span class="wn">${top}</span><span class="wc">${ok?'✓':(n||'·')}</span>${wk?`<span class="wdt">${sub}</span>`:''}</button>`}).join('');
-  const gHTML=[...groups.entries()].map(([k,ts])=>{
+    const top=wk?'週'+WKN[new Date(toUTC(k)).getUTCDay()]:md(k)+' 起';
+    const sub=wk?md(k):'';
+    return `<button class="cd${now?' now':''}" ${n?'':'disabled'} data-act="ovday" data-k="${k}" aria-label="${top} ${n} 項"><span class="cd-w">${top}</span>${sub?`<span class="cd-d">${sub}</span>`:''}<span class="cd-n${n?'':' z'}${ok?' ok':''}">${ok?'完成':(n?n+' 項':'—')}</span></button>`}).join('');
+  const body=[...groups.entries()].map(([k,ts])=>{
     const head=wk?`${wdName(k)}　${md(k)}${k===today?'<em class="tg">今天</em>':''}`:`${md(k)} – ${md(addDays(k,6))}${(today>=k&&today<=addDays(k,6))?'<em class="tg">本週</em>':''}`;
-    return `<h4 class="grph" id="g-${k}">${head}<span>${ts.length} 項</span></h4><div class="tile">${ts.map(row).join('')}</div>`}).join('');
+    return `<div class="lhead" id="g-${k}"><span>${head}</span><span class="muted">${ts.length} 項</span></div>${ts.map(row).join('')}`}).join('');
   const total=all.length,openN=all.filter(t=>!sent(t)).length;
   $('#main').innerHTML=`
-  <section class="hero">
-    <div class="hero-top"><div class="seg2"><button data-act="ovmode" data-v="week" aria-pressed="${wk}">每週</button><button data-act="ovmode" data-v="month" aria-pressed="${!wk}">每月</button></div>
-      <div class="hnav"><button data-act="ovshift" data-d="-1" aria-label="上一個">‹</button><b>${label}</b><button data-act="ovshift" data-d="1" aria-label="下一個">›</button></div></div>
-    <div class="hero-main"><span class="hnum">${inR.length}</span><span class="hlab">${wk?'這週':'這個月'}要交的任務${isNow?'':`<button class="hback" data-act="ovnow">${wk?'回本週':'回本月'}</button>`}</span></div>
-    <div class="wstrip" style="--n:${keys.length}">${strip}</div>
-    <div class="hstat"><span class="${todo?'':'z'}"><i class="d-todo"></i>待完成 <b>${todo}</b></span><span class="${back?'':'z'}"><i class="d-back"></i>被退回 <b>${back}</b></span><span class="${done?'':'z'}"><i class="d-ok"></i>已送交 <b>${done}</b></span></div>
-    <div class="hall">我的全部任務 ${total} 項，還沒完成 ${openN} 項</div>
-  </section>
-  ${old.length?`<details class="late" ${old.length<=3?'open':''}><summary>往期還沒完成 <b>${old.length}</b></summary><div class="tile">${old.map(row).join('')}</div></details>`:''}
-  ${gHTML||`<div class="emptyday">${wk?'這週':'這個月'}沒有要交的任務。</div>`}`;
+  <div class="ovhead">
+    <div><h1>${wk?'本週':'本月'}</h1><div class="range">${label}${isNow?'':`<button class="linkbtn" data-act="ovnow">${wk?'回本週':'回本月'}</button>`}</div></div>
+    <div class="ovctl"><div class="utabs"><button data-act="ovmode" data-v="week" aria-pressed="${wk}">每週</button><button data-act="ovmode" data-v="month" aria-pressed="${!wk}">每月</button></div>
+      <div class="stepper"><button class="btn sm" data-act="ovshift" data-d="-1" aria-label="上一個">‹</button><button class="btn sm" data-act="ovshift" data-d="1" aria-label="下一個">›</button></div></div>
+  </div>
+  <div class="calstrip" style="--n:${keys.length}">${strip}</div>
+  <p class="ovsum">${wk?'這週':'這個月'}共 <b>${inR.length}</b> 項：待完成 <b>${todo}</b>，被退回 <b${back?' class="bad"':''}>${back}</b>，已送交 <b>${done}</b>。　我的全部任務 <b>${total}</b> 項，尚未完成 <b>${openN}</b> 項。</p>
+  ${old.length?`<details class="late" ${old.length<=3?'open':''}><summary>往期尚未完成<span>${old.length} 項</span></summary><div class="ledger">${old.map(row).join('')}</div></details>`:''}
+  ${body?`<div class="ledger">${body}</div>`:`<div class="emptyday">${wk?'這週':'這個月'}沒有要交的任務。</div>`}`;
 }
 function renderDash(){
   const all=taskList();
@@ -1314,7 +1319,7 @@ function renderDash(){
   const empty=!total?`<div class="list"><div class="empty">${esc(period)} 還沒有任務。<br>${canWrite?'按「產生月任務」，系統會依各客戶詳情裡的「週期任務設定」建立，並自動設定截止日。要先在客戶詳情設定每個客戶要做哪些任務。':''}</div></div>`:'';
   $('#main').innerHTML=`<div class="tools">${periodBar()}<span class="grow"></span>${canWrite&&isAdmin?`<button class="btn" data-act="newTask">＋ 新增任務</button><button class="btn primary" data-act="genTasks">產生月任務</button>`:''}</div>
   ${carry?`<div class="note warn"><div><b>往期還有 ${carry} 項沒完成交付。</b></div><button class="btn sm" data-act="jumpOld">查看</button></div>`:''}
-  ${total?`<section class="sec hero hero-admin"><div class="in">
+  ${total?`<section class="sec"><div class="in">
     <div class="bighead"><span><b class="big num">${delivered}</b><span class="muted">／${total} 項已交付客戶</span></span><span class="muted">${total?Math.round(delivered/total*100):0}%</span></div>
     ${segBar(counts,total)}<div class="legends">${chips}</div>
     <div class="kpis"><div><b class="num">${gW.d}／${gW.t}</b><span>週文章（已驗收）</span></div><div><b class="num">${gR.d}／${gR.t}</b><span>月報告（已驗收）</span></div><div><b class="num">${gB.d}／${gB.t}</b><span>月部落文（已驗收）</span></div><div><b class="num" style="color:${late?'var(--bad)':'inherit'}">${late}</b><span>逾期未交付</span></div>${isAdmin?`<div><b class="num">${money(cost)}</b><span>員工成本（已驗收）／預估 ${money(costAll)}${noRate?`，${noRate} 項未設單價`:''}</span></div>`:''}</div></div></section>
