@@ -27,7 +27,7 @@ code{background:var(--bg);padding:1px 6px;border-radius:4px;border:1px solid var
 <form id="add" class="grid" autocomplete="off">
 <div><label for="an">帳號（英文小寫、數字）</label><input id="an" required pattern="[a-z0-9._\-]{2,32}" autocapitalize="none" placeholder="例如 amy"></div>
 <div><label for="ad">顯示名稱</label><input id="ad" required maxlength="40" placeholder="例如 Amy"></div>
-<div><label for="ar">角色</label><select id="ar"><option value="staff">員工（看不到費用、帳款、設定，也不能驗收）</option><option value="admin">管理者（全部權限）</option></select></div>
+<div><label for="ar">角色</label><select id="ar"><option value="worker">僅交付（只看得到指派給自己的任務、SOP、自己的待辦；看不到也改不了客戶資料）</option><option value="staff">員工（看得到客戶資料，看不到費用、帳款、設定，不能驗收；只看自己的任務）</option><option value="admin">管理者（全部權限）</option></select></div>
 <div><label for="ap">臨時密碼（至少 10 字元）</label><div class="pw"><input id="ap" required minlength="10" autocomplete="off"><button type="button" id="gen">產生</button></div></div>
 <div style="grid-column:1/-1"><button class="pri" id="ab">建立帳號</button></div></form></div>
 
@@ -43,22 +43,25 @@ async function api(method,url,body){const r=await fetch(url,{method,headers:body
 const gen=()=>{const a='abcdefghjkmnpqrstuvwxyz',d='23456789',b=crypto.getRandomValues(new Uint32Array(12));let s='';for(let i=0;i<10;i++)s+=a[b[i]%a.length];return s.slice(0,5)+'-'+s.slice(5)+d[b[10]%d.length]+d[b[11]%d.length]};
 $('gen').onclick=()=>{$('ap').value=gen()};
 const fmt=t=>t?new Date(t).toLocaleString('zh-TW',{hour12:false}):'從未登入';
+const RN={admin:'管理者',staff:'員工',worker:'僅交付'};
 let me=null,users=[];
 async function load(){me=await api('GET','/api/me');users=await api('GET','/api/admin/users');
  $('us').innerHTML=users.map(u=>{const self=u.name===me.name;
  return `<div class="u" data-n="${esc(u.name)}"><div><b>${esc(u.display)}</b> <span style="color:var(--muted)">（${esc(u.name)}）</span>
- <span class="tag">${u.role==='admin'?'管理者':'員工'}</span>${self?'<span class="tag">你自己</span>':''}${u.disabled?'<span class="tag b">已停用</span>':''}${u.must_change&&!u.disabled?'<span class="tag w">尚未改密碼</span>':''}</div>
+ <span class="tag">${RN[u.role]||u.role}</span>${self?'<span class="tag">你自己</span>':''}${u.disabled?'<span class="tag b">已停用</span>':''}${u.must_change&&!u.disabled?'<span class="tag w">尚未改密碼</span>':''}</div>
  <p>最後登入：${esc(fmt(u.last_login))}</p>
  <div class="row"><button data-a="name">改顯示名稱</button><button data-a="reset">重設密碼</button>
- ${self?'':`<button data-a="role">改成${u.role==='admin'?'員工':'管理者'}</button><button data-a="dis">${u.disabled?'重新啟用':'停用'}</button><button class="danger" data-a="del">刪除</button>`}</div></div>`}).join('')}
+ ${self?'':`<select data-role aria-label="角色" style="width:auto"><option value="admin" ${u.role==='admin'?'selected':''}>管理者</option><option value="staff" ${u.role==='staff'?'selected':''}>員工</option><option value="worker" ${u.role==='worker'?'selected':''}>僅交付</option></select><button data-a="dis">${u.disabled?'重新啟用':'停用'}</button><button class="danger" data-a="del">刪除</button>`}</div></div>`}).join('')}
 $('us').onclick=async e=>{const b=e.target.closest('button[data-a]');if(!b)return;const n=b.closest('.u').dataset.n,u=users.find(x=>x.name===n),a=b.dataset.a;msg('');
  try{
  if(a==='name'){const v=prompt('新的顯示名稱',u.display);if(v===null)return;await api('PATCH','/api/admin/users/'+encodeURIComponent(n),{display:v});msg('已更新','1')}
  else if(a==='reset'){const v=prompt('為 '+u.display+' 設定新的臨時密碼（至少 10 字元，對方登入後會被要求再改）。\n按確定使用下面這組，也可以自己改：',gen());if(v===null)return;await api('PATCH','/api/admin/users/'+encodeURIComponent(n),{newPassword:v});msg(u.display+' 的臨時密碼已設定為 '+v+'（請私下告訴他，他所有裝置都已登出）',1)}
- else if(a==='role'){if(!confirm('把 '+u.display+' 改成'+(u.role==='admin'?'員工':'管理者')+'？'))return;await api('PATCH','/api/admin/users/'+encodeURIComponent(n),{role:u.role==='admin'?'staff':'admin'});msg('已更新',1)}
  else if(a==='dis'){if(!u.disabled&&!confirm('停用 '+u.display+'？他會立刻被登出，也無法再登入。資料與任務都保留。'))return;await api('PATCH','/api/admin/users/'+encodeURIComponent(n),{disabled:!u.disabled});msg(u.disabled?'已重新啟用':'已停用',1)}
  else if(a==='del'){if(!confirm('刪除 '+u.display+' 的帳號？這個動作無法復原。只想讓他不能登入的話，請用「停用」，指派給他的任務才不會失去負責人名稱。'))return;await api('DELETE','/api/admin/users/'+encodeURIComponent(n));msg('已刪除',1)}
  await load()}catch(x){msg(x.message)}};
+$('us').onchange=async e=>{const s=e.target.closest('select[data-role]');if(!s)return;const n=s.closest('.u').dataset.n,u=users.find(x=>x.name===n);msg('');
+ if(!confirm('把 '+u.display+' 改成「'+RN[s.value]+'」？'))return load();
+ try{await api('PATCH','/api/admin/users/'+encodeURIComponent(n),{role:s.value});msg('已更新',1)}catch(x){msg(x.message)}await load()};
 $('add').onsubmit=async e=>{e.preventDefault();msg('');$('ab').disabled=true;const pw=$('ap').value;
  try{await api('POST','/api/admin/users',{name:$('an').value.trim().toLowerCase(),display:$('ad').value,role:$('ar').value,password:pw});
  msg('已建立 '+$('an').value+'，臨時密碼是 '+pw+'（請私下告訴他，第一次登入會要求他自己改密碼）',1);$('add').reset();await load()}catch(x){msg(x.message)}$('ab').disabled=false};

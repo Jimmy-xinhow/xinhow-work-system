@@ -295,6 +295,8 @@ function nextContractNo(code){
 /* ---------- rendering ---------- */
 function queue(){if(renderQueued)return;renderQueued=true;requestAnimationFrame(()=>{renderQueued=false;render()})}
 function render(){
+  if(!isAdmin&&view==='mine')view='board';
+  if(isWorker()&&!['board','sop','todos'].includes(view)){view='board';openCode=null}
   renderNav();
   if(view==='dash')renderDash();
   else if(view==='board')renderBoard(false);
@@ -308,9 +310,10 @@ function render(){
 }
 function actionCount(){return Object.keys(S.clients).filter(k=>info(k).needs).length}
 function renderNav(){
-  const items=[['dash','總覽'],['board','工作交付'],['mine','我的工作'],['clients','客戶']];
-  if(isAdmin)items.push(['bills','帳款']);
-  items.push(['notify','通知'],['sop','SOP'],['todos','待辦']);
+  /* 管理者：全部；員工：沒有帳款、沒有「我的工作」（工作交付就只有自己的）；僅交付：只有工作交付、SOP、待辦 */
+  const items=isWorker()?[['board','工作交付'],['sop','SOP'],['todos','待辦']]
+    :isAdmin?[['dash','總覽'],['board','工作交付'],['mine','我的工作'],['clients','客戶'],['bills','帳款'],['notify','通知'],['sop','SOP'],['todos','待辦']]
+    :[['dash','總覽'],['board','工作交付'],['clients','客戶'],['notify','通知'],['sop','SOP'],['todos','待辦']];
   const n=actionCount();
   const tl=taskList();
   const bn=isAdmin?tl.filter(t=>t.state==='待驗收').length:tl.filter(t=>t.state==='退回').length;
@@ -346,7 +349,7 @@ function clientRow(i){
   const types=[...new Set(i.services.filter(s=>s.status!=='結束'||c.status==='結案').map(s=>s.type).filter(Boolean))];
   const m=isAdmin?i.services.reduce((t,s)=>t+monthlyOf(s),0):0;
   return `<div class="crow" role="button" tabindex="0" data-act="open" data-code="${esc(c.code)}">
-    <div><div><span class="code mono">${esc(c.code)}</span><span class="nm">${esc(c.brand||c.fullName||'（未命名）')}</span></div><div class="full">${esc(c.fullName&&c.fullName!==c.brand?c.fullName:(c.taxId?'統編 '+c.taxId:''))}</div></div>
+    <div><div><span class="code mono">${esc(c.code)}</span><span class="nm">${esc(c.brand||c.fullName||'（未命名）')}</span></div><div class="full">${esc(c.fullName&&c.fullName!==c.brand?c.fullName:(c.taxId?'統編 '+c.taxId:''))}</div>${c.brands?`<div class="full">旗下／別稱：${esc(c.brands)}</div>`:''}</div>
     <div class="stack">${statusPill(c)}${deadlinePill(i)}</div>
     <div class="chips">${types.map(t=>`<span class="chip">${esc(t)}</span>`).join('')||'<span class="muted">尚無服務</span>'}</div>
     <div class="num" style="text-align:right">${isAdmin?(m?money(m)+'<div class="muted" style="font-size:12px">每月</div>':'<span class="muted">—</span>'):''}</div>
@@ -360,7 +363,7 @@ function renderClients(){
   const curTab=tab||'active';
   const q=query.trim().toLowerCase();
   let list=all.filter(i=>inTab(i,curTab));
-  if(q)list=all.filter(i=>[i.c.code,i.c.brand,i.c.fullName,i.c.taxId].join(' ').toLowerCase().includes(q));
+  if(q)list=all.filter(i=>[i.c.code,i.c.brand,i.c.brands,i.c.fullName,i.c.taxId].join(' ').toLowerCase().includes(q));
   if(curTab==='action'&&!q)list.sort((a,b)=>a.days-b.days);
   else if(curTab==='closed'&&!q)list.sort((a,b)=>(b.c.closedAt||'').localeCompare(a.c.closedAt||'')||a.c.code.localeCompare(b.c.code));
   const sum=`<div class="sumline"><span><b>${counts.active}</b>進行中客戶</span><span><b>${counts.action}</b>需處理</span><span><b>${counts.pending}</b>待分類</span>${isAdmin?`<span><b class="num">${money(mrr())}</b>每月經常性收入（未稅）</span>`:''}</div>`;
@@ -412,7 +415,7 @@ function renderPanel(){
     return `<div class="item"><div class="main"><div class="title">${esc(pr.label)}${q.active===false?'<span class="pill mute">暫停</span>':''}</div><div class="sub">${pr.freq==='週'?'每週 '+esc(q.count)+' 篇':'每月 '+esc(q.count)+' '+(pr.kind==='月報告'?'份':'篇')}・負責 ${esc(ownerLabel(q.assignee||defaultAssignee()))}${q.dueDay&&pr.freq==='月'?'・每月 '+esc(q.dueDay)+' 號截止':''}${q.rewrite?'・批量改寫 '+esc(q.rewrite)+' 篇（我）':''}${q.start||q.end?'・'+esc(q.start||'—')+' ～ '+esc(q.end||'—'):''}</div>${q.note?`<div class="sub">${esc(q.note)}</div>`:''}</div>${edit('editPlan',q.id)}</div>`}).join(''):'<div class="in muted">還沒有設定。按「＋ 新增設定」選這個客戶要做的任務（每週 SEO／GEO 文章、每月 SEO／GEO 報告、每月部落格文章）；沒有設定，就不會替這個客戶產生任務。</div>';
   const contactsHTML=contacts.length?contacts.map(x=>`<div class="item"><div class="main"><div class="title">${esc(x.name)}${x.primary?'<span class="pill info">主要窗口</span>':''}</div><div class="sub">${[x.phone,x.email,x.line?'LINE '+x.line:''].filter(Boolean).map(esc).join('・')||'未填聯絡方式'}</div></div>${edit('editContact',x.id)}</div>`).join(''):'<div class="in muted">尚無窗口</div>';
   const assetsHTML=assets.length?assets.map(x=>`<div class="item"><div class="main"><div class="title">${esc(x.type)}<span class="pill ${x.status==='已授權'?'ok':x.status==='待授權'?'warn':'mute'}">${esc(x.status||'未設定')}</span></div><div class="sub">${[x.owner&&'擁有者 '+x.owner,x.level&&'我方權限 '+x.level,x.grantedAt&&'授權 '+x.grantedAt].filter(Boolean).map(esc).join('・')}</div>${x.note?`<div class="sub">${esc(x.note)}</div>`:''}</div>${edit('editAsset',x.id)}</div>`).join(''):'<div class="in muted">尚無資產權限紀錄</div>';
-  const logHTML=logs.length?`<ul class="tl">${logs.map(l=>`<li><time>${esc(l.at.slice(0,10))}</time><span><b>${esc(l.action)}</b>${l.note?'　'+esc(l.note):''}</span></li>`).join('')}</ul>`:'<div class="in muted">尚無紀錄。續約、結案與重新開啟都會記在這裡。</div>';
+  const logHTML=logs.length?`<ul class="tl">${logs.map(l=>`<li><time>${esc(String(l.at||'').slice(0,10))}</time><span><b>${esc(l.action)}</b>${l.note?'　'+esc(l.note):''}</span></li>`).join('')}</ul>`:'<div class="in muted">尚無紀錄。續約、結案與重新開啟都會記在這裡。</div>';
   const ctasks=taskList().filter(t=>t.clientCode===c.code).sort((a,b)=>b.period.localeCompare(a.period)||a.title.localeCompare(b.title));
   const tasksHTML=ctasks.length?ctasks.map(t=>`<div class="item" style="cursor:pointer" data-act="openTask" data-id="${esc(t.id)}"><div class="main"><div class="title">${esc(t.period)}　${esc(t.title)} ${pillState(t.state)}${t.late?'<span class="pill bad">逾期</span>':''}</div><div class="sub">${t.done||0}／${t.target||0} ${unit(t.kind)}・截止 ${esc(t.due||'—')}${t.deliveredAt?'・已交付 '+esc(t.deliveredAt)+'（'+esc(t.deliveredVia||'')+'）':''}</div></div></div>`).join(''):'<div class="in muted">還沒有任務。到「工作交付」按「產生月任務」。</div>';
   const closed=c.status==='結案'?`<div class="note warn"><div><b>已結案</b>　${esc(c.closedAt||'')}　${esc(c.closeReason||'')}${c.closeNote?'<br>'+esc(c.closeNote):''}</div></div>`:'';
@@ -420,7 +423,7 @@ function renderPanel(){
     <div class="phead"><h2><span class="mono muted" style="font-size:13px">${k}</span>　${esc(c.brand||c.fullName||'（未命名）')} ${statusPill(c)}</h2>${btns}${w?`<button class="btn" data-act="editClient" data-code="${k}">編輯資料</button>`:''}<button class="btn ghost" data-act="closePanel">關閉</button></div>
     <div class="pbody">${closed}${cf?`<div>${cf}</div>`:''}
     <section class="sec"><header><h3>基本資料</h3></header><div class="in"><dl class="kv">
-      <dt>公司全名</dt><dd>${esc(c.fullName||'—')}</dd><dt>統編</dt><dd class="mono">${esc(c.taxId||'—')}</dd><dt>產業</dt><dd>${esc(c.industry||'—')}</dd>
+      <dt>公司全名</dt><dd>${esc(c.fullName||'—')}</dd><dt>旗下品牌／別稱</dt><dd>${esc(c.brands||'—')}</dd><dt>統編</dt><dd class="mono">${esc(c.taxId||'—')}</dd><dt>產業</dt><dd>${esc(c.industry||'—')}</dd>
       <dt>網站</dt><dd>${link(c.website)}</dd><dt>成交日</dt><dd>${esc(c.dealDate||'—')}</dd>
       <dt>開票抬頭</dt><dd>${esc(c.invoiceTitle||'—')}</dd><dt>開票 Email</dt><dd>${esc(c.invoiceEmail||'—')}</dd>
       <dt>Drive 資料夾</dt><dd>${link(c.folderUrl,'開啟資料夾')}</dd><dt>約定與範圍</dt><dd>${esc(c.terms||'—')}</dd></dl></div></section>
@@ -455,7 +458,7 @@ function renderBills(){
 /* todos */
 function renderTodos(){
   const all=Object.entries(S.todos).map(([id,t])=>Object.assign({id},t)).sort((a,b)=>(a.done-b.done)||a.id.localeCompare(b.id));
-  const body=all.length?all.map(t=>`<div class="todo ${t.done?'done':''}"><input type="checkbox" data-act="toggleTodo" data-id="${esc(t.id)}" ${t.done?'checked':''} aria-label="完成"><div style="flex:1;min-width:0"><div class="tt"><b>${esc(t.title)}</b></div>${t.detail?`<div class="muted">${esc(t.detail)}</div>`:''}${t.url?`<div>${link(t.url,'來源檔案')}</div>`:''}</div>${canWrite?`<button class="btn sm ghost" data-act="editTodo" data-id="${esc(t.id)}">編輯</button>`:''}</div>`).join(''):'<div class="empty">沒有待辦事項。</div>';
+  const body=all.length?all.map(t=>`<div class="todo ${t.done?'done':''}"><input type="checkbox" data-act="toggleTodo" data-id="${esc(t.id)}" ${t.done?'checked':''} aria-label="完成"><div style="flex:1;min-width:0"><div class="tt"><b>${esc(t.title)}</b>${isAdmin&&(lc(t.owner)||rewriteAssignee())!==meName()?`<span class="pill info" style="margin-left:8px">${esc(ownerLabel(lc(t.owner)||rewriteAssignee()))}</span>`:''}</div>${t.detail?`<div class="muted">${esc(t.detail)}</div>`:''}${t.url?`<div>${link(t.url,'來源檔案')}</div>`:''}</div>${canWrite?`<button class="btn sm ghost" data-act="editTodo" data-id="${esc(t.id)}">編輯</button>`:''}</div>`).join(''):'<div class="empty">沒有待辦事項。</div>';
   $('#main').innerHTML=`<div class="tools"><span class="grow"></span>${canWrite?'<button class="btn primary" data-act="newTodo">＋ 新增待辦</button>':''}</div><div class="list">${body}</div>`;
 }
 
@@ -513,6 +516,7 @@ function openForm(o){
 /* ---------- forms per entity ---------- */
 const clientFields=(c)=>[
   {k:'brand',label:'品牌名',half:true,req:true},{k:'fullName',label:'公司全名',half:true},
+  {k:'brands',label:'旗下品牌／商家／客戶習慣的稱呼',ph:'例如：怪獸避震器、FREAK、台中門市',hint:'客戶平常不一定用公司名跟我們討論，把他們口中的名字都填在這裡（用頓號分隔）。客戶列表、任務卡、搜尋都會帶出。'},
   {k:'taxId',label:'統編',half:true},{k:'industry',label:'產業',half:true},
   {k:'website',label:'網站',ph:'https://'},
   c&&c.status==='結案'?null:{k:'status',label:'狀態',type:'select',opts:['洽談中','進行中','暫停'],blank:true,half:true,hint:'結案請用「結案」按鈕'},
@@ -598,14 +602,15 @@ function serviceForm(code,id){
     }});
 }
 function todoForm(id){
-  const x=id?S.todos[id]:{done:false};
-  openForm({title:id?'編輯待辦':'新增待辦',fields:[{k:'title',label:'事項',req:true},{k:'detail',label:'說明',type:'textarea'}],values:x,
+  const x=id?Object.assign({},S.todos[id],{owner:lc(S.todos[id].owner)||rewriteAssignee()}):{done:false,owner:meName()};
+  openForm({title:id?'編輯待辦':'新增待辦',fields:[{k:'title',label:'事項',req:true},{k:'detail',label:'說明',type:'textarea'},
+    isAdmin?{k:'owner',label:'這項待辦是給誰的',type:'select',opts:assigneeOpts(x.owner),hint:'指派給員工後，只有他和你看得到。'}:null],values:x,
     dangerLabel:id?'刪除待辦':null,onDanger:()=>del('todos',id),
-    onSubmit:v=>setDoc('todos',id||newId('todos'),Object.assign({},x,v))});
+    onSubmit:v=>setDoc('todos',id||newId('todos'),Object.assign({},x,v,{owner:isAdmin?(lc(v.owner)||meName()):meName()}))});
 }
 function billForm(id,preset){
   const x=id?S.bills[id]:Object.assign({period:todayStr().slice(0,7)},preset||{});
-  const codes=Object.keys(S.clients).sort().map(k=>[k,k+'　'+(S.clients[k].brand||S.clients[k].fullName||'')]);
+  const codes=Object.keys(S.clients).sort().map(k=>[k,k+'　'+clientFull(k)]);
   openForm({title:id?'編輯帳單':'新增帳單',fields:[
     {k:'clientCode',label:'客戶',type:'select',opts:codes,req:true},
     {k:'period',label:'帳單期別 (YYYY-MM)',req:true,half:true,ph:'2026-12'},{k:'due',label:'繳款日',type:'date',half:true,hint:'空白則為期別當月 1 日'},
@@ -754,6 +759,10 @@ function tstate(t){
 }
 function taskList(){return Object.entries(S.tasks).map(([id,t])=>{const o=Object.assign({id},t);o.state=tstate(o);o.late=!!(o.due&&o.due<todayStr()&&o.state!=='已交付');return o})}
 const clientName=code=>{const c=S.clients[code];return c?(c.brand||c.fullName||code):code};
+const clientAka=code=>{const c=S.clients[code];return c&&c.brands?String(c.brands):''};
+const clientFull=code=>clientName(code)+(clientAka(code)?'（'+clientAka(code)+'）':'');
+const myRole=()=>(window.__me&&window.__me.role)||(isAdmin?'admin':'staff');
+const isWorker=()=>myRole()==='worker';
 const histAdd=(t,text)=>(t.history||[]).concat({at:new Date().toISOString(),text}).slice(-60);
 const unit=k=>k==='月報告'?'份':(k==='週文章'||k==='月部落文'||k==='批量改寫')?'篇':'項';
 
@@ -845,7 +854,7 @@ function openTaskNames(){
     onSubmit:async v=>{const d=new Set(v.del||[]);if(!d.size)return;await setDoc('settings','taskNames',{list:L.filter(x=>!d.has(x.name))})}});
 }
 function newTaskForm(){
-  const codes=Object.keys(S.clients).sort().filter(k=>S.clients[k].status!=='結案').map(k=>[k,k+'　'+clientName(k)]);
+  const codes=Object.keys(S.clients).sort().filter(k=>S.clients[k].status!=='結案').map(k=>[k,k+'　'+clientFull(k)]);
   openForm({title:'新增任務',fields:[
     {k:'clientCode',label:'客戶',type:'select',opts:codes,req:true},
     ...(taskNames().length?[{k:'titlePick',label:'任務名稱',type:'select',opts:[['','請選擇已存的名稱'],...taskNames().map(x=>[x.name,x.name]),['__new','＋ 新名稱…']],req:true}]:[]),
@@ -1000,9 +1009,10 @@ function renderDash(){
   <section class="sec"><header><h3>各客戶進度</h3></header><div class="tablewrap" style="border:0;border-radius:0"><table><thead><tr><th>客戶</th><th>週文章</th><th>月報告</th><th>月部落文</th><th>進度</th><th>最早截止</th><th>狀態</th></tr></thead><tbody>${clients.map(crow).join('')}</tbody></table></div></section>`:empty}`;
 }
 function renderBoard(mine){
+  mine=mine||!isAdmin;
   const all=taskList().filter(t=>mine?isMine(t):(ownerFilter==='all'||ownerOf(t)===ownerFilter));
   const bqn=boardQuery.trim().toLowerCase();
-  const base=(boardAll?all.filter(t=>t.state!=='已交付'):all.filter(t=>t.period===period)).filter(t=>!bqn||[t.clientCode,clientName(t.clientCode),t.title].join(' ').toLowerCase().includes(bqn));
+  const base=(boardAll?all.filter(t=>t.state!=='已交付'):all.filter(t=>t.period===period)).filter(t=>!bqn||[t.clientCode,clientName(t.clientCode),clientAka(t.clientCode),t.title].join(' ').toLowerCase().includes(bqn));
   const F={todo:['需處理',t=>['待處理','進行中','退回'].includes(t.state)],wait:['待驗收',t=>t.state==='待驗收'],acc:['已驗收・待交付',t=>t.state==='已驗收'],done:['已交付',t=>t.state==='已交付'],late:['逾期',t=>t.late],all:['全部',()=>true]};
   const key=boardFilter||(isAdmin&&base.some(t=>t.state==='待驗收')?'wait':'todo');
   const list=base.filter(F[key][1]).sort((a,b)=>(a.due||'').localeCompare(b.due||'')||a.clientCode.localeCompare(b.clientCode));
@@ -1011,7 +1021,7 @@ function renderBoard(mine){
     const sopDone=(t.checked||[]).filter(Boolean).length,sopN=(t.sop||[]).length;
     const prog=Math.min(100,Math.round((t.done||0)/Math.max(1,t.target||1)*100));
     return `<div class="trow" data-act="openTask" data-id="${esc(t.id)}" role="button" tabindex="0">
-      <div style="min-width:0"><div><span class="code mono">${esc(t.clientCode)}</span><b>${esc(clientName(t.clientCode))}</b>${mine?'':`<span class="pill ${isMine(t)?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(ownerOf(t)))}</span>`}</div><div class="sub muted">${esc(t.title)}${boardAll?'・'+esc(t.period):''}</div></div>
+      <div style="min-width:0"><div><span class="code mono">${esc(t.clientCode)}</span><b>${esc(clientName(t.clientCode))}</b>${clientAka(t.clientCode)?`<span class="muted" style="margin-left:6px">${esc(clientAka(t.clientCode))}</span>`:''}${mine?'':`<span class="pill ${isMine(t)?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(ownerOf(t)))}</span>`}</div><div class="sub muted">${esc(t.title)}${boardAll?'・'+esc(t.period):''}</div></div>
       <div><div class="num">${t.done||0}／${t.target||0} ${unit(t.kind)}</div><div class="mini"><i style="width:${prog}%"></i></div></div>
       <div class="num muted">SOP ${sopDone}／${sopN}</div>
       <div class="stack">${pillState(t.state)}${(t.kind==='月部落文'&&t.state==='已驗收')?'<span class="pill info">'+subStage(t)+'</span>':''}${t.late?'<span class="pill bad">逾期 '+diffDays(todayStr(),t.due)+' 天</span>':`<span class="muted mono" style="font-size:12px">截止 ${esc((t.due||'').slice(5))}</span>`}</div>
@@ -1074,9 +1084,9 @@ function renderTaskPanel(){
   const hist=(t.history||[]).map(h=>({at:h.at,text:h.text}));
   if(a)hist.push({at:a.at,text:(a.result==='pass'?'驗收通過':'退回：'+(a.reason||''))});
   hist.sort((x,y)=>y.at.localeCompare(x.at));
-  const histHTML=hist.length?`<ul class="tl">${hist.slice(0,30).map(h=>`<li><time>${esc(h.at.slice(5,16).replace('T',' '))}</time><span>${esc(h.text)}</span></li>`).join('')}</ul>`:'<div class="in muted">尚無紀錄。</div>';
+  const histHTML=hist.length?`<ul class="tl">${hist.slice(0,30).map(h=>`<li><time>${esc(String(h.at||'').slice(5,16).replace('T',' '))}</time><span>${esc(h.text)}</span></li>`).join('')}</ul>`:'<div class="in muted">尚無紀錄。</div>';
   layer.innerHTML=`<div class="shade" data-act="closePanel"></div><aside class="panel" role="dialog" aria-label="任務">
-   <div class="phead"><h2><span class="mono muted" style="font-size:13px">${esc(t.clientCode)}</span>　${esc(clientName(t.clientCode))}<span class="muted" style="font-weight:400">・${esc(t.title)}</span> ${pillState(st)}<span class="pill ${isMine(t)?'info':'mute'}" style="margin-left:6px">負責：${esc(ownerLabel(ownerOf(t)))}</span></h2>${isAdmin&&canWrite?'<button class="btn" data-act="tedit">編輯任務</button>':''}<button class="btn ghost" data-act="closePanel">關閉</button></div>
+   <div class="phead"><h2><span class="mono muted" style="font-size:13px">${esc(t.clientCode)}</span>　${esc(clientFull(t.clientCode))}<span class="muted" style="font-weight:400">・${esc(t.title)}</span> ${pillState(st)}<span class="pill ${isMine(t)?'info':'mute'}" style="margin-left:6px">負責：${esc(ownerLabel(ownerOf(t)))}</span></h2>${isAdmin&&canWrite?'<button class="btn" data-act="tedit">編輯任務</button>':''}<button class="btn ghost" data-act="closePanel">關閉</button></div>
    <div class="pbody">
     ${st==='退回'?`<div class="note bad"><div><b>${t.revise?'客戶要求修改':'被退回'}</b>　${esc(t.revise?(t.reviseNote||''):(a&&a.reason||''))}<div class="muted">修改後再按「送交驗收」。</div></div></div>`:''}
     ${isBlog?`<section class="sec"><header><h3>流程</h3></header><div class="in"><ol class="steps">${['撰寫','驗收','送客戶確認','客戶確認','發佈'].map((n,i)=>`<li class="${i<stepCur?'done':i===stepCur?'cur':''}">${n}</li>`).join('')}</ol></div></section>`:''}
@@ -1281,11 +1291,12 @@ async function boot(){
   const user=await cl.use('user');
   if(!db){$('#main').innerHTML='<div class="empty">需要登入才能讀取客戶資料。</div>';return}
   try{isAdmin=user?await user.canEdit():false}catch(e){isAdmin=false}
-  if(!isAdmin)view='mine';
+  if(!isAdmin)view='board';
   try{const w=user?await user.can('data.write'):null;canWrite=w!==false}catch(e){}
   const timer=setTimeout(()=>{if(!loaded.clients)toast('連線較慢，資料可能還沒到齊')},10000);
   COLS.forEach(c=>{
     if((c==='fees'||c==='bills'||c==='settings'||c==='channels'||c==='plans')&&!isAdmin){loaded[c]=true;return}
+    if(isWorker()&&['contacts','assets','contracts','services','log','notify'].includes(c)){loaded[c]=true;return}
     db.collection(c).onSnapshot(snap=>{
       const o={};snap.docs.forEach(d=>{o[d.id]=d.data()});
       S[c]=o;loaded[c]=true;if(c==='clients')clearTimeout(timer);queue();

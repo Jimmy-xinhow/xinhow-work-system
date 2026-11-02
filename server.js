@@ -14,15 +14,21 @@ const pool = new Pool({
   ssl: process.env.PGSSL === 'off' || /localhost|127\.0\.0\.1|\.railway\.internal/.test(process.env.DATABASE_URL) ? false : { rejectUnauthorized: false }
 });
 
-/* 存取規則：與原本 Artifact 版相同。admin＝管理者（楊濬騰），staff＝員工 */
+/* 存取規則。角色：admin＝管理者（楊濬騰）、staff＝員工、worker＝僅交付（只做自己被指派的工作與待辦）
+   read/write 的值：admin＝只有管理者；staff＝管理者與員工；any＝三種角色都可。沒列出的集合預設 staff。
+   tasks／accept／todos／clients 另外在下面依「是不是自己的」過濾與檢查。 */
+const ROLES = ['admin', 'staff', 'worker'];
+const LV = { admin: 3, staff: 2, worker: 1 };
 const RULES = {
   fees: { read: 'admin', write: 'admin' }, bills: { read: 'admin', write: 'admin' },
   settings: { read: 'admin', write: 'admin' }, channels: { read: 'admin', write: 'admin' },
   plans: { read: 'admin', write: 'admin' },
-  accept: { read: 'any', write: 'admin' }, sops: { read: 'any', write: 'admin' }, notify: { read: 'any', write: 'admin' }
+  accept: { read: 'any', write: 'admin' }, sops: { read: 'any', write: 'admin' }, notify: { read: 'staff', write: 'admin' },
+  tasks: { read: 'any', write: 'any' }, todos: { read: 'any', write: 'any' },
+  clients: { read: 'any', write: 'staff' }
 };
-const ruleOf = c => RULES[c] || { read: 'any', write: 'any' };
-const can = (role, c, op) => ruleOf(c)[op] === 'any' || role === 'admin';
+const ruleOf = c => RULES[c] || { read: 'staff', write: 'staff' };
+const can = (role, c, op) => (LV[role] || 0) >= (ruleOf(c)[op] === 'any' ? 1 : LV[ruleOf(c)[op]]);
 const COLL_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const ID_RE = /^[A-Za-z0-9_.:@+~-]{1,200}$/;
 
@@ -132,7 +138,7 @@ app.get('/api/admin/users', needReady, needAdmin, async (req, res) => {
 });
 app.post('/api/admin/users', needReady, needAdmin, needJson, async (req, res) => {
   const b = req.body || {}, name = String(b.name || '').trim().toLowerCase(), display = String(b.display || '').trim().slice(0, 40) || name;
-  const role = b.role === 'admin' ? 'admin' : 'staff';
+  const role = ROLES.includes(b.role) ? b.role : 'staff';
   if (!NAME_RE.test(name)) return res.status(400).json({ error: '帳號只能用英文小寫、數字、. _ -，長度 2–32' });
   const bad = pwProblem(b.password, name); if (bad) return res.status(400).json({ error: bad });
   if (await getUser(name)) return res.status(409).json({ error: '這個帳號已經有人用了' });
@@ -147,7 +153,8 @@ app.patch('/api/admin/users/:name', needReady, needAdmin, needJson, async (req, 
   let bump = false;
   if (b.display !== undefined) add('display', String(b.display).trim().slice(0, 40) || name);
   if (b.role !== undefined) {
-    const role = b.role === 'admin' ? 'admin' : 'staff';
+    const role = b.role;
+    if (!ROLES.includes(role)) return res.status(400).json({ error: '角色不合法' });
     if (role !== u.role) {
       if (self) return res.status(400).json({ error: '不能改自己的角色' });
       if (u.role === 'admin' && await lastAdminLeft(name)) return res.status(400).json({ error: '至少要留一位啟用中的管理者' });
@@ -205,20 +212,49 @@ app.get('/api/stream', needReady, (req, res) => {
 });
 
 app.get('/api/c/:coll', needReady, guard('read'), async (req, res) => {
-  const r = await pool.query('SELECT id, data FROM docs WHERE coll=$1', [req.params.coll]);
+  const { coll } = req.params, u = req.user;
+  if (u.role !== 'admin') {
+    // 非管理者只拿得到自己的任務／驗收／待辦；「僅交付」帳號的客戶資料只剩名稱，且只有自己有任務的客戶
+    if (coll === 'tasks') return res.json((await pool.query("SELECT id, data FROM docs WHERE coll='tasks' AND lower(data->>'assignee')=$1", [u.name])).rows);
+    if (coll === 'accept') return res.json((await pool.query("SELECT id, data FROM docs WHERE coll='accept' AND id IN (SELECT id FROM docs WHERE coll='tasks' AND lower(data->>'assignee')=$1)", [u.name])).rows);
+    if (coll === 'todos') return res.json((await pool.query("SELECT id, data FROM docs WHERE coll='todos' AND lower(data->>'owner')=$1", [u.name])).rows);
+    if (coll === 'clients' && u.role === 'worker') {
+      return res.json((await pool.query(`SELECT id, jsonb_strip_nulls(jsonb_build_object('code',data->'code','brand',data->'brand','brands',data->'brands','fullName',data->'fullName','status',data->'status')) AS data
+        FROM docs WHERE coll='clients' AND id IN (SELECT data->>'clientCode' FROM docs WHERE coll='tasks' AND lower(data->>'assignee')=$1)`, [u.name])).rows);
+    }
+  }
+  const r = await pool.query('SELECT id, data FROM docs WHERE coll=$1', [coll]);
   res.json(r.rows);
 });
-app.post('/api/c/:coll', needReady, needJson, guard('write'), async (req, res) => {
+// 非管理者寫入：任務只能更新「指派給自己」的（不能新增、刪除、改負責人）；待辦只能動自己的，新增時一律記在自己名下
+const ownership = async (req, res, next) => {
+  const u = req.user; if (u.role === 'admin') return next();
+  const { coll, id } = req.params; if (coll !== 'tasks' && coll !== 'todos') return next();
+  const self = v => typeof v === 'string' && v.toLowerCase() === u.name;
+  let ex = null;
+  if (id !== undefined) ex = (await pool.query('SELECT data FROM docs WHERE coll=$1 AND id=$2', [coll, id])).rows[0]?.data || null;
+  if (coll === 'tasks') {
+    if (req.method === 'POST' || req.method === 'DELETE' || !ex || !self(ex.assignee)) return res.status(403).json({ error: '只能更新指派給你的任務' });
+    const b = req.body || {};
+    if ('assignee' in b && !self(b.assignee)) return res.status(403).json({ error: '不能更改負責人' });
+    if (req.method === 'PUT') req.body = { ...b, assignee: ex.assignee };
+  } else {
+    if (ex && !self(ex.owner)) return res.status(403).json({ error: '只能更動自己的待辦' });
+    if (req.method !== 'DELETE') req.body = { ...(req.body || {}), owner: u.name };
+  }
+  next();
+};
+app.post('/api/c/:coll', needReady, needJson, guard('write'), ownership, async (req, res) => {
   const id = newId();
   await pool.query('INSERT INTO docs(coll,id,data) VALUES($1,$2,$3)', [req.params.coll, id, req.body || {}]);
   broadcast(req.params.coll); res.json({ id });
 });
-app.put('/api/c/:coll/:id', needReady, needJson, guard('write'), async (req, res) => {
+app.put('/api/c/:coll/:id', needReady, needJson, guard('write'), ownership, async (req, res) => {
   await pool.query(`INSERT INTO docs(coll,id,data) VALUES($1,$2,$3)
     ON CONFLICT (coll,id) DO UPDATE SET data=EXCLUDED.data, version=docs.version+1, updated_at=now()`, [req.params.coll, req.params.id, req.body || {}]);
   broadcast(req.params.coll); res.json({ ok: true });
 });
-app.patch('/api/c/:coll/:id', needReady, needJson, guard('write'), async (req, res) => {
+app.patch('/api/c/:coll/:id', needReady, needJson, guard('write'), ownership, async (req, res) => {
   const body = req.body || {}, del = Object.keys(body).filter(k => body[k] && body[k].__delete__ === true);
   const set = Object.fromEntries(Object.entries(body).filter(([k]) => !del.includes(k)));
   await pool.query(`INSERT INTO docs(coll,id,data) VALUES($1,$2,$3::jsonb)
@@ -226,7 +262,7 @@ app.patch('/api/c/:coll/:id', needReady, needJson, guard('write'), async (req, r
     [req.params.coll, req.params.id, set, del]);
   broadcast(req.params.coll); res.json({ ok: true });
 });
-app.delete('/api/c/:coll/:id', needReady, guard('write'), async (req, res) => {
+app.delete('/api/c/:coll/:id', needReady, guard('write'), ownership, async (req, res) => {
   await pool.query('DELETE FROM docs WHERE coll=$1 AND id=$2', [req.params.coll, req.params.id]);
   broadcast(req.params.coll); res.json({ ok: true });
 });
@@ -283,9 +319,12 @@ async function init() {
     coll text NOT NULL, id text NOT NULL, data jsonb NOT NULL DEFAULT '{}'::jsonb,
     version int NOT NULL DEFAULT 1, updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(coll,id))`);
   await pool.query(`CREATE TABLE IF NOT EXISTS users(
-    name text PRIMARY KEY, display text NOT NULL, pass_hash text NOT NULL, role text NOT NULL CHECK (role IN ('admin','staff')),
+    name text PRIMARY KEY, display text NOT NULL, pass_hash text NOT NULL, role text NOT NULL CHECK (role IN ('admin','staff','worker')),
     must_change boolean NOT NULL DEFAULT true, disabled boolean NOT NULL DEFAULT false, sv int NOT NULL DEFAULT 1,
     created_at timestamptz NOT NULL DEFAULT now(), last_login timestamptz)`);
+  // 舊版資料表只允許 admin／staff，補上 worker（僅交付）
+  await pool.query("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
+  await pool.query("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','staff','worker'))");
   // 第一次啟動（沒有任何帳號）：用環境變數建立管理者／員工，初始密碼一律要求第一次登入就改掉。之後環境變數裡的密碼就不再被使用。
   const n = (await pool.query('SELECT count(*)::int n FROM users')).rows[0].n;
   if (n === 0) {
