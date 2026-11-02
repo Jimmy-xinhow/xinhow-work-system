@@ -1,0 +1,21 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>星昊工作管理系統・登入</title>
+<style>
+:root{--bg:#F3F5F9;--surface:#fff;--ink:#16202F;--muted:#5B6678;--line:#DCE1EA;--accent:#1F3864;--bad:#B3261E}
+@media (prefers-color-scheme:dark){:root{--bg:#0E1420;--surface:#172030;--ink:#E7ECF4;--muted:#9BA8BC;--line:#2A3649;--accent:#9DBBF2;--bad:#F2958E}}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);font:15px/1.6 "Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;padding:16px}
+form{width:min(360px,100%);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:24px;display:grid;gap:14px}
+h1{margin:0;font-size:18px}small{color:var(--muted)}label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+input{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:inherit;font:inherit}
+button{padding:10px;border:0;border-radius:6px;background:var(--accent);color:var(--bg);font:inherit;font-weight:500;cursor:pointer}
+@media (prefers-color-scheme:light){button{color:#fff}}
+#e{color:var(--bad);font-size:13px;min-height:1.2em}
+</style></head><body>
+<form id="f"><div><h1>星昊科技</h1><small>工作管理系統</small></div>
+<div><label for="n">帳號</label><input id="n" autocomplete="username" autocapitalize="none" required></div>
+<div><label for="p">密碼</label><input id="p" type="password" autocomplete="current-password" required></div>
+<div id="e" role="alert"></div><button>登入</button></form>
+<script>
+document.getElementById('f').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('button');b.disabled=true;
+const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n.value,password:p.value})});
+if(r.ok){location.href='/'}else{const j=await r.json().catch(()=>({}));document.getElementById('e').textContent=j.error||'登入失敗';b.disabled=false}};
+</script></body></html>

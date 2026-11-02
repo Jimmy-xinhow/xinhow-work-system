@@ -1,0 +1,1291 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><script src="/shim.js"></script></head><body>
+<title>星昊工作管理系統</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: sticky top bar with 3 areas (客戶 / 帳款 / 待辦); client list as scannable rows under status tabs; client detail slides in as a right-hand panel; renew/close/edit happen in a centered modal. */
+:root{
+  --bg:#F3F5F9; --surface:#FFFFFF; --ink:#16202F; --muted:#5B6678; --line:#DCE1EA;
+  --accent:#1F3864; --accent-ink:#FFFFFF; --accent-soft:#E5EBF6;
+  --ok:#1D7448; --ok-soft:#E2F2E9; --warn:#8F5600; --warn-soft:#FFF0D2; --bad:#B3261E; --bad-soft:#FBE3E1;
+  --shade:rgba(15,21,32,.45);
+  --f-sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1420; --surface:#172030; --ink:#E7ECF4; --muted:#9BA8BC; --line:#2A3649;
+  --accent:#9DBBF2; --accent-ink:#0E1420; --accent-soft:#223048;
+  --ok:#6FD0A0; --ok-soft:#16372A; --warn:#F0B95A; --warn-soft:#3A2C10; --bad:#F2958E; --bad-soft:#3F1F1D;
+  --shade:rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1420; --surface:#172030; --ink:#E7ECF4; --muted:#9BA8BC; --line:#2A3649;
+  --accent:#9DBBF2; --accent-ink:#0E1420; --accent-soft:#223048;
+  --ok:#6FD0A0; --ok-soft:#16372A; --warn:#F0B95A; --warn-soft:#3A2C10; --bad:#F2958E; --bad-soft:#3F1F1D;
+  --shade:rgba(0,0,0,.6); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-sans);font-size:14px;line-height:1.55;
+  padding-block:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.wrap{max-width:1180px;margin:0 auto}
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);margin:0 calc(-1*max(16px,env(safe-area-inset-left,0px)));padding:10px max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.top .wrap{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:16px;padding-bottom:10px;letter-spacing:.02em}
+.brand small{display:block;font-weight:400;font-size:11px;color:var(--muted);letter-spacing:.08em}
+.nav{display:flex;gap:2px;overflow-x:auto}
+@media (max-width:640px){.nav{flex-wrap:wrap;overflow:visible;width:100%}.nav button{padding:8px 10px}.brand{padding-bottom:0}}
+.nav button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px;cursor:pointer;color:var(--muted);font-weight:500;white-space:nowrap}
+.nav button[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+.nav .count{font-family:var(--f-mono);font-size:11px;margin-left:6px;padding:1px 6px;border-radius:9px;background:var(--bad-soft);color:var(--bad)}
+main{padding-block:18px 60px}
+/* buttons */
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible,.nav button:focus-visible,.crow:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.warn{color:var(--warn);border-color:var(--warn)}
+.btn.bad{color:var(--bad);border-color:var(--bad)}
+.btn.sm{padding:3px 9px;font-size:12.5px}
+.btn.ghost{border-color:transparent;background:none;color:var(--accent)}
+.btn[disabled]{opacity:.5;cursor:default}
+/* notices */
+.note{border:1px solid var(--line);border-left-width:4px;border-radius:6px;background:var(--surface);padding:10px 14px;margin-bottom:14px;display:flex;gap:12px;align-items:flex-start}
+.note.bad{border-left-color:var(--bad)} .note.warn{border-left-color:var(--warn)}
+.note > div{flex:1;min-width:0}
+/* summary + toolbar */
+.sumline{display:flex;gap:22px;flex-wrap:wrap;margin:0 0 14px;color:var(--muted)}
+.sumline b{color:var(--ink);font-size:18px;font-weight:700;margin-right:4px}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tabs button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 14px;cursor:pointer;font-weight:500}
+.tabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tabs .n{font-family:var(--f-mono);font-size:11.5px;margin-left:6px;opacity:.8}
+.grow{flex:1}
+input[type=search],input[type=text],input[type=date],input[type=number],select,textarea{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:7px 10px;width:100%}
+.tools input[type=search]{max-width:240px}
+textarea{min-height:84px;resize:vertical}
+/* client rows */
+.list{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.crow{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1.1fr) minmax(0,1.3fr) minmax(0,.8fr) auto;gap:14px;align-items:center;padding:12px 16px;border-top:1px solid var(--line);cursor:pointer}
+.list .crow:first-child{border-top:0}
+.crow:hover{background:var(--accent-soft)}
+.crow .nm{font-weight:700} .crow .full{color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crow .code{font-size:12px;color:var(--muted);margin-right:6px}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chip{font-size:12px;padding:1px 8px;border-radius:4px;background:var(--accent-soft);color:var(--accent)}
+.pill{display:inline-block;font-size:12px;font-weight:500;padding:1px 9px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.info{background:var(--accent-soft);color:var(--accent)}
+.pill.mute{background:transparent;border-color:var(--line);color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.acts{display:flex;gap:6px;justify-content:flex-end}
+.empty{padding:36px 16px;text-align:center;color:var(--muted)}
+@media (max-width:820px){
+  .crow{grid-template-columns:minmax(0,1fr) auto;gap:8px}
+  .crow > :nth-child(3),.crow > :nth-child(4){grid-column:1 / -1}
+  .acts{grid-column:1 / -1;justify-content:flex-start}
+}
+/* detail panel */
+.shade{position:fixed;inset:0;background:var(--shade);z-index:20}
+.panel{position:fixed;top:0;right:0;bottom:0;width:min(760px,100%);background:var(--bg);z-index:21;overflow-y:auto;box-shadow:-8px 0 30px rgba(0,0,0,.18);padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) 0}
+.phead{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);padding:14px 20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;z-index:2}
+.phead h2{margin:0;font-size:19px;flex:1;min-width:180px}
+.pbody{padding:16px 20px 40px;display:flex;flex-direction:column;gap:18px}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.sec > header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.sec > header h3{margin:0;font-size:14px;flex:1}
+.sec .in{padding:12px 14px}
+dl.kv{display:grid;grid-template-columns:7.5em minmax(0,1fr);gap:6px 12px;margin:0}
+dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;overflow-wrap:anywhere}
+.item{padding:10px 14px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
+.item:first-of-type{border-top:0}
+.item > .main{flex:1;min-width:0}
+.item .title{font-weight:500;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.item .sub{color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
+.cf{background:var(--warn-soft);border:1px solid var(--warn);border-radius:6px;padding:8px 12px;display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;color:var(--ink)}
+.cf > div{flex:1;min-width:0;font-size:13px}
+.warnmark{color:var(--warn);font-size:12px}
+.tl{list-style:none;margin:0;padding:0}
+.tl li{padding:7px 14px;border-top:1px solid var(--line);font-size:13px;display:flex;gap:10px}
+.tl li:first-child{border-top:0}
+.tl time{color:var(--muted);font-family:var(--f-mono);font-size:12px;white-space:nowrap}
+/* modal */
+.mwrap{position:fixed;inset:0;background:var(--shade);z-index:40;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:max(20px,env(safe-area-inset-top,0px)) 12px 30px}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:10px;width:min(560px,100%);box-shadow:0 12px 40px rgba(0,0,0,.25);margin-top:6vh}
+.modal h3{margin:0;padding:14px 18px;border-bottom:1px solid var(--line);font-size:16px}
+.modal form{padding:14px 18px 6px;display:grid;gap:12px}
+.fld label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:3px}
+.fld .hint{font-size:12px;color:var(--muted);margin-top:3px}
+.fld.req label::after{content:" *";color:var(--bad)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:520px){.two{grid-template-columns:1fr}}
+.infobox{background:var(--accent-soft);border-radius:6px;padding:9px 12px;font-size:13px}
+.infobox.warn{background:var(--warn-soft)}
+.mfoot{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px 16px;border-top:1px solid var(--line);margin-top:6px;flex-wrap:wrap}
+.mfoot .left{margin-right:auto}
+.err{color:var(--bad);font-size:13px;min-height:1em;padding:0 18px}
+.carry{display:grid;grid-template-columns:auto minmax(0,1fr) 120px;gap:8px 10px;align-items:center}
+.carry .lab{font-size:13px;overflow-wrap:anywhere}
+/* tables (bills) */
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:860px}
+th,td{padding:9px 12px;text-align:left;border-top:1px solid var(--line);vertical-align:middle}
+thead th{border-top:0;font-size:12.5px;color:var(--muted);font-weight:500;background:var(--bg)}
+td.r,th.r{text-align:right}
+/* todos */
+.todo{display:flex;gap:12px;padding:12px 16px;border-top:1px solid var(--line);align-items:flex-start}
+.list > .todo:first-child{border-top:0}
+.todo.done .tt{text-decoration:line-through;color:var(--muted)}
+.todo input[type=checkbox]{margin-top:4px;width:17px;height:17px}
+#toastroot{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;display:flex;flex-direction:column;gap:6px;align-items:center;max-width:90%;pointer-events:none}
+.toast{background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px}
+@media (prefers-reduced-motion:no-preference){.panel{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:0}}}
+
+/* v2 */
+:root{--c-todo:#C3CAD6;--c-doing:#7C9AD6;--c-wait:#E3A93C;--c-back:#D9534F;--c-acc:#5DB886;--c-done:#1D7448}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--c-todo:#3C4960;--c-doing:#5E80C6;--c-wait:#C98E26;--c-back:#D9625C;--c-acc:#4CA374;--c-done:#6FD0A0}}
+:root[data-theme="dark"]{--c-todo:#3C4960;--c-doing:#5E80C6;--c-wait:#C98E26;--c-back:#D9625C;--c-acc:#4CA374;--c-done:#6FD0A0}
+.pill.done{background:var(--ok);color:var(--surface)}
+.pbar{display:flex;align-items:center;gap:8px}
+.seg{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--line);gap:2px}
+.seg i{display:block;min-width:4px}
+.bighead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.big{font-size:34px;font-weight:700;margin-right:6px}
+.legends{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+.legend{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.legend b{font-weight:500;margin-left:2px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;border-top:1px solid var(--line);padding-top:12px}
+.kpis div{display:flex;flex-direction:column}.kpis b{font-size:20px}.kpis span{color:var(--muted);font-size:12.5px}
+.two-col{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;margin-bottom:16px}
+.two-col .sec{margin:0}
+.sec{margin-bottom:16px}
+.pbody .sec{margin-bottom:0}
+.qrow{display:flex;gap:12px;align-items:center;padding:10px 14px;border-top:1px solid var(--line);cursor:pointer}
+.qrow:first-of-type{border-top:0}.qrow:hover{background:var(--accent-soft)}.qrow .sub{font-size:12.5px}
+tr.click{cursor:pointer}tr.click:hover{background:var(--accent-soft)}
+.trow{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) auto minmax(0,.9fr) auto;gap:14px;align-items:center;padding:12px 16px;border-top:1px solid var(--line);cursor:pointer}
+.list .trow:first-child{border-top:0}.trow:hover{background:var(--accent-soft)}
+.trow .code{font-size:12px;color:var(--muted);margin-right:6px}.trow .sub{font-size:12.5px}
+.mini{height:6px;background:var(--line);border-radius:3px;margin-top:5px;overflow:hidden}.mini i{display:block;height:100%;background:var(--accent)}
+@media (max-width:820px){.trow{grid-template-columns:minmax(0,1fr) auto;gap:8px}.trow > :nth-child(2),.trow > :nth-child(3){grid-column:auto}.trow > :nth-child(5){display:none}}
+.chks{display:flex;flex-direction:column;gap:10px}
+.chk{display:flex;gap:10px;align-items:flex-start;cursor:pointer}.chk input{margin-top:4px;width:17px;height:17px}
+.counter{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.counter input{width:96px;text-align:center;font-size:18px}
+.addlink{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto;gap:8px;border-top:1px solid var(--line)}
+@media (max-width:520px){.addlink{grid-template-columns:1fr}}
+.chkrow{display:flex;flex-direction:column;gap:8px}
+.item .pill{flex:none;align-self:flex-start;margin-top:2px}
+.stickybar{position:sticky;bottom:0;z-index:3;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 20px;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -6px 16px rgba(0,0,0,.08)}
+.steps{list-style:none;margin:0;padding:0;display:flex;gap:6px;flex-wrap:wrap}
+.steps li{padding:4px 12px;border-radius:999px;border:1px solid var(--line);color:var(--muted);font-size:13px}
+.steps li.done{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.steps li.done::before{content:'✓ '}
+.steps li.cur{border-color:var(--accent);color:var(--accent);font-weight:500}
+.olist{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:6px}
+</style>
+
+<div class="top"><div class="wrap">
+  <div class="brand">星昊科技<small>工作管理系統</small></div>
+  <nav class="nav" id="nav"></nav>
+</div></div>
+<main class="wrap" id="main"><div class="empty">載入中…</div></main>
+<div id="layer"></div>
+<div id="modalroot"></div>
+<div id="toastroot"></div>
+
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const p2=n=>String(n).padStart(2,'0');
+const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())};
+const toUTC=s=>{const [y,m,d]=s.split('-').map(Number);return Date.UTC(y,m-1,d)};
+const diffDays=(a,b)=>Math.round((toUTC(a)-toUTC(b))/864e5);
+const addDays=(s,n)=>new Date(toUTC(s)+n*864e5).toISOString().slice(0,10);
+const addYearMinusDay=s=>{const [y,m,d]=s.split('-').map(Number);return addDays(new Date(Date.UTC(y+1,m-1,d)).toISOString().slice(0,10),-1)};
+const money=n=>(n==null||n==='')?'—':'NT$ '+Math.round(n).toLocaleString('en-US');
+const safeUrl=u=>/^https?:\/\//i.test(u||'')?u:null;
+const link=(u,t)=>{const s=safeUrl(u);return s?`<a href="${esc(s)}" target="_blank" rel="noopener">${esc(t||u)}</a>`:'—'};
+const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+const COLS=['clients','contacts','assets','contracts','services','fees','bills','log','todos','tasks','accept','sops','settings','notify','channels','plans'];
+const S={};COLS.forEach(c=>S[c]={});
+const loaded={};
+let db=null,isAdmin=false,canWrite=true;
+let view='dash',tab=null,query='',openCode=null,billFilter='open';
+let renderQueued=false;
+
+const STATUS_PILL={'進行中':'ok','暫停':'warn','洽談中':'info','結案':'mute'};
+const CLOSE_REASONS=['合約到期未續約','客戶提前終止','專案完成','我方終止','其他'];
+const SERVICE_TYPES=['SEO','GEO','內容行銷','LINE OA 管理','網站系統開發','網站維護'];
+const ASSET_TYPES=['網站後台','GA4','GSC','GBP','LINE OA','廣告帳號','網域與主機','其他'];
+
+/* ---------- derived data ---------- */
+const rows=(coll,code)=>Object.entries(S[coll]).filter(([,v])=>v.clientCode===code).map(([id,v])=>Object.assign({id},v));
+function info(code){
+  const c=S.clients[code];
+  const contracts=rows('contracts',code).sort((a,b)=>(b.end||b.start||'').localeCompare(a.end||a.start||''));
+  const act=contracts.filter(k=>k.status==='有效'&&k.end);
+  const latestEnd=act.reduce((m,k)=>k.end>m?k.end:m,'');
+  const services=rows('services',code);
+  const today=todayStr();
+  const days=latestEnd?diffDays(latestEnd,today):null;
+  const live=c.status==='進行中'||c.status==='暫停';
+  const auto=act.find(k=>k.end===latestEnd);
+  const needs=live&&days!=null&&days<=45;
+  return {c,contracts,act,latestEnd,days,services,needs,auto:auto&&auto.autoRenew};
+}
+function monthlyOf(svc){
+  if(svc.status!=='進行中'||svc.mode==='專案')return 0;
+  const f=S.fees[svc.id];if(!f||f.amount==null)return 0;
+  return svc.cycle==='月繳'?f.amount:svc.cycle==='年繳'?f.amount/12:svc.cycle==='季繳'?f.amount/3:0;
+}
+function mrr(){
+  let t=0;
+  Object.entries(S.services).forEach(([id,s])=>{const c=S.clients[s.clientCode];if(c&&c.status==='進行中')t+=monthlyOf(Object.assign({id},s))});
+  return t;
+}
+const TABS=[['action','需處理'],['active','進行中'],['pending','待分類'],['closed','已結案'],['all','全部']];
+function inTab(i,t){
+  const st=i.c.status;
+  if(t==='action')return i.needs;
+  if(t==='active')return st==='進行中'||st==='暫停';
+  if(t==='pending')return !st||st==='洽談中';
+  if(t==='closed')return st==='結案';
+  return true;
+}
+
+/* ---------- db helpers ---------- */
+const ref=(coll,id)=>db.collection(coll).doc(id);
+async function setDoc(coll,id,data){await ref(coll,id).set(data)}
+async function upd(coll,id,data){await ref(coll,id).update(data)}
+async function del(coll,id){await ref(coll,id).delete()}
+function newId(coll){return db.collection(coll).doc().id}
+async function addLog(code,action,note){
+  await db.collection('log').add({at:new Date().toISOString(),clientCode:code,action,note:note||''});
+}
+function toast(msg){
+  const el=document.createElement('div');el.className='toast';el.textContent=msg;
+  $('#toastroot').appendChild(el);setTimeout(()=>el.remove(),3200);
+}
+async function run(fn,okMsg){
+  try{await fn();if(okMsg)toast(okMsg);return true}
+  catch(e){toast('儲存失敗：'+((e&&e.message)||e));return false}
+}
+function nextCode(){
+  const n=Object.keys(S.clients).map(k=>parseInt(k.slice(1),10)).filter(x=>!isNaN(x));
+  return 'C'+String((n.length?Math.max(...n):0)+1).padStart(3,'0');
+}
+function nextContractNo(code){
+  let n=rows('contracts',code).length+1,no;
+  do{no=code+'-'+p2(n++)}while(S.contracts[no]);
+  return no;
+}
+
+/* ---------- rendering ---------- */
+function queue(){if(renderQueued)return;renderQueued=true;requestAnimationFrame(()=>{renderQueued=false;render()})}
+function render(){
+  renderNav();
+  if(view==='dash')renderDash();
+  else if(view==='board')renderBoard(false);
+  else if(view==='mine')renderBoard(true);
+  else if(view==='clients')renderClients();
+  else if(view==='bills')renderBills();
+  else if(view==='sop')renderSop();
+  else if(view==='notify')renderNotify();
+  else renderTodos();
+  renderPanel();
+}
+function actionCount(){return Object.keys(S.clients).filter(k=>info(k).needs).length}
+function renderNav(){
+  const items=[['dash','總覽'],['board','工作交付'],['mine','我的工作'],['clients','客戶']];
+  if(isAdmin)items.push(['bills','帳款']);
+  items.push(['notify','通知'],['sop','SOP'],['todos','待辦']);
+  const n=actionCount();
+  const tl=taskList();
+  const bn=isAdmin?tl.filter(t=>t.state==='待驗收').length:tl.filter(t=>t.state==='退回').length;
+  $('#nav').innerHTML=items.map(([k,t])=>{const c=k==='clients'?n:k==='board'?bn:k==='mine'?tl.filter(t=>isMine(t)&&(t.state==='退回'||t.late)).length:k==='notify'?computeAlerts().length:0;return `<button data-act="nav" data-v="${k}" ${view===k?'aria-current="page"':''}>${t}${c?`<span class="count">${c}</span>`:''}</button>`}).join('');
+}
+function deadlinePill(i){
+  const st=i.c.status;
+  if(st==='結案')return `<span class="pill mute">${i.c.closedAt?'結案 '+esc(i.c.closedAt):'已結案'}</span>`;
+  if(i.days==null)return `<span class="pill mute">無合約期限</span>`;
+  const auto=i.auto?'・約定自動續約':'';
+  if(i.days<0)return `<span class="pill bad">已過期 ${-i.days} 天${auto}</span>`;
+  if(i.days<=45)return `<span class="pill warn">${i.days} 天後到期${auto}</span>`;
+  return `<span class="pill mute">到 ${esc(i.latestEnd)}</span>`;
+}
+function statusPill(c){
+  const s=c.status;
+  return s?`<span class="pill ${STATUS_PILL[s]||'mute'}">${esc(s)}</span>`:`<span class="pill mute">待分類</span>`;
+}
+function rowActions(i){
+  if(!canWrite||!isAdmin)return '';
+  const c=i.c,k=esc(c.code),s=c.status;
+  const dl=`<button class="btn sm bad" data-act="delClient" data-code="${k}">刪除</button>`;
+  return rowActions0(i)+dl;
+}
+function rowActions0(i){
+  const c=i.c,k=esc(c.code),s=c.status;
+  if(s==='結案')return `<button class="btn sm" data-act="reopen" data-code="${k}">重新開啟</button>`;
+  if(s==='進行中'||s==='暫停')return `<button class="btn sm primary" data-act="renew" data-code="${k}">續約</button><button class="btn sm" data-act="close" data-code="${k}">結案</button>`;
+  return `<button class="btn sm" data-act="activate" data-code="${k}">設為進行中</button><button class="btn sm" data-act="close" data-code="${k}">結案</button>`;
+}
+function clientRow(i){
+  const c=i.c;
+  const types=[...new Set(i.services.filter(s=>s.status!=='結束'||c.status==='結案').map(s=>s.type).filter(Boolean))];
+  const m=isAdmin?i.services.reduce((t,s)=>t+monthlyOf(s),0):0;
+  return `<div class="crow" role="button" tabindex="0" data-act="open" data-code="${esc(c.code)}">
+    <div><div><span class="code mono">${esc(c.code)}</span><span class="nm">${esc(c.brand||c.fullName||'（未命名）')}</span></div><div class="full">${esc(c.fullName&&c.fullName!==c.brand?c.fullName:(c.taxId?'統編 '+c.taxId:''))}</div></div>
+    <div class="stack">${statusPill(c)}${deadlinePill(i)}</div>
+    <div class="chips">${types.map(t=>`<span class="chip">${esc(t)}</span>`).join('')||'<span class="muted">尚無服務</span>'}</div>
+    <div class="num" style="text-align:right">${isAdmin?(m?money(m)+'<div class="muted" style="font-size:12px">每月</div>':'<span class="muted">—</span>'):''}</div>
+    <div class="acts">${rowActions(i)}</div>
+  </div>`;
+}
+function renderClients(){
+  const all=Object.keys(S.clients).sort().map(info);
+  const counts={};TABS.forEach(([k])=>counts[k]=all.filter(i=>inTab(i,k)).length);
+  if(tab==null&&loaded.clients&&loaded.contracts)tab=counts.action?'action':'active';
+  const curTab=tab||'active';
+  const q=query.trim().toLowerCase();
+  let list=all.filter(i=>inTab(i,curTab));
+  if(q)list=all.filter(i=>[i.c.code,i.c.brand,i.c.fullName,i.c.taxId].join(' ').toLowerCase().includes(q));
+  if(curTab==='action'&&!q)list.sort((a,b)=>a.days-b.days);
+  else if(curTab==='closed'&&!q)list.sort((a,b)=>(b.c.closedAt||'').localeCompare(a.c.closedAt||'')||a.c.code.localeCompare(b.c.code));
+  const sum=`<div class="sumline"><span><b>${counts.active}</b>進行中客戶</span><span><b>${counts.action}</b>需處理</span><span><b>${counts.pending}</b>待分類</span>${isAdmin?`<span><b class="num">${money(mrr())}</b>每月經常性收入（未稅）</span>`:''}</div>`;
+  const banner=ls.get('pwBannerOff')?'':`<div class="note bad"><div><b>安全提醒：</b>總表「客戶合約款項紀錄」與「主機搬遷」頁有網站後台、網域與信箱的明文密碼，且同一組密碼重複使用。這個系統不存放任何密碼；建議改放密碼管理工具，並換掉重複使用的那組。</div><button class="btn sm" data-act="dismissPw">知道了</button></div>`;
+  const newBtn=canWrite?`<button class="btn primary" data-act="newClient">＋ 新增客戶</button>`:'';
+  const tabs=TABS.map(([k,t])=>`<button data-act="tab" data-v="${k}" aria-pressed="${curTab===k&&!q}">${t}<span class="n">${counts[k]}</span></button>`).join('');
+  const body=!loaded.clients?'<div class="empty">載入中…</div>':list.length?list.map(clientRow).join(''):
+    `<div class="empty">${q?'找不到符合的客戶。':all.length?'這個分類目前沒有客戶。':'還沒有客戶資料。按右上方「新增客戶」建立第一筆。'}</div>`;
+  const focus=document.activeElement&&document.activeElement.id==='q';
+  $('#main').innerHTML=`${banner}${sum}<div class="tools"><div class="tabs">${tabs}</div><span class="grow"></span><input type="search" id="q" placeholder="搜尋名稱、編號、統編" value="${esc(query)}" aria-label="搜尋客戶">${newBtn}</div><div class="list">${body}</div>`;
+  if(focus){const el=$('#q');el.focus();el.setSelectionRange(query.length,query.length)}
+}
+
+/* panel */
+function renderPanel(){
+  const layer=$('#layer');
+  const ae=document.activeElement;
+  if(ae&&ae.closest&&ae.closest('#layer .panel')&&/INPUT|TEXTAREA|SELECT/.test(ae.tagName)&&ae.type!=='checkbox')return;
+  if(openTask){renderTaskPanel();return}
+  if(!openCode||!S.clients[openCode]){layer.innerHTML='';return}
+  const hadPanel=!!layer.querySelector('.panel');
+  const scroll=layer.querySelector('.panel')?layer.querySelector('.panel').scrollTop:0;
+  const i=info(openCode),c=i.c,k=esc(c.code);
+  const w=canWrite;
+  const btns=(isAdmin&&w)?(c.status==='結案'?`<button class="btn" data-act="reopen" data-code="${k}">重新開啟</button>`:
+    `<button class="btn primary" data-act="renew" data-code="${k}">續約</button><button class="btn warn" data-act="close" data-code="${k}">結案</button>`)+`<button class="btn bad" data-act="delClient" data-code="${k}">刪除</button>`:'';
+  const cf=(c.confirm||[]).map((x,n)=>`<div class="cf"><div>${esc(x.t)}${x.url?` <a href="${esc(x.url)}" target="_blank" rel="noopener">開啟來源檔案</a>`:''}</div>${w?`<button class="btn sm" data-act="resolveConfirm" data-code="${k}" data-n="${n}">已確認</button>`:''}</div>`).join('');
+  const contacts=rows('contacts',c.code);
+  const assets=rows('assets',c.code);
+  const logs=Object.values(S.log).filter(l=>l.clientCode===c.code).sort((a,b)=>b.at.localeCompare(a.at)).slice(0,25);
+  const edit=(act,id)=>w?`<button class="btn sm ghost" data-act="${act}" data-code="${k}" data-id="${esc(id||'')}">編輯</button>`:'';
+  const secBtn=(act,t)=>w?`<button class="btn sm" data-act="${act}" data-code="${k}">${t}</button>`:'';
+  const contractsHTML=i.contracts.length?i.contracts.map(x=>{
+    const pill=x.status==='有效'?'ok':x.status==='已續約'?'info':'mute';
+    return `<div class="item"><div class="main"><div class="title"><span class="mono">${esc(x.no||x.id)}</span><span class="pill ${pill}">${esc(x.status||'—')}</span>${x.check?'<span class="warnmark" title="含推算或矛盾，見上方待確認">⚠ 待確認</span>':''}</div>
+      <div class="sub">${x.start?esc(x.start):'起日未填'} ～ ${x.end?esc(x.end):'迄日未填'}・簽約 ${esc(x.signDate||'—')}・自動續約 ${x.autoRenew===true?'是':x.autoRenew===false?'否':'未確認'}${x.renewedFrom?'・續自 '+esc(x.renewedFrom):''}</div>
+      <div class="sub">${x.fileUrl?link(x.fileUrl,'合約檔'):'未附合約檔'}${x.note?'・'+esc(x.note):''}</div></div>
+      ${(w&&isAdmin&&x.status==='有效')?`<button class="btn sm primary" data-act="renew" data-code="${k}" data-id="${esc(x.id)}">續約</button>`:''}${edit('editContract',x.id)}</div>`}).join(''):'<div class="in muted">尚無合約</div>';
+  const servicesHTML=i.services.length?i.services.map(s=>{
+    const f=S.fees[s.id];
+    const sp=s.status==='進行中'?'ok':s.status==='暫停'?'warn':s.status==='結束'?'mute':'mute';
+    return `<div class="item"><div class="main"><div class="title">${esc(s.type||'')}<span class="pill ${sp}">${esc(s.status||'未設定')}</span><span class="muted">${esc(s.mode||'')}${s.cycle?'・'+esc(s.cycle):''}</span>${s.check?'<span class="warnmark">⚠ 待確認</span>':''}</div>
+      <div class="sub">${s.articles!=null?'每月文章 '+esc(s.articles)+' 篇・':''}${s.reports!=null?'每月報告 '+esc(s.reports)+' 份・':''}${esc(s.start||'—')} ～ ${esc(s.end||'—')}${s.contractNo?'・合約 '+esc(s.contractNo):''}</div>
+      ${s.desc?`<div class="sub">${esc(s.desc)}</div>`:''}</div>
+      ${isAdmin?`<div class="num" style="text-align:right">${f&&f.amount!=null?money(f.amount):'<span class="muted">未填</span>'}${s.feeDerived?'<div class="warnmark">含稅換算</div>':''}</div>`:''}${edit('editService',s.id)}</div>`}).join(''):'<div class="in muted">尚無服務項目</div>';
+  const plans=rows('plans',c.code).sort((a,b)=>PRESETS.findIndex(x=>x.id===a.preset)-PRESETS.findIndex(x=>x.id===b.preset));
+  const plansHTML=plans.length?plans.map(q=>{
+    const pr=PRESET[q.preset]||{label:q.preset,freq:'月'};
+    return `<div class="item"><div class="main"><div class="title">${esc(pr.label)}${q.active===false?'<span class="pill mute">暫停</span>':''}</div><div class="sub">${pr.freq==='週'?'每週 '+esc(q.count)+' 篇':'每月 '+esc(q.count)+' '+(pr.kind==='月報告'?'份':'篇')}・負責 ${esc(ownerLabel(q.assignee||'Mio'))}${q.dueDay&&pr.freq==='月'?'・每月 '+esc(q.dueDay)+' 號截止':''}${q.rewrite?'・批量改寫 '+esc(q.rewrite)+' 篇（我）':''}${q.start||q.end?'・'+esc(q.start||'—')+' ～ '+esc(q.end||'—'):''}</div>${q.note?`<div class="sub">${esc(q.note)}</div>`:''}</div>${edit('editPlan',q.id)}</div>`}).join(''):'<div class="in muted">還沒有設定。按「＋ 新增設定」選這個客戶要做的任務（每週 SEO／GEO 文章、每月 SEO／GEO 報告、每月部落格文章）；沒有設定，就不會替這個客戶產生任務。</div>';
+  const contactsHTML=contacts.length?contacts.map(x=>`<div class="item"><div class="main"><div class="title">${esc(x.name)}${x.primary?'<span class="pill info">主要窗口</span>':''}</div><div class="sub">${[x.phone,x.email,x.line?'LINE '+x.line:''].filter(Boolean).map(esc).join('・')||'未填聯絡方式'}</div></div>${edit('editContact',x.id)}</div>`).join(''):'<div class="in muted">尚無窗口</div>';
+  const assetsHTML=assets.length?assets.map(x=>`<div class="item"><div class="main"><div class="title">${esc(x.type)}<span class="pill ${x.status==='已授權'?'ok':x.status==='待授權'?'warn':'mute'}">${esc(x.status||'未設定')}</span></div><div class="sub">${[x.owner&&'擁有者 '+x.owner,x.level&&'我方權限 '+x.level,x.grantedAt&&'授權 '+x.grantedAt].filter(Boolean).map(esc).join('・')}</div>${x.note?`<div class="sub">${esc(x.note)}</div>`:''}</div>${edit('editAsset',x.id)}</div>`).join(''):'<div class="in muted">尚無資產權限紀錄</div>';
+  const logHTML=logs.length?`<ul class="tl">${logs.map(l=>`<li><time>${esc(l.at.slice(0,10))}</time><span><b>${esc(l.action)}</b>${l.note?'　'+esc(l.note):''}</span></li>`).join('')}</ul>`:'<div class="in muted">尚無紀錄。續約、結案與重新開啟都會記在這裡。</div>';
+  const ctasks=taskList().filter(t=>t.clientCode===c.code).sort((a,b)=>b.period.localeCompare(a.period)||a.title.localeCompare(b.title));
+  const tasksHTML=ctasks.length?ctasks.map(t=>`<div class="item" style="cursor:pointer" data-act="openTask" data-id="${esc(t.id)}"><div class="main"><div class="title">${esc(t.period)}　${esc(t.title)} ${pillState(t.state)}${t.late?'<span class="pill bad">逾期</span>':''}</div><div class="sub">${t.done||0}／${t.target||0} ${unit(t.kind)}・截止 ${esc(t.due||'—')}${t.deliveredAt?'・已交付 '+esc(t.deliveredAt)+'（'+esc(t.deliveredVia||'')+'）':''}</div></div></div>`).join(''):'<div class="in muted">還沒有任務。到「工作交付」按「產生月任務」。</div>';
+  const closed=c.status==='結案'?`<div class="note warn"><div><b>已結案</b>　${esc(c.closedAt||'')}　${esc(c.closeReason||'')}${c.closeNote?'<br>'+esc(c.closeNote):''}</div></div>`:'';
+  layer.innerHTML=`<div class="shade" data-act="closePanel"></div><aside class="panel" role="dialog" aria-label="客戶資料">
+    <div class="phead"><h2><span class="mono muted" style="font-size:13px">${k}</span>　${esc(c.brand||c.fullName||'（未命名）')} ${statusPill(c)}</h2>${btns}${w?`<button class="btn" data-act="editClient" data-code="${k}">編輯資料</button>`:''}<button class="btn ghost" data-act="closePanel">關閉</button></div>
+    <div class="pbody">${closed}${cf?`<div>${cf}</div>`:''}
+    <section class="sec"><header><h3>基本資料</h3></header><div class="in"><dl class="kv">
+      <dt>公司全名</dt><dd>${esc(c.fullName||'—')}</dd><dt>統編</dt><dd class="mono">${esc(c.taxId||'—')}</dd><dt>產業</dt><dd>${esc(c.industry||'—')}</dd>
+      <dt>網站</dt><dd>${link(c.website)}</dd><dt>成交日</dt><dd>${esc(c.dealDate||'—')}</dd>
+      <dt>開票抬頭</dt><dd>${esc(c.invoiceTitle||'—')}</dd><dt>開票 Email</dt><dd>${esc(c.invoiceEmail||'—')}</dd>
+      <dt>Drive 資料夾</dt><dd>${link(c.folderUrl,'開啟資料夾')}</dd><dt>約定與範圍</dt><dd>${esc(c.terms||'—')}</dd></dl></div></section>
+    <section class="sec"><header><h3>合約</h3>${secBtn('newContract','＋ 新增合約')}</header>${contractsHTML}</section>
+    <section class="sec"><header><h3>服務項目</h3>${secBtn('newService','＋ 新增服務')}</header>${servicesHTML}</section>
+    ${isAdmin?`<section class="sec"><header><h3>週期任務設定</h3>${secBtn('newPlan','＋ 新增設定')}</header>${plansHTML}</section>`:''}
+    <section class="sec"><header><h3>窗口</h3>${secBtn('newContact','＋ 新增窗口')}</header>${contactsHTML}</section>
+    <section class="sec"><header><h3>資產與權限</h3>${secBtn('newAsset','＋ 新增資產')}</header>${assetsHTML}</section>
+    <section class="sec"><header><h3>交付紀錄</h3></header>${tasksHTML}</section>
+    <section class="sec"><header><h3>活動紀錄</h3></header>${logHTML}</section>
+    </div></aside>`;
+  const pn=layer.querySelector('.panel');pn.scrollTop=scroll;if(hadPanel)pn.style.animation='none';
+}
+
+/* bills */
+function billCalc(b){const tax=Math.round((b.amount||0)*0.05);const total=(b.amount||0)+tax;return {tax,total,bal:total-(b.received||0)}}
+function renderBills(){
+  const all=Object.entries(S.bills).map(([id,b])=>Object.assign({id},b,billCalc(b))).sort((a,b)=>(b.due||'').localeCompare(a.due||''));
+  const open=all.filter(b=>b.bal>0);
+  const list=billFilter==='open'?open:all;
+  const t=todayStr();
+  const owing=open.reduce((s,b)=>s+b.bal,0);
+  const trs=list.map(b=>{
+    const cl=S.clients[b.clientCode];
+    const st=b.bal<=0?'<span class="pill ok">已收</span>':(b.due&&b.due<t)?'<span class="pill bad">逾期</span>':'<span class="pill warn">未收</span>';
+    return `<tr><td><span class="mono muted">${esc(b.clientCode)}</span> ${esc(cl?cl.brand||cl.fullName:'')}</td><td class="mono">${esc(b.period||'')}</td><td class="r num">${money(b.amount)}</td><td class="r num">${money(b.tax)}</td><td class="r num">${money(b.total)}</td><td class="mono">${esc(b.due||'—')}</td><td class="r num">${money(b.received||0)}</td><td class="r num"><b>${money(b.bal)}</b></td><td>${st}</td><td>${b.invoiceNo?`<span class="mono">${esc(b.invoiceNo)}</span>`:'<span class="muted">未開</span>'}</td>
+      <td><div class="acts">${canWrite?`${b.bal>0?`<button class="btn sm primary" data-act="payBill" data-id="${esc(b.id)}">收款</button>`:''}<button class="btn sm" data-act="editBill" data-id="${esc(b.id)}">編輯</button>`:''}</div></td></tr>`}).join('');
+  $('#main').innerHTML=`<div class="sumline"><span><b class="num">${money(owing)}</b>未收餘額（含稅）</span><span><b>${open.length}</b>筆未結清</span></div>
+  <div class="tools"><div class="tabs"><button data-act="billFilter" data-v="open" aria-pressed="${billFilter==='open'}">未結清</button><button data-act="billFilter" data-v="all" aria-pressed="${billFilter==='all'}">全部</button></div><span class="grow"></span>${canWrite?`<button class="btn" data-act="draftBills">產生月帳單草稿</button><button class="btn primary" data-act="newBill">＋ 新增帳單</button>`:''}</div>
+  ${list.length?`<div class="tablewrap"><table><thead><tr><th>客戶</th><th>期別</th><th class="r">未稅</th><th class="r">稅額 5%</th><th class="r">含稅</th><th>繳款日</th><th class="r">已收</th><th class="r">未收餘額</th><th>狀態</th><th>發票</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`:`<div class="list"><div class="empty">${all.length?'目前沒有未結清帳單。':'還沒有帳單。按「新增帳單」記錄一筆，或用「產生月帳單草稿」依進行中的月繳服務建立。'}</div></div>`}`;
+}
+/* todos */
+function renderTodos(){
+  const all=Object.entries(S.todos).map(([id,t])=>Object.assign({id},t)).sort((a,b)=>(a.done-b.done)||a.id.localeCompare(b.id));
+  const body=all.length?all.map(t=>`<div class="todo ${t.done?'done':''}"><input type="checkbox" data-act="toggleTodo" data-id="${esc(t.id)}" ${t.done?'checked':''} aria-label="完成"><div style="flex:1;min-width:0"><div class="tt"><b>${esc(t.title)}</b></div>${t.detail?`<div class="muted">${esc(t.detail)}</div>`:''}${t.url?`<div>${link(t.url,'來源檔案')}</div>`:''}</div>${canWrite?`<button class="btn sm ghost" data-act="editTodo" data-id="${esc(t.id)}">編輯</button>`:''}</div>`).join(''):'<div class="empty">沒有待辦事項。</div>';
+  $('#main').innerHTML=`<div class="tools"><span class="grow"></span>${canWrite?'<button class="btn primary" data-act="newTodo">＋ 新增待辦</button>':''}</div><div class="list">${body}</div>`;
+}
+
+/* ---------- modal / forms ---------- */
+function closeModal(){$('#modalroot').innerHTML=''}
+function fieldHTML(f,v){
+  const id='f_'+f.k,req=f.req?' req':'';
+  if(f.type==='info')return `<div class="infobox ${f.warn?'warn':''}">${f.html}</div>`;
+  let inp='';
+  const val=v==null?'':v;
+  if(f.type==='textarea')inp=`<textarea id="${id}" name="${f.k}">${esc(val)}</textarea>`;
+  else if(f.type==='checks'){const cur=Array.isArray(v)?v:[];inp=`<div class="chkrow">${(f.opts||[]).map(([a,b])=>`<label class="chk"><input type="checkbox" name="${f.k}" value="${esc(a)}" ${cur.includes(a)?'checked':''}><span>${esc(b)}</span></label>`).join('')}</div>`}
+  else if(f.type==='select'||f.type==='bool'){
+    const opts=f.type==='bool'?[['','未確認'],['true','是'],['false','否']]:(f.opts||[]).map(o=>Array.isArray(o)?o:[o,o]);
+    const cur=f.type==='bool'?(v===true?'true':v===false?'false':''):String(val);
+    inp=`<select id="${id}" name="${f.k}">${f.blank?'<option value="">（未設定）</option>':''}${opts.map(([a,b])=>`<option value="${esc(a)}" ${String(a)===cur?'selected':''}>${esc(b)}</option>`).join('')}</select>`;
+  } else inp=`<input id="${id}" name="${f.k}" type="${f.type==='money'||f.type==='number'?'number':f.type||'text'}" ${f.type==='money'||f.type==='number'?'step="any" inputmode="decimal"':''} value="${esc(val)}" ${f.ph?`placeholder="${esc(f.ph)}"`:''}>`;
+  return `<div class="fld${req}"><label for="${id}">${esc(f.label)}</label>${inp}${f.hint?`<div class="hint">${esc(f.hint)}</div>`:''}</div>`;
+}
+function openForm(o){
+  const fs=o.fields.filter(Boolean);
+  const html=[];let pair=[];
+  const flush=()=>{if(pair.length){html.push(`<div class="two">${pair.join('')}</div>`);pair=[]}};
+  fs.forEach(f=>{const h=fieldHTML(f,(o.values||{})[f.k]);if(f.half){pair.push(h);if(pair.length===2)flush()}else{flush();html.push(h)}});flush();
+  $('#modalroot').innerHTML=`<div class="mwrap" id="mw"><div class="modal" role="dialog" aria-label="${esc(o.title)}"><h3>${esc(o.title)}</h3><form id="mf" novalidate>${html.join('')}</form><div class="err" id="merr"></div><div class="mfoot">${o.dangerLabel?`<button type="button" class="btn bad left" id="mdel">${esc(o.dangerLabel)}</button>`:''}<button type="button" class="btn" id="mcancel">取消</button><button type="button" class="btn primary" id="msave">${esc(o.submit||'儲存')}</button></div></div></div>`;
+  const form=$('#mf'),err=$('#merr');
+  const first=form.querySelector('input,select,textarea');if(first)first.focus();
+  $('#mcancel').onclick=closeModal;
+  $('#mw').addEventListener('mousedown',e=>{if(e.target.id==='mw')closeModal()});
+  let delArmed=false;
+  if(o.dangerLabel)$('#mdel').onclick=async()=>{
+    if(!delArmed){delArmed=true;$('#mdel').textContent='再按一次確認刪除';return}
+    $('#mdel').disabled=true;const ok=await run(o.onDanger,'已刪除');if(ok)closeModal();else $('#mdel').disabled=false;
+  };
+  $('#msave').onclick=async()=>{
+    const v={};err.textContent='';
+    for(const f of fs){
+      if(f.type==='info')continue;
+      if(f.type==='checks'){v[f.k]=[...form.querySelectorAll('input[name="'+f.k+'"]:checked')].map(x=>x.value);continue}
+      const el=form.elements[f.k];if(!el)continue;
+      let x=el.value.trim();
+      if(f.req&&!x){err.textContent='請填「'+f.label+'」';el.focus();return}
+      if(f.type==='bool')x=x==='true'?true:x==='false'?false:null;
+      else if(f.type==='money'||f.type==='number')x=x===''?null:Number(x);
+      else if(x==='')x=null;
+      v[f.k]=x;
+    }
+    if(o.validate){const m=o.validate(v);if(m){err.textContent=m;return}}
+    $('#msave').disabled=true;
+    const ok=await run(()=>o.onSubmit(v),o.okMsg||'已儲存');
+    if(ok)closeModal();else $('#msave').disabled=false;
+  };
+}
+
+/* ---------- forms per entity ---------- */
+const clientFields=(c)=>[
+  {k:'brand',label:'品牌名',half:true,req:true},{k:'fullName',label:'公司全名',half:true},
+  {k:'taxId',label:'統編',half:true},{k:'industry',label:'產業',half:true},
+  {k:'website',label:'網站',ph:'https://'},
+  c&&c.status==='結案'?null:{k:'status',label:'狀態',type:'select',opts:['洽談中','進行中','暫停'],blank:true,half:true,hint:'結案請用「結案」按鈕'},
+  {k:'dealDate',label:'成交日',type:'date',half:true},
+  {k:'invoiceTitle',label:'開票抬頭',half:true},{k:'invoiceEmail',label:'開票 Email',half:true},
+  {k:'deadlineDay',label:'每月交付截止日（幾號）',type:'number',half:true,hint:'月報告與月部落文用；空白＝當月最後一個週五。週文章固定每週五。'},
+  {k:'folderUrl',label:'Drive 資料夾連結',ph:'https://drive.google.com/drive/folders/…'},
+  {k:'terms',label:'重要約定與服務範圍界線',type:'textarea'}
+];
+function newClient(){
+  const code=nextCode();
+  openForm({title:'新增客戶 '+code,fields:clientFields(null),values:{status:'洽談中'},okMsg:'已新增客戶',
+    onSubmit:async v=>{await setDoc('clients',code,Object.assign({code,confirm:[]},v));await addLog(code,'建立客戶');openCode=code;queue()}});
+}
+async function wipeClient(code){
+  for(const coll of ['contacts','assets','contracts','services','log','bills','plans'])
+    for(const x of rows(coll,code)){if(coll==='services')await del('fees',x.id).catch(()=>{});await del(coll,x.id)}
+  for(const [id,t] of Object.entries(S.tasks))if(t.clientCode===code){await del('accept',id).catch(()=>{});await del('tasks',id)}
+  await del('clients',code);
+  if(openCode===code)openCode=null;
+  openTask=null;queue();
+}
+function delClient(code){
+  const c=S.clients[code];if(!c)return;
+  const n=coll=>rows(coll,code).length;
+  const nt=Object.values(S.tasks).filter(t=>t.clientCode===code).length;
+  const bills=rows('bills',code),paid=bills.filter(b=>(b.received||0)>0).length;
+  const parts=[['合約',n('contracts')],['服務項目',n('services')],['窗口',n('contacts')],['資產權限',n('assets')],['任務',nt],['帳單',bills.length]].filter(x=>x[1]).map(x=>x[0]+' '+x[1]+' 筆');
+  openForm({title:'刪除客戶 '+code,submit:'確認刪除',fields:[
+    {k:'i',type:'info',warn:true,html:`將永久刪除 <b>${esc(c.brand||c.fullName||code)}</b> 與它的全部資料${parts.length?'：'+esc(parts.join('、')):''}。無法復原。${paid?`<br><b>注意：有 ${paid} 筆帳單已有收款紀錄，刪除後這些收款紀錄也會消失。</b>`:''}<br>如果只是合約結束，請改用「結案」，資料會保留。`}],
+    okMsg:'已刪除客戶',onSubmit:()=>wipeClient(code)});
+}
+function editClient(code){
+  const c=S.clients[code];
+  openForm({title:'編輯 '+code,fields:clientFields(c),values:c,
+    dangerLabel:'刪除客戶',
+    onDanger:()=>wipeClient(code),
+    onSubmit:async v=>{await upd('clients',code,v)}});
+}
+function contactForm(code,id){
+  const x=id?S.contacts[id]:{};
+  openForm({title:id?'編輯窗口':'新增窗口',fields:[{k:'name',label:'姓名',req:true},{k:'phone',label:'電話',half:true},{k:'email',label:'Email',half:true},{k:'line',label:'LINE'},{k:'primary',label:'主要窗口',type:'bool'}],values:x,
+    dangerLabel:id?'刪除窗口':null,onDanger:()=>del('contacts',id),
+    onSubmit:v=>setDoc('contacts',id||newId('contacts'),Object.assign({},x,v,{clientCode:code}))});
+}
+function assetForm(code,id){
+  const x=id?S.assets[id]:{};
+  openForm({title:id?'編輯資產':'新增資產',fields:[
+    {k:'type',label:'資產類型',type:'select',opts:ASSET_TYPES,req:true,half:true},{k:'owner',label:'帳號擁有者',half:true},
+    {k:'level',label:'我方權限等級',type:'select',opts:['擁有者','管理員','編輯','檢視'],blank:true,half:true},{k:'status',label:'狀態',type:'select',opts:['已授權','待授權','已回收'],blank:true,half:true},
+    {k:'grantedAt',label:'授權日',type:'date'},
+    {k:'note',label:'備註',type:'textarea',hint:'嚴禁填密碼，只記錄位置與授權狀態。'}],values:x,
+    dangerLabel:id?'刪除資產':null,onDanger:()=>del('assets',id),
+    onSubmit:v=>setDoc('assets',id||newId('assets'),Object.assign({},x,v,{clientCode:code}))});
+}
+function contractForm(code,id){
+  const x=id?S.contracts[id]:{status:'有效',autoRenew:null};
+  openForm({title:id?'編輯合約':'新增合約',fields:[
+    {k:'no',label:'合約編號',half:true,req:true,hint:'自訂，客戶內不可重複'},{k:'status',label:'狀態',type:'select',opts:['有效','已續約','已結案'],half:true},
+    {k:'signDate',label:'簽約日',type:'date',half:true},{k:'autoRenew',label:'自動續約',type:'bool',half:true},
+    {k:'start',label:'起日',type:'date',half:true},{k:'end',label:'迄日',type:'date',half:true},
+    {k:'fileUrl',label:'合約檔 Drive 連結',ph:'https://drive.google.com/file/d/…'},{k:'note',label:'備註',type:'textarea'}],values:x,
+    dangerLabel:id?'刪除合約':null,onDanger:()=>del('contracts',id),
+    validate:v=>(!id&&S.contracts[v.no])?'這個合約編號已存在':null,
+    onSubmit:v=>setDoc('contracts',id||v.no,Object.assign({},x,v,{clientCode:code,check:false}))});
+}
+function serviceForm(code,id){
+  const x=id?S.services[id]:{status:'進行中',mode:'經常性',cycle:'月繳'};
+  const cn=rows('contracts',code).map(k=>k.no||k.id);
+  openForm({title:id?'編輯服務項目':'新增服務項目',fields:[
+    {k:'type',label:'服務類型',type:'select',opts:SERVICE_TYPES,req:true,half:true},{k:'contractNo',label:'所屬合約',type:'select',opts:cn,blank:true,half:true},
+    {k:'mode',label:'計費模式',type:'select',opts:['經常性','專案'],half:true},{k:'cycle',label:'計費週期',type:'select',opts:['月繳','季繳','年繳','一次性'],half:true},
+    {k:'articles',label:'每月文章篇數',type:'number',half:true},{k:'reports',label:'每月報告份數',type:'number',half:true},
+    isAdmin?{k:'fee',label:'費用（未稅，元）',type:'money',half:true,hint:'只有管理者看得到'}:null,{k:'status',label:'狀態',type:'select',opts:['進行中','暫停','結束'],blank:true,half:true},
+    {k:'start',label:'起算日',type:'date',half:true},{k:'end',label:'結束日',type:'date',half:true},
+    {k:'desc',label:'內容說明',type:'textarea'}],
+    values:Object.assign({},x,{fee:id&&S.fees[id]?S.fees[id].amount:null}),
+    dangerLabel:id?'刪除服務':null,onDanger:async()=>{await del('services',id);await del('fees',id).catch(()=>{})},
+    onSubmit:async v=>{
+      const sid=id||newId('services');const fee=v.fee;delete v.fee;
+      await setDoc('services',sid,Object.assign({},x,v,{clientCode:code}));
+      if(isAdmin)await setDoc('fees',sid,{amount:fee});
+    }});
+}
+function todoForm(id){
+  const x=id?S.todos[id]:{done:false};
+  openForm({title:id?'編輯待辦':'新增待辦',fields:[{k:'title',label:'事項',req:true},{k:'detail',label:'說明',type:'textarea'}],values:x,
+    dangerLabel:id?'刪除待辦':null,onDanger:()=>del('todos',id),
+    onSubmit:v=>setDoc('todos',id||newId('todos'),Object.assign({},x,v))});
+}
+function billForm(id,preset){
+  const x=id?S.bills[id]:Object.assign({period:todayStr().slice(0,7)},preset||{});
+  const codes=Object.keys(S.clients).sort().map(k=>[k,k+'　'+(S.clients[k].brand||S.clients[k].fullName||'')]);
+  openForm({title:id?'編輯帳單':'新增帳單',fields:[
+    {k:'clientCode',label:'客戶',type:'select',opts:codes,req:true},
+    {k:'period',label:'帳單期別 (YYYY-MM)',req:true,half:true,ph:'2026-12'},{k:'due',label:'繳款日',type:'date',half:true,hint:'空白則為期別當月 1 日'},
+    {k:'amount',label:'未稅金額',type:'money',req:true,half:true,hint:'稅額 5% 自動計算'},{k:'received',label:'已收金額（含稅）',type:'money',half:true},
+    {k:'invoiceNo',label:'發票號碼（易發票人工開立後填入）'},{k:'note',label:'備註',type:'textarea'}],values:x,
+    dangerLabel:id?'刪除帳單':null,onDanger:()=>del('bills',id),
+    validate:v=>!/^\d{4}-\d{2}$/.test(v.period||'')?'期別格式為 YYYY-MM':null,
+    onSubmit:v=>{v.due=v.due||(v.period+'-01');v.received=v.received||0;return setDoc('bills',id||newId('bills'),Object.assign({},x,v))}});
+}
+
+/* ---------- renew / close / reopen ---------- */
+function openRenew(code,contractId){
+  const i=info(code);
+  const base=contractId?S.contracts[contractId]&&Object.assign({id:contractId},S.contracts[contractId]):(i.act.find(k=>k.end===i.latestEnd)||i.contracts[0]||null);
+  const t=todayStr();
+  const start=base&&base.end?addDays(base.end,1):t;
+  const end=addYearMinusDay(start);
+  const svcs=base?i.services.filter(s=>(s.contractNo===(base.no||base.id))&&s.status!=='結束'):i.services.filter(s=>s.status==='進行中');
+  const carry=svcs.map(s=>{
+    const f=S.fees[s.id];
+    return `<label style="display:contents"><input type="checkbox" class="cs" data-sid="${esc(s.id)}" ${s.cycle==='一次性'||s.mode==='專案'?'':'checked'}><span class="lab">${esc(s.type)}　<span class="muted">${esc(s.cycle||'')}${s.desc?'・'+esc(s.desc.slice(0,28)):''}</span></span>${isAdmin?`<input type="number" step="any" class="cfee" data-sid="${esc(s.id)}" value="${f&&f.amount!=null?esc(f.amount):''}" placeholder="費用（未稅）" aria-label="新約費用">`:'<span></span>'}</label>`}).join('');
+  $('#modalroot').innerHTML=`<div class="mwrap" id="mw"><div class="modal" role="dialog" aria-label="續約"><h3>續約　${esc(code)} ${esc(S.clients[code].brand||'')}</h3>
+  <form id="mf" novalidate>
+    <div class="infobox">${base?`續自合約 <b class="mono">${esc(base.no||base.id)}</b>（${esc(base.start||'—')} ～ ${esc(base.end||'—')}）。舊合約會標為「已續約」，並建立新合約。`:'這個客戶還沒有合約，將建立第一份合約。'}</div>
+    <div class="two"><div class="fld req"><label for="r_start">新約起日</label><input id="r_start" type="date" value="${start}"></div><div class="fld req"><label for="r_end">新約迄日</label><input id="r_end" type="date" value="${end}"></div></div>
+    <div class="two"><div class="fld"><label for="r_sign">簽約日</label><input id="r_sign" type="date" value="${t}"></div><div class="fld"><label for="r_auto">自動續約</label><select id="r_auto"><option value="true" ${base&&base.autoRenew===false?'':'selected'}>是</option><option value="false" ${base&&base.autoRenew===false?'selected':''}>否</option><option value="">未確認</option></select></div></div>
+    <div class="fld"><label for="r_file">新合約檔連結</label><input id="r_file" type="text" placeholder="https://drive.google.com/file/d/…"></div>
+    ${svcs.length?`<div><div class="muted" style="font-size:12.5px;margin-bottom:6px">帶入新約的服務項目${isAdmin?'與費用（未稅）':''}；舊服務會標為「結束」。</div><div class="carry">${carry}</div></div>`:'<div class="muted">沒有可帶入的服務項目，續約後可在客戶頁新增。</div>'}
+    <div class="fld"><label for="r_note">備註</label><textarea id="r_note" placeholder="例如：調漲、改月繳、新增 GEO"></textarea></div>
+  </form><div class="err" id="merr"></div>
+  <div class="mfoot"><button type="button" class="btn" id="mcancel">取消</button><button type="button" class="btn primary" id="msave">確認續約</button></div></div></div>`;
+  $('#mcancel').onclick=closeModal;
+  $('#mw').addEventListener('mousedown',e=>{if(e.target.id==='mw')closeModal()});
+  $('#msave').onclick=async()=>{
+    const ns=$('#r_start').value,ne=$('#r_end').value,err=$('#merr');
+    if(!ns||!ne){err.textContent='請填新約起訖日';return}
+    if(ne<ns){err.textContent='迄日不能早於起日';return}
+    $('#msave').disabled=true;
+    const ok=await run(async()=>{
+      const no=nextContractNo(code);
+      const auto=$('#r_auto').value;
+      await setDoc('contracts',no,{clientCode:code,no,signDate:$('#r_sign').value||null,start:ns,end:ne,autoRenew:auto===''?null:auto==='true',fileUrl:$('#r_file').value.trim()||null,status:'有效',renewedFrom:base?(base.no||base.id):null,note:$('#r_note').value.trim()||null});
+      if(base)await upd('contracts',base.id,{status:'已續約',renewedTo:no});
+      const picked=[...document.querySelectorAll('.cs')];
+      for(const cb of picked){
+        const sid=cb.dataset.sid,old=S.services[sid];if(!old)continue;
+        if(cb.checked){
+          const nid=newId('services');
+          await setDoc('services',nid,Object.assign({},old,{contractNo:no,start:ns,end:ne,status:'進行中',check:false,feeDerived:false}));
+          if(isAdmin){const fe=document.querySelector(`.cfee[data-sid="${sid}"]`);const amt=fe&&fe.value!==''?Number(fe.value):null;if(amt!=null)await setDoc('fees',nid,{amount:amt})}
+        }
+      }
+      for(const s of svcs){if(s.status!=='結束')await upd('services',s.id,{status:'結束'})}
+      await upd('clients',code,{status:'進行中',closedAt:null,closeReason:null,closeNote:null});
+      await addLog(code,'續約',`${no}　${ns} ～ ${ne}${$('#r_note').value.trim()?'　'+$('#r_note').value.trim():''}`);
+    },'已續約');
+    if(ok){closeModal();tab='active';queue()}else $('#msave').disabled=false;
+  };
+}
+function openClose(code){
+  const i=info(code);
+  const nc=i.contracts.filter(k=>k.status==='有效').length;
+  const ns=i.services.filter(s=>s.status==='進行中'||s.status==='暫停').length;
+  openForm({title:'結案　'+code+' '+(S.clients[code].brand||''),submit:'確認結案',fields:[
+    {k:'i',type:'info',warn:true,html:`結案後：客戶移到「已結案」分類；<b>${nc}</b> 份有效合約標為「已結案」；<b>${ns}</b> 項進行中服務標為「結束」。資料都會保留，之後可重新開啟。`},
+    {k:'closedAt',label:'結案日',type:'date',req:true,half:true},{k:'closeReason',label:'結案原因',type:'select',opts:CLOSE_REASONS,req:true,half:true},
+    {k:'closeNote',label:'備註',type:'textarea',hint:'例如：未續約原因、保證金是否退還'}],
+    values:{closedAt:todayStr(),closeReason:i.days!=null&&i.days<0?'合約到期未續約':'專案完成'},okMsg:'已結案',
+    onSubmit:async v=>{
+      await upd('clients',code,{status:'結案',closedAt:v.closedAt,closeReason:v.closeReason,closeNote:v.closeNote});
+      for(const k of i.contracts)if(k.status==='有效')await upd('contracts',k.id,{status:'已結案'});
+      for(const s of i.services)if(s.status==='進行中'||s.status==='暫停')await upd('services',s.id,{status:'結束'});
+      await addLog(code,'結案',v.closeReason+(v.closeNote?'　'+v.closeNote:''));
+      tab='closed';queue();
+    }});
+}
+function openReopen(code){
+  openForm({title:'重新開啟　'+code+' '+(S.clients[code].brand||''),submit:'重新開啟',fields:[
+    {k:'i',type:'info',html:'客戶狀態會改回「進行中」。舊合約與服務不會自動恢復；開啟後請按「續約」建立新的合約與服務。'}],okMsg:'已重新開啟',
+    onSubmit:async()=>{await upd('clients',code,{status:'進行中',closedAt:null,closeReason:null,closeNote:null});await addLog(code,'重新開啟');tab='active';queue()}});
+}
+function draftBills(){
+  const d=new Date();d.setMonth(d.getMonth()+1,1);
+  const period=d.getFullYear()+'-'+p2(d.getMonth()+1);
+  const drafts=[];
+  Object.keys(S.clients).sort().forEach(code=>{
+    if(S.clients[code].status!=='進行中')return;
+    const sum=rows('services',code).filter(s=>s.status==='進行中'&&s.cycle==='月繳').reduce((t,s)=>t+((S.fees[s.id]||{}).amount||0),0);
+    if(sum>0&&!Object.values(S.bills).some(b=>b.clientCode===code&&b.period===period))drafts.push({code,amount:sum});
+  });
+  openForm({title:'產生月帳單草稿',submit:drafts.length?`建立 ${drafts.length} 筆`:'關閉',fields:[
+    {k:'period',label:'帳單期別 (YYYY-MM)',req:true,hint:'預設下個月；繳款日為當月 1 日。同客戶同期別已有帳單的不重複建立。'},
+    {k:'i',type:'info',html:drafts.length?drafts.map(x=>`${esc(x.code)} ${esc(S.clients[x.code].brand||'')}　${money(x.amount)}`).join('<br>'):'沒有可建立的草稿（只計算進行中客戶的月繳服務）。'}],
+    values:{period},okMsg:'已建立草稿',
+    onSubmit:async v=>{
+      if(!drafts.length)return;
+      for(const x of drafts){
+        if(Object.values(S.bills).some(b=>b.clientCode===x.code&&b.period===v.period))continue;
+        await setDoc('bills',newId('bills'),{clientCode:x.code,period:v.period,amount:x.amount,received:0,due:v.period+'-01',note:'草稿',invoiceNo:null});
+      }}});
+}
+
+/* ================= v2: 任務 / SOP / 驗收 / 交付 / 總覽 ================= */
+const STATE_PILL={'待處理':'mute','進行中':'info','待驗收':'warn','退回':'bad','已驗收':'ok','已交付':'done'};
+const STATE_COLOR={'待處理':'var(--c-todo)','進行中':'var(--c-doing)','待驗收':'var(--c-wait)','退回':'var(--c-back)','已驗收':'var(--c-acc)','已交付':'var(--c-done)'};
+const STATES=['待處理','進行中','待驗收','退回','已驗收','已交付'];
+const VIA=['LINE','Email','Drive 共享','面對面／電話','其他'];
+const DEFAULT_SOP={
+  '週文章':['本週文章已生成，篇數達到合約每週數量','已逐篇檢查內容（用語、關鍵字、有無違規或誇大）','每篇文章的連結都已記錄在「交付內容連結」'],
+  '月報告':['本月報告已生成（SEO／GEO）','報告的數據與日期區間已核對','報告檔已存到客戶 Drive 資料夾，連結已記錄'],
+  '月部落文':['本月部落文已撰寫完成，篇數達到合約數量','內容已檢查，符合客戶需求與禁忌','每篇草稿的連結都已記錄在「交付內容連結」'],
+  '批量改寫':['本月批量改寫已全部完成，篇數達到數量','已逐篇檢查，沒有與原文過度重複或違規內容','每篇發佈後的連結都已記錄在「交付內容連結」'],
+  '其他':['依合約內容完成交付','成果連結已記錄在「交付內容連結」']
+};
+let period=todayStr().slice(0,7),boardAll=false,boardFilter=null,openTask=null,ownerFilter='all',boardQuery='';
+const ownerOf=t=>t.assignee||'Mio';
+const isMine=t=>ownerOf(t)===(isAdmin?'Jimmy':'Mio');
+const ownerLabel=o=>o==='Jimmy'?(isAdmin?'我':'Jimmy'):o==='Mio'?(isAdmin?'Mio':'我'):o;
+const curPeriod=()=>todayStr().slice(0,7);
+const shiftPeriod=(p,n)=>{const [y,m]=p.split('-').map(Number);const d=new Date(Date.UTC(y,m-1+n,1));return d.getUTCFullYear()+'-'+p2(d.getUTCMonth()+1)};
+const lastDayOf=p=>{const [y,m]=p.split('-').map(Number);return new Date(Date.UTC(y,m,0)).getUTCDate()};
+const lastFriday=p=>{const [y,m]=p.split('-').map(Number);let d=lastDayOf(p);while(new Date(Date.UTC(y,m-1,d)).getUTCDay()!==5)d--;return p+'-'+p2(d)};
+const dueFor=(code,p)=>{const c=S.clients[code];const dd=c&&c.deadlineDay;return dd?p+'-'+p2(Math.min(dd,lastDayOf(p))):lastFriday(p)};
+function rates(){const r=S.settings.rates||{};return {'文章':r.article!=null?r.article:170,'報告':r.report!=null?r.report:700}}
+const fridaysOf=p=>{const [y,m]=p.split('-').map(Number);const o=[];for(let d=1;d<=lastDayOf(p);d++){if(new Date(Date.UTC(y,m-1,d)).getUTCDay()===5)o.push(p+'-'+p2(d))}return o};
+const rateFor=k=>{const r=rates();return (k==='週文章'||k==='月部落文')?r['文章']:k==='月報告'?r['報告']:null};
+const subStage=t=>!t.sentAt?'待送客戶確認':!t.confirmedAt?'等客戶確認':'待發佈';
+function sopFor(type,kind){const s=S.sops[type+'-'+kind]||S.sops['default-'+kind];return (s&&s.items&&s.items.length)?s.items:(DEFAULT_SOP[kind]||DEFAULT_SOP['其他'])}
+function tstate(t){
+  if(t.revise)return '退回';
+  const a=S.accept[t.id];
+  if(t.submitted){
+    if(a&&a.forSub===t.subN)return a.result==='pass'?(t.deliveredAt?'已交付':'已驗收'):'退回';
+    return '待驗收';
+  }
+  return ((t.done||0)>0||(t.checked||[]).some(Boolean)||(t.links||[]).length)?'進行中':'待處理';
+}
+function taskList(){return Object.entries(S.tasks).map(([id,t])=>{const o=Object.assign({id},t);o.state=tstate(o);o.late=!!(o.due&&o.due<todayStr()&&o.state!=='已交付');return o})}
+const clientName=code=>{const c=S.clients[code];return c?(c.brand||c.fullName||code):code};
+const histAdd=(t,text)=>(t.history||[]).concat({at:new Date().toISOString(),text}).slice(-60);
+const unit=k=>k==='月報告'?'份':(k==='週文章'||k==='月部落文'||k==='批量改寫')?'篇':'項';
+
+const PRESETS=[
+  {id:'seoWeekly',label:'每週 SEO 文章',kind:'週文章',svc:'SEO',freq:'週'},
+  {id:'geoWeekly',label:'每週 GEO 文章',kind:'週文章',svc:'GEO',freq:'週'},
+  {id:'seoReport',label:'每月 SEO 報告',kind:'月報告',svc:'SEO',freq:'月'},
+  {id:'geoReport',label:'每月 GEO 報告',kind:'月報告',svc:'GEO',freq:'月'},
+  {id:'blog',label:'每月部落格文章（原創文／測試文）',kind:'月部落文',svc:'內容行銷',freq:'月'}
+];
+const PRESET=Object.fromEntries(PRESETS.map(x=>[x.id,x]));
+const coverOK=(code,ps,pe)=>{const cs=rows('contracts',code);return !cs.length||cs.some(k=>k.status==='有效'&&(!k.start||k.start<=pe)&&(!k.end||k.end>=ps))};
+function genPlan(p){
+  const ps=p+'-01',pe=p+'-'+p2(lastDayOf(p));
+  const create=[],skipped=new Set();
+  const mk=(id,data)=>{if(!S.tasks[id])create.push({id,data})};
+  Object.keys(S.clients).sort().forEach(code=>{
+    if(S.clients[code].status!=='進行中')return;
+    const cov=coverOK(code,ps,pe);
+    rows('plans',code).filter(x=>x.active!==false).forEach(pl=>{
+      const pr=PRESET[pl.preset];if(!pr||!(pl.count>0))return;
+      if((pl.start&&pl.start>pe)||(pl.end&&pl.end<ps))return;
+      if(!pl.start&&!pl.end&&!cov){skipped.add(code);return}
+      const sop=sopFor(pr.svc,pr.kind);
+      const due=pl.dueDay?p+'-'+p2(Math.min(pl.dueDay,lastDayOf(p))):dueFor(code,p);
+      const fin=o=>Object.assign({assignee:pl.assignee||'Mio',clientCode:code,planId:pl.id,serviceId:null,period:p,kind:pr.kind,done:0,rate:rateFor(pr.kind),links:[],note:null,submitted:false,subN:0,history:[],sop:sop.slice(),checked:sop.map(()=>false)},o);
+      if(pr.kind==='週文章'){
+        fridaysOf(p).forEach(fr=>{
+          const mon=addDays(fr,-4);
+          if((pl.start&&pl.start>fr)||(pl.end&&pl.end<mon))return;
+          mk(`${pl.id}_w${fr}`,fin({title:`${pr.svc}・週文章 ${mon.slice(5).replace('-','/')}～${fr.slice(5).replace('-','/')}`,target:pl.count,due:fr,weekStart:mon}));
+        });
+      }else{
+        mk(`${pl.id}_${p}`,fin({title:`${pr.svc}・${pr.kind}`,target:pl.count,due}));
+        if(pr.id==='blog'&&pl.rewrite>0){
+          const rs=sopFor(pr.svc,'批量改寫');
+          mk(`${pl.id}_${p}_批量改寫`,{clientCode:code,planId:pl.id,serviceId:null,period:p,kind:'批量改寫',title:`${pr.svc}・批量改寫`,target:pl.rewrite,due,assignee:'Jimmy',done:0,rate:null,links:[],note:null,submitted:false,subN:0,history:[],sop:rs.slice(),checked:rs.map(()=>false)});
+        }
+      }
+    });
+  });
+  return {create,skipped:[...skipped]};
+}
+function planForm(code,id){
+  const x=id?S.plans[id]:{assignee:'Mio',active:true};
+  const used=new Set(rows('plans',code).map(q=>q.preset));
+  const avail=PRESETS.filter(q=>!used.has(q.id));
+  if(!id&&!avail.length){toast('五種任務都已設定過了');return}
+  const pr=id?PRESET[x.preset]:null;
+  openForm({title:id?`編輯任務設定：${pr?pr.label:''}`:`新增任務設定　${clientName(code)}`,fields:[
+    id?{k:'i',type:'info',html:`<b>${esc(pr?pr.label:x.preset)}</b>（不能改類型；要換請刪除再新增）`}:{k:'preset',label:'任務類型',type:'select',opts:avail.map(q=>[q.id,q.label]),req:true},
+    {k:'count',label:'數量',type:'number',req:true,half:true,hint:'每週文章＝每週篇數；報告、部落文＝每月的量'},
+    {k:'assignee',label:'負責人',type:'select',opts:[['Mio','Mio'],['Jimmy','我（楊濬騰）']],half:true},
+    {k:'dueDay',label:'每月截止日（幾號）',type:'number',half:true,hint:'週文章固定每週五；空白＝客戶設定或當月最後一個週五'},
+    {k:'rewrite',label:'批量改寫篇數',type:'number',half:true,hint:'只有部落格文章用；由我製作並發佈，會另產生一張我的任務'},
+    {k:'start',label:'起算日',type:'date',half:true,hint:'空白＝依合約期間'},{k:'end',label:'結束日',type:'date',half:true},
+    {k:'state',label:'狀態',type:'select',opts:[['on','執行中'],['off','暫停（不產生任務）']]},
+    {k:'note',label:'備註',type:'textarea'}],
+    values:Object.assign({},x,{state:x.active===false?'off':'on'}),
+    dangerLabel:id?'刪除設定':null,onDanger:()=>del('plans',id),
+    onSubmit:async v=>{
+      const pid=id||(code+'-'+v.preset);const d=Object.assign({},x,v,{clientCode:code,preset:id?x.preset:v.preset,active:v.state!=='off'});
+      delete d.state;delete d.i;
+      await setDoc('plans',pid,d);
+      await addLog(code,id?'修改任務設定':'新增任務設定',PRESET[d.preset].label+' × '+d.count);
+    }});
+}
+function openGenerate(){
+  const plan=genPlan(period);
+  const lines=plan.create.map(x=>`${esc(x.data.clientCode)} ${esc(clientName(x.data.clientCode))}　${esc(x.data.title)} ×${x.data.target}　截止 ${esc(x.data.due)}`).join('<br>');
+  const fields=[{k:'p',type:'info',html:plan.create.length?`${esc(period)} 將建立 <b>${plan.create.length}</b> 項任務（已存在的不重複建立）：<br>${lines}`:(Object.keys(S.plans).length?`${esc(period)} 沒有新的任務可建立（已建立過，或沒有進行中的客戶設定任務）。`:'還沒有任何客戶設定週期任務。請到客戶詳情的「週期任務設定」新增，再回來產生。')}];
+  if(plan.skipped.length)fields.push({k:'s',type:'info',warn:true,html:`以下客戶有週期任務設定，但合約期間沒涵蓋 ${esc(period)}，所以沒有產生：<b>${plan.skipped.map(esc).join('、')}</b>。若已續約，請先到客戶頁按「續約」，再重新產生。`});
+  openForm({title:`產生 ${period} 月任務`,submit:plan.create.length?`建立 ${plan.create.length} 項`:'關閉',fields,okMsg:'已建立任務',
+    onSubmit:async()=>{for(const x of plan.create)await setDoc('tasks',x.id,x.data)}});
+}
+const taskNames=()=>((S.settings.taskNames&&S.settings.taskNames.list)||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant'));
+async function saveTaskName(v){
+  const name=(v.title||'').trim();if(!name||!isAdmin)return;
+  const list=taskNames();const e={name,kind:v.kind||'其他',target:v.target==null?null:v.target,rate:v.rate==null?null:v.rate};
+  const i=list.findIndex(x=>x.name===name);if(i>=0)list[i]=e;else list.push(e);
+  await setDoc('settings','taskNames',{list});
+}
+function openTaskNames(){
+  const L=taskNames();
+  openForm({title:'任務名稱清單',submit:'移除勾選的名稱',fields:[
+    {k:'i',type:'info',html:'新增任務時，第一次輸入的名稱會自動存在這裡，之後直接從清單點選。名稱打錯或不再使用，可勾選後移除（已建立的任務不受影響）。'},
+    L.length?{k:'del',label:'勾選要移除的名稱',type:'checks',opts:L.map(x=>[x.name,x.name+'　（'+x.kind+'）'])}:{k:'e',type:'info',html:'目前還沒有儲存的名稱。'}],
+    okMsg:'已更新名稱清單',
+    onSubmit:async v=>{const d=new Set(v.del||[]);if(!d.size)return;await setDoc('settings','taskNames',{list:L.filter(x=>!d.has(x.name))})}});
+}
+function newTaskForm(){
+  const codes=Object.keys(S.clients).sort().filter(k=>S.clients[k].status!=='結案').map(k=>[k,k+'　'+clientName(k)]);
+  openForm({title:'新增任務',fields:[
+    {k:'clientCode',label:'客戶',type:'select',opts:codes,req:true},
+    ...(taskNames().length?[{k:'titlePick',label:'任務名稱',type:'select',opts:[['','請選擇已存的名稱'],...taskNames().map(x=>[x.name,x.name]),['__new','＋ 新名稱…']],req:true}]:[]),
+    {k:'title',label:taskNames().length?'新名稱':'任務名稱',req:!taskNames().length,ph:'例如：短影音拍攝剪輯',hint:'第一次建立後會自動存起來，下次直接點選。'},
+    {k:'kind',label:'類型',type:'select',opts:['週文章','月報告','月部落文','批量改寫','其他'],half:true},{k:'target',label:'目標數量',type:'number',req:true,half:true},
+    {k:'assignee',label:'負責人',type:'select',opts:[['Mio','Mio'],['Jimmy','我（楊濬騰）']],half:true},
+    {k:'period',label:'期別 (YYYY-MM)',req:true,half:true},{k:'due',label:'截止日',type:'date',half:true,hint:'空白＝當月最後一個週五'},
+    {k:'rate',label:'單價（員工每篇／份，元）',type:'money',hint:'空白＝依類型的預設單價；只有管理者看得到'}],
+    values:{kind:'其他',target:1,period:period,assignee:'Mio'},
+    validate:v=>{
+      if(!/^\d{4}-\d{2}$/.test(v.period||''))return '期別格式為 YYYY-MM';
+      if(v.titlePick&&v.titlePick!=='__new')v.title=v.titlePick;
+      if(!v.title)return '請填新名稱';
+      return null},okMsg:'已新增任務',
+    onSubmit:async v=>{
+      await saveTaskName(v);
+      const sop=sopFor('default',v.kind);
+      const id=newId('tasks');
+      await setDoc('tasks',id,{assignee:v.assignee||'Mio',clientCode:v.clientCode,serviceId:null,period:v.period,kind:v.kind,title:v.title,target:v.target,done:0,due:v.due||dueFor(v.clientCode,v.period),rate:v.rate!=null?v.rate:rateFor(v.kind),sop:sop.slice(),checked:sop.map(()=>false),links:[],note:null,submitted:false,subN:0,history:[]});
+    }});
+  const pk=$('#f_titlePick');
+  if(pk){
+    const tf=$('#f_title').closest('.fld');
+    const sync=()=>{
+      tf.style.display=pk.value==='__new'?'':'none';
+      const e=taskNames().find(x=>x.name===pk.value);
+      if(e){$('#f_kind').value=e.kind;$('#f_target').value=e.target==null?'':e.target;$('#f_rate').value=e.rate==null?'':e.rate}
+    };
+    pk.addEventListener('change',sync);sync();
+  }
+}
+function editTaskForm(id){
+  const t=S.tasks[id];
+  openForm({title:'編輯任務',fields:[
+    {k:'title',label:'任務名稱',req:true},{k:'target',label:'目標數量',type:'number',req:true,half:true},{k:'due',label:'截止日',type:'date',half:true},
+    {k:'assignee',label:'負責人',type:'select',opts:[['Mio','Mio'],['Jimmy','我（楊濬騰）']]},
+    {k:'rate',label:'單價（員工每篇／份，元）',type:'money',hint:'空白＝不計成本'}],values:Object.assign({},t,{assignee:ownerOf(t)}),
+    dangerLabel:'刪除任務',onDanger:async()=>{await del('tasks',id);await del('accept',id).catch(()=>{});openTask=null;queue()},
+    onSubmit:async v=>{await upd('tasks',id,v);await saveTaskName(Object.assign({kind:t.kind},v))}});
+}
+async function tUpd(id,patch,histText){
+  const t=Object.assign({id},S.tasks[id]);
+  const d=Object.assign({},patch);if(histText)d.history=histAdd(t,histText);
+  await upd('tasks',id,d);
+}
+function trySubmit(id){
+  const t=Object.assign({id},S.tasks[id]);
+  const miss=[];
+  const unchecked=(t.sop||[]).filter((_,i)=>!(t.checked||[])[i]).length;
+  if(unchecked)miss.push(`還有 ${unchecked} 項 SOP 沒勾`);
+  if((t.done||0)<(t.target||0))miss.push(`完成數量 ${t.done||0}／${t.target}，還沒達到目標`);
+  if(!(t.links||[]).length)miss.push('還沒貼任何交付內容連結');
+  if(miss.length){toast('不能送交驗收：'+miss.join('；'));return}
+  run(()=>tUpd(id,{submitted:true,subN:(t.subN||0)+1,revise:false,sentAt:null,confirmedAt:null,publishedAt:null,deliveredAt:null},'送交驗收'),'已送交驗收，等待管理者確認');
+}
+function openReject(id){
+  const t=S.tasks[id];
+  openForm({title:'退回　'+clientName(t.clientCode)+'・'+t.title,submit:'退回給員工',fields:[{k:'reason',label:'退回原因（員工會看到）',type:'textarea',req:true}],okMsg:'已退回',
+    onSubmit:v=>setDoc('accept',id,{result:'reject',reason:v.reason,forSub:t.subN,at:new Date().toISOString()})});
+}
+function openDeliver(id){
+  const t=S.tasks[id];
+  openForm({title:'標示已交付客戶　'+clientName(t.clientCode),submit:'確認已交付',fields:[
+    {k:'deliveredAt',label:'交付日',type:'date',req:true,half:true},{k:'deliveredVia',label:'交付方式',type:'select',opts:VIA,req:true,half:true},
+    {k:'deliveredNote',label:'備註',type:'textarea',hint:'例如：已傳到客戶 LINE 群、客戶回覆確認'}],
+    values:{deliveredAt:todayStr(),deliveredVia:ls.get('lastVia')||'LINE'},okMsg:'已記錄交付',
+    onSubmit:v=>{ls.set('lastVia',v.deliveredVia);return tUpd(id,{deliveredAt:v.deliveredAt,deliveredVia:v.deliveredVia,deliveredNote:v.deliveredNote},`已交付客戶（${v.deliveredVia}）${v.deliveredNote?'　'+v.deliveredNote:''}`)}});
+}
+
+function openSend(id){
+  openForm({title:'記錄：已送客戶確認',submit:'記錄',fields:[{k:'sentAt',label:'送出日',type:'date',req:true,half:true},{k:'sentVia',label:'送出方式',type:'select',opts:VIA,req:true,half:true},{k:'sentNote',label:'備註',type:'textarea'}],values:{sentAt:todayStr(),sentVia:ls.get('lastVia')||'LINE'},okMsg:'已記錄',
+    onSubmit:v=>{ls.set('lastVia',v.sentVia);return tUpd(id,{sentAt:v.sentAt,sentVia:v.sentVia,sentNote:v.sentNote},`已送客戶確認（${v.sentVia}）`)}});
+}
+function openConfirm(id){
+  openForm({title:'記錄：客戶回覆',submit:'記錄',fields:[{k:'result',label:'客戶回覆',type:'select',opts:['客戶已確認','客戶要求修改'],req:true,half:true},{k:'at',label:'回覆日',type:'date',req:true,half:true},{k:'note',label:'內容／修改要求',type:'textarea',hint:'選「要求修改」時必填；員工會看到，任務會回到「退回」。'}],values:{result:'客戶已確認',at:todayStr()},
+    validate:v=>(v.result==='客戶要求修改'&&!v.note)?'請寫客戶的修改要求':null,okMsg:'已記錄',
+    onSubmit:v=>v.result==='客戶已確認'
+      ?tUpd(id,{confirmedAt:v.at,confirmNote:v.note},'客戶已確認'+(v.note?'：'+v.note:''))
+      :tUpd(id,{revise:true,reviseNote:v.note,reviseAt:new Date().toISOString(),sentAt:null,confirmedAt:null},'客戶要求修改：'+v.note)});
+}
+function openPublish(id){
+  openForm({title:'記錄：已發佈',submit:'記錄',fields:[{k:'publishedAt',label:'發佈日',type:'date',req:true},{k:'links',label:'發佈連結（一行一條）',type:'textarea',req:true},{k:'note',label:'備註',type:'textarea'}],values:{publishedAt:todayStr()},
+    validate:v=>(v.links||'').split('\n').map(x=>x.trim()).filter(Boolean).some(u=>!safeUrl(u))?'每一行都要是 http 或 https 開頭的完整網址':null,okMsg:'已記錄發佈',
+    onSubmit:v=>{const L=v.links.split('\n').map(x=>x.trim()).filter(Boolean);return tUpd(id,{publishedAt:v.publishedAt,deliveredAt:v.publishedAt,deliveredVia:'發佈',deliveredNote:v.note,pubLinks:L},`已發佈（${L.length} 條連結）`)}});
+}
+function openRates(){
+  const r=rates();
+  openForm({title:'員工單價',fields:[{k:'article',label:'每篇文章（元）',type:'money',half:true,req:true},{k:'report',label:'每份報告（元）',type:'money',half:true,req:true},{k:'i',type:'info',html:'只影響之後新產生的任務；已產生的任務可在任務裡個別調整單價。'}],values:{article:r['文章'],report:r['報告']},
+    onSubmit:v=>setDoc('settings','rates',{article:v.article,report:v.report})});
+}
+function sopForm(key){
+  const s=key?S.sops[key]:null;
+  const parts=key?key.split('-'):['default','週文章'];
+  const items=key?sopFor(parts[0],parts[1]):[];
+  openForm({title:key?'編輯 SOP':'新增 SOP',fields:[
+    key?null:{k:'type',label:'適用服務',type:'select',opts:[['default','通用（沒有專屬 SOP 時使用）'],...SERVICE_TYPES.map(x=>[x,x])],half:true},
+    key?null:{k:'kind',label:'流程',type:'select',opts:['週文章','月報告','月部落文','批量改寫','其他'],half:true},
+    {k:'items',label:'核對項目（一行一項）',type:'textarea',req:true,hint:'員工必須逐項勾完才能送交驗收。修改只影響之後新產生的任務。'}],
+    values:{items:items.join('\n')},
+    onSubmit:async v=>{
+      const list=v.items.split('\n').map(x=>x.trim()).filter(Boolean);
+      const k=key||((v.type||'default')+'-'+(v.kind||'週文章'));
+      const p=k.split('-');
+      await setDoc('sops',k,{type:p[0],kind:p[1],items:list});
+    }});
+}
+
+/* ---------- views ---------- */
+function pillState(st){return `<span class="pill ${STATE_PILL[st]}">${st}</span>`}
+function periodBar(){
+  return `<div class="pbar"><button class="btn sm" data-act="pshift" data-d="-1" aria-label="上個月">‹</button><b class="mono">${esc(period)}</b><button class="btn sm" data-act="pshift" data-d="1" aria-label="下個月">›</button>${period!==curPeriod()?'<button class="btn sm ghost" data-act="pnow">回到本月</button>':''}</div>`;
+}
+function segBar(counts,total){
+  if(!total)return '<div class="seg"></div>';
+  return `<div class="seg" role="img" aria-label="進度分佈">${STATES.map(s=>counts[s]?`<i style="flex:${counts[s]};background:${STATE_COLOR[s]}" title="${s} ${counts[s]}"></i>`:'').join('')}</div>`;
+}
+function renderDash(){
+  const all=taskList();
+  const ts=all.filter(t=>t.period===period);
+  const counts={};STATES.forEach(s=>counts[s]=ts.filter(t=>t.state===s).length);
+  const total=ts.length,delivered=counts['已交付'];
+  const accepted=t=>t.state==='已驗收'||t.state==='已交付';
+  const grp=kind=>({t:ts.filter(t=>t.kind===kind).reduce((n,t)=>n+(t.target||0),0),d:ts.filter(t=>t.kind===kind&&accepted(t)).reduce((n,t)=>n+(t.done||0),0)});
+  const gW=grp('週文章'),gR=grp('月報告'),gB=grp('月部落文');
+  const late=ts.filter(t=>t.late).length;
+  const carry=all.filter(t=>t.period<period&&t.state!=='已交付').length;
+  let cost=0,costAll=0,noRate=0;
+  ts.forEach(t=>{if(ownerOf(t)==='Jimmy')return;if(t.rate==null){noRate++;return}costAll+=(t.target||0)*t.rate;if(accepted(t))cost+=(t.done||0)*t.rate});
+  const waiting=ts.filter(t=>t.state==='待驗收'),todo=ts.filter(t=>t.state==='退回'||(t.late&&t.state!=='待驗收'));
+  const clients=[...new Set(ts.map(t=>t.clientCode))].sort();
+  const crow=code=>{
+    const cts=ts.filter(t=>t.clientCode===code);
+    const cc={};STATES.forEach(s=>cc[s]=cts.filter(t=>t.state===s).length);
+    const sm=kind=>{const x=cts.filter(t=>t.kind===kind);return {d:x.filter(accepted).reduce((n,t)=>n+(t.done||0),0),t:x.reduce((n,t)=>n+(t.target||0),0)}};
+    const w=sm('週文章'),rp=sm('月報告'),bl=sm('月部落文');
+    const due=cts.reduce((m,t)=>(!m||t.due<m)?t.due:m,'');
+    const lt=cts.some(t=>t.late);
+    const done=cc['已交付']===cts.length;
+    return `<tr class="click" data-act="openBoardClient" data-code="${esc(code)}"><td><span class="mono muted">${esc(code)}</span> <b>${esc(clientName(code))}</b></td><td class="num">${w.t?`${w.d}／${w.t} 篇`:'—'}</td><td class="num">${rp.t?`${rp.d}／${rp.t} 份`:'—'}</td><td class="num">${bl.t?`${bl.d}／${bl.t} 篇`:'—'}</td><td style="min-width:150px">${segBar(cc,cts.length)}</td><td class="mono">${esc(due)}</td><td>${done?'<span class="pill done">全部已交付</span>':lt?'<span class="pill bad">有逾期</span>':cc['待驗收']?'<span class="pill warn">待驗收</span>':cc['退回']?'<span class="pill bad">被退回</span>':'<span class="pill info">進行中</span>'}</td></tr>`;
+  };
+  const chips=STATES.map(s=>`<button class="legend" data-act="jumpBoard" data-v="${s}"><i style="background:${STATE_COLOR[s]}"></i>${s}<b class="mono">${counts[s]}</b></button>`).join('');
+  const listRows=(arr,btnText)=>arr.length?arr.map(t=>`<div class="qrow" data-act="openTask" data-id="${esc(t.id)}" role="button" tabindex="0"><div style="min-width:0"><b>${esc(clientName(t.clientCode))}</b>・${esc(t.title)}<div class="sub muted">${(t.done||0)+'／'+t.target+' '+unit(t.kind)+'・'}截止 ${esc(t.due||'—')}${t.late?'・<span style="color:var(--bad)">已逾期</span>':''}</div></div><span class="btn sm">${btnText}</span></div>`).join(''):'<div class="in muted">目前沒有。</div>';
+  const empty=!total?`<div class="list"><div class="empty">${esc(period)} 還沒有任務。<br>${canWrite?'按「產生月任務」，系統會依各客戶詳情裡的「週期任務設定」建立，並自動設定截止日。要先在客戶詳情設定每個客戶要做哪些任務。':''}</div></div>`:'';
+  $('#main').innerHTML=`<div class="tools">${periodBar()}<span class="grow"></span>${canWrite&&isAdmin?`<button class="btn" data-act="newTask">＋ 新增任務</button><button class="btn primary" data-act="genTasks">產生月任務</button>`:''}</div>
+  ${carry?`<div class="note warn"><div><b>往期還有 ${carry} 項沒完成交付。</b></div><button class="btn sm" data-act="jumpOld">查看</button></div>`:''}
+  ${total?`<section class="sec"><div class="in">
+    <div class="bighead"><span><b class="big num">${delivered}</b><span class="muted">／${total} 項已交付客戶</span></span><span class="muted">${total?Math.round(delivered/total*100):0}%</span></div>
+    ${segBar(counts,total)}<div class="legends">${chips}</div>
+    <div class="kpis"><div><b class="num">${gW.d}／${gW.t}</b><span>週文章（已驗收）</span></div><div><b class="num">${gR.d}／${gR.t}</b><span>月報告（已驗收）</span></div><div><b class="num">${gB.d}／${gB.t}</b><span>月部落文（已驗收）</span></div><div><b class="num" style="color:${late?'var(--bad)':'inherit'}">${late}</b><span>逾期未交付</span></div>${isAdmin?`<div><b class="num">${money(cost)}</b><span>員工成本（已驗收）／預估 ${money(costAll)}${noRate?`，${noRate} 項未設單價`:''}</span></div>`:''}</div></div></section>
+  <div class="two-col"><section class="sec"><header><h3>${isAdmin?'等你驗收':'已送交，等管理者驗收'}</h3><span class="pill warn">${waiting.length}</span></header>${listRows(waiting,isAdmin?'驗收':'查看')}</section>
+  <section class="sec"><header><h3>需要處理（退回／逾期）</h3><span class="pill ${todo.length?'bad':'mute'}">${todo.length}</span></header>${listRows(todo,'開啟')}</section></div>
+  <section class="sec"><header><h3>各客戶進度</h3></header><div class="tablewrap" style="border:0;border-radius:0"><table><thead><tr><th>客戶</th><th>週文章</th><th>月報告</th><th>月部落文</th><th>進度</th><th>最早截止</th><th>狀態</th></tr></thead><tbody>${clients.map(crow).join('')}</tbody></table></div></section>`:empty}`;
+}
+function renderBoard(mine){
+  const all=taskList().filter(t=>mine?isMine(t):(ownerFilter==='all'||ownerOf(t)===ownerFilter));
+  const bqn=boardQuery.trim().toLowerCase();
+  const base=(boardAll?all.filter(t=>t.state!=='已交付'):all.filter(t=>t.period===period)).filter(t=>!bqn||[t.clientCode,clientName(t.clientCode),t.title].join(' ').toLowerCase().includes(bqn));
+  const F={todo:['需處理',t=>['待處理','進行中','退回'].includes(t.state)],wait:['待驗收',t=>t.state==='待驗收'],acc:['已驗收・待交付',t=>t.state==='已驗收'],done:['已交付',t=>t.state==='已交付'],late:['逾期',t=>t.late],all:['全部',()=>true]};
+  const key=boardFilter||(isAdmin&&base.some(t=>t.state==='待驗收')?'wait':'todo');
+  const list=base.filter(F[key][1]).sort((a,b)=>(a.due||'').localeCompare(b.due||'')||a.clientCode.localeCompare(b.clientCode));
+  const tabs=Object.entries(F).map(([k,[n,f]])=>`<button data-act="bfilter" data-v="${k}" aria-pressed="${key===k}">${n}<span class="n">${base.filter(f).length}</span></button>`).join('');
+  const rowsHTML=list.map(t=>{
+    const sopDone=(t.checked||[]).filter(Boolean).length,sopN=(t.sop||[]).length;
+    const prog=Math.min(100,Math.round((t.done||0)/Math.max(1,t.target||1)*100));
+    return `<div class="trow" data-act="openTask" data-id="${esc(t.id)}" role="button" tabindex="0">
+      <div style="min-width:0"><div><span class="code mono">${esc(t.clientCode)}</span><b>${esc(clientName(t.clientCode))}</b>${mine?'':`<span class="pill ${isMine(t)?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(ownerOf(t)))}</span>`}</div><div class="sub muted">${esc(t.title)}${boardAll?'・'+esc(t.period):''}</div></div>
+      <div><div class="num">${t.done||0}／${t.target||0} ${unit(t.kind)}</div><div class="mini"><i style="width:${prog}%"></i></div></div>
+      <div class="num muted">SOP ${sopDone}／${sopN}</div>
+      <div class="stack">${pillState(t.state)}${(t.kind==='月部落文'&&t.state==='已驗收')?'<span class="pill info">'+subStage(t)+'</span>':''}${t.late?'<span class="pill bad">逾期 '+diffDays(todayStr(),t.due)+' 天</span>':`<span class="muted mono" style="font-size:12px">截止 ${esc((t.due||'').slice(5))}</span>`}</div>
+      ${t.state==='已交付'?`<div class="sub muted">${esc(t.deliveredAt||'')}<br>${esc(t.deliveredVia||'')}</div>`:'<div></div>'}</div>`}).join('');
+  $('#main').innerHTML=`<div class="tools">${boardAll?'<b>所有期別未交付</b><button class="btn sm ghost" data-act="bperiod" data-v="cur">回到期別檢視</button>':periodBar()}<span class="grow"></span>${boardAll?'':'<button class="btn sm" data-act="bperiod" data-v="all">看所有往期未交付</button>'}${canWrite&&isAdmin?'<button class="btn ghost" data-act="taskNames">任務名稱</button><button class="btn" data-act="newTask">＋ 新增任務</button><button class="btn primary" data-act="genTasks">產生月任務</button>':''}</div>
+  ${mine?`<div class="sumline"><span><b>${base.filter(t=>['待處理','進行中'].includes(t.state)).length}</b>待我完成</span><span><b>${base.filter(t=>t.state==='退回').length}</b>退回要修改</span><span><b>${base.filter(t=>t.state==='待驗收').length}</b>等驗收</span><span><b>${base.filter(t=>t.state==='已驗收'||t.state==='已交付').length}／${base.length}</b>已完成</span><span><b style="color:${base.some(t=>t.late)?'var(--bad)':'inherit'}">${base.filter(t=>t.late).length}</b>逾期</span></div>`:''}
+  <div class="tools"><input type="search" id="bq" placeholder="搜尋客戶或任務" value="${esc(boardQuery)}" aria-label="搜尋任務" style="max-width:200px"><div class="tabs">${tabs}</div>${mine?'':`<span class="grow"></span><div class="tabs">${[['all','全部負責人'],['Jimmy',isAdmin?'我的':'Jimmy'],['Mio',isAdmin?'Mio':'我的']].map(([k,n])=>`<button data-act="ofilter" data-v="${k}" aria-pressed="${ownerFilter===k}">${n}</button>`).join('')}</div>`}</div>
+  <div class="list">${list.length?rowsHTML:`<div class="empty">${base.length?'這個分類沒有任務。':(mine?'這個期別沒有指派給你的任務。':'這個期別還沒有任務。'+(isAdmin?'按「產生月任務」建立。':''))}</div>`}</div>`;
+}
+function renderSop(){
+  const keys=new Set(['default-週文章','default-月報告','default-月部落文','default-批量改寫',...Object.keys(S.sops)]);
+  const cards=[...keys].sort().map(k=>{
+    const [type,kind]=k.split('-');const mine=!!S.sops[k];
+    const items=sopFor(type,kind);
+    return `<section class="sec"><header><h3>${type==='default'?'通用':esc(type)}・${esc(kind)}</h3>${mine?'':'<span class="pill mute">預設範本，尚未修改</span>'}${isAdmin&&canWrite?`<button class="btn sm" data-act="editSop" data-id="${esc(k)}">編輯</button>`:''}</header><div class="in"><ol class="olist">${items.map(i=>`<li>${esc(i)}</li>`).join('')}</ol></div></section>`}).join('');
+  const r=rates();
+  $('#main').innerHTML=`<div class="tools"><div><b>SOP 核對清單</b><div class="muted">員工送交驗收前逐項勾完。每個流程各有一份；也可以為某項服務（例如 GEO 月報告）另設專屬清單。產生任務時會把當時的清單複製進任務。</div></div><span class="grow"></span>${isAdmin&&canWrite?'<button class="btn" data-act="newSop">＋ 新增 SOP</button>':''}</div>${isAdmin?`<div class="note"><div>員工單價：每篇文章 <b class="num">${money(r['文章'])}</b>，每份報告 <b class="num">${money(r['報告'])}</b>。只有管理者看得到。</div>${canWrite?'<button class="btn sm" data-act="editRates">調整</button>':''}</div>`:''}<div class="two-col">${cards}</div>`;
+}
+
+/* ---------- task panel ---------- */
+function renderTaskPanel(){
+  const layer=$('#layer');
+  const raw=S.tasks[openTask];
+  if(!raw){layer.innerHTML='';return}
+  const t=Object.assign({id:openTask},raw),st=tstate(t),a=S.accept[t.id];
+  const locked=['待驗收','已驗收','已交付'].includes(st);
+  const can=canWrite&&!locked;
+  const sop=t.sop||[],chk=t.checked||[],links=t.links||[];
+  const late=t.due&&t.due<todayStr()&&st!=='已交付';
+  const id=esc(t.id);
+  const hadPanel=!!layer.querySelector('.panel');
+  const scroll=layer.querySelector('.panel')?layer.querySelector('.panel').scrollTop:0;
+  const dis=can?'':'disabled';
+  const sopHTML=sop.map((x,i)=>`<label class="chk"><input type="checkbox" data-act="tcheck" data-i="${i}" ${chk[i]?'checked':''} ${dis}><span>${esc(x)}</span></label>`).join('');
+  const linksHTML=links.length?links.map((l,i)=>`<div class="item"><div class="main"><div class="title">${link(l.url,l.title||l.url)}</div><div class="sub">${esc(l.url)}</div></div>${can?`<button class="btn sm ghost" data-act="tdellink" data-i="${i}">移除</button>`:''}</div>`).join(''):'<div class="in muted">還沒有。每篇文章或每份報告貼一條連結（Drive、發布網址都可以）。</div>';
+  const addLink=can?`<div class="in addlink"><input type="text" id="tl_title" placeholder="名稱（例如：第 3 篇）" aria-label="連結名稱"><input type="text" id="tl_url" placeholder="https://…" aria-label="連結網址"><button class="btn" data-act="taddlink">加入</button></div>`:'';
+  const miss=[];
+  if(sop.filter((_,i)=>!chk[i]).length)miss.push('SOP 還沒全部勾完');
+  if((t.done||0)<(t.target||0))miss.push('數量還沒達到目標');
+  if(!links.length)miss.push('還沒貼交付內容連結');
+  const isBlog=t.kind==='月部落文';
+  const stepCur=st==='待驗收'?1:st==='已驗收'?(!t.sentAt?2:!t.confirmedAt?3:4):st==='已交付'?5:0;
+  const pubL=(t.pubLinks||[]).map(u=>link(u)).join('<br>')||'—';
+  let action='';
+  if(st==='待驗收'){
+    action=(isAdmin&&canWrite)?`<div class="in muted">已送交。檢查完上面的連結與備註後，用畫面下方的按鈕決定。</div>`:`<div class="in muted">已送交，等待管理者驗收。</div>`;
+  }else if(st==='已驗收'&&isBlog){
+    const hint=!t.sentAt?'驗收通過。請把部落文送給客戶確認，並記錄日期與方式。':!t.confirmedAt?'已送客戶，等客戶回覆。客戶確認或要求修改後，記錄結果。':'客戶已確認。發佈後記錄發佈日期與發佈連結。';
+    const btn=!t.sentAt?'<button class="btn primary" data-act="tsend">記錄：已送客戶確認</button>':!t.confirmedAt?'<button class="btn primary" data-act="tconfirm">記錄：客戶回覆</button>':'<button class="btn primary" data-act="tpublish">記錄：已發佈</button>';
+    action=`<div class="in"><div class="muted" style="margin-bottom:8px">${hint}</div>${t.sentAt||t.confirmedAt?`<dl class="kv" style="margin-bottom:10px">${t.sentAt?`<dt>送客戶確認</dt><dd>${esc(t.sentAt)}　${esc(t.sentVia||'')}${t.sentNote?'　'+esc(t.sentNote):''}</dd>`:''}${t.confirmedAt?`<dt>客戶確認</dt><dd>${esc(t.confirmedAt)}${t.confirmNote?'　'+esc(t.confirmNote):''}</dd>`:''}</dl>`:''}<div class="acts" style="justify-content:flex-start">${canWrite?btn:''}${isAdmin&&canWrite?'<button class="btn" data-act="trevoke">撤銷驗收</button>':''}</div></div>`;
+  }else if(st==='已驗收'){
+    action=`<div class="in"><div class="muted" style="margin-bottom:8px">已驗收通過。交給客戶後，記錄交付日與方式。</div><div class="acts" style="justify-content:flex-start">${canWrite?'<button class="btn primary" data-act="tdeliver">標示已交付客戶</button>':''}${isAdmin&&canWrite?'<button class="btn" data-act="trevoke">撤銷驗收</button>':''}</div></div>`;
+  }else if(st==='已交付'){
+    action=`<div class="in"><dl class="kv">${isBlog?`<dt>送客戶確認</dt><dd>${esc(t.sentAt||'—')}　${esc(t.sentVia||'')}</dd><dt>客戶確認</dt><dd>${esc(t.confirmedAt||'—')}${t.confirmNote?'　'+esc(t.confirmNote):''}</dd><dt>發佈日</dt><dd>${esc(t.deliveredAt||'')}</dd><dt>發佈連結</dt><dd>${pubL}</dd>`:`<dt>交付日</dt><dd>${esc(t.deliveredAt||'')}</dd><dt>方式</dt><dd>${esc(t.deliveredVia||'')}</dd>`}<dt>備註</dt><dd>${esc(t.deliveredNote||'—')}</dd></dl>${isAdmin&&canWrite?'<div style="margin-top:10px"><button class="btn" data-act="trevoke">撤銷驗收與交付</button></div>':''}</div>`;
+  }else{
+    action=`<div class="in">${miss.length?`<div class="infobox warn" style="margin-bottom:10px">送交前還需要：${miss.map(esc).join('、')}</div>`:''}${canWrite?`<button class="btn primary" data-act="tsubmit">送交驗收</button>`:''}</div>`;
+  }
+  const waits=taskList().filter(x=>x.state==='待驗收'&&x.id!==t.id).sort((x,y)=>(x.due||'').localeCompare(y.due||''));
+  const bar=(st==='待驗收'&&isAdmin&&canWrite)?`<div class="stickybar"><button class="btn primary" data-act="taccept">驗收通過</button><button class="btn bad" data-act="treject">退回</button><span class="grow"></span>${waits.length?`<button class="btn" data-act="tnext" data-id="${esc(waits[0].id)}">下一筆待驗收（${waits.length}）</button>`:'<span class="muted">沒有其他待驗收</span>'}</div>`:'';
+  const hist=(t.history||[]).map(h=>({at:h.at,text:h.text}));
+  if(a)hist.push({at:a.at,text:(a.result==='pass'?'驗收通過':'退回：'+(a.reason||''))});
+  hist.sort((x,y)=>y.at.localeCompare(x.at));
+  const histHTML=hist.length?`<ul class="tl">${hist.slice(0,30).map(h=>`<li><time>${esc(h.at.slice(5,16).replace('T',' '))}</time><span>${esc(h.text)}</span></li>`).join('')}</ul>`:'<div class="in muted">尚無紀錄。</div>';
+  layer.innerHTML=`<div class="shade" data-act="closePanel"></div><aside class="panel" role="dialog" aria-label="任務">
+   <div class="phead"><h2><span class="mono muted" style="font-size:13px">${esc(t.clientCode)}</span>　${esc(clientName(t.clientCode))}<span class="muted" style="font-weight:400">・${esc(t.title)}</span> ${pillState(st)}<span class="pill ${isMine(t)?'info':'mute'}" style="margin-left:6px">負責：${esc(ownerLabel(ownerOf(t)))}</span></h2>${isAdmin&&canWrite?'<button class="btn" data-act="tedit">編輯任務</button>':''}<button class="btn ghost" data-act="closePanel">關閉</button></div>
+   <div class="pbody">
+    ${st==='退回'?`<div class="note bad"><div><b>${t.revise?'客戶要求修改':'被退回'}</b>　${esc(t.revise?(t.reviseNote||''):(a&&a.reason||''))}<div class="muted">修改後再按「送交驗收」。</div></div></div>`:''}
+    ${isBlog?`<section class="sec"><header><h3>流程</h3></header><div class="in"><ol class="steps">${['撰寫','驗收','送客戶確認','客戶確認','發佈'].map((n,i)=>`<li class="${i<stepCur?'done':i===stepCur?'cur':''}">${n}</li>`).join('')}</ol></div></section>`:''}
+    ${late?`<div class="note warn"><div><b>已逾期 ${diffDays(todayStr(),t.due)} 天</b>　截止日 ${esc(t.due)}</div></div>`:''}
+    <section class="sec"><header><h3>數量</h3><span class="muted">期別 ${esc(t.period)}・截止 ${esc(t.due||'—')}</span></header><div class="in counter"><button class="btn" data-act="tcount" data-d="-1" ${dis} aria-label="減一">−</button><input type="number" id="t_done" value="${t.done||0}" min="0" ${dis} aria-label="已完成數量"><button class="btn" data-act="tcount" data-d="1" ${dis} aria-label="加一">＋</button><span class="muted">／ 目標 <b class="num">${t.target||0}</b> ${unit(t.kind)}</span></div></section>
+    <section class="sec"><header><h3>SOP 核對</h3><span class="muted">${chk.filter(Boolean).length}／${sop.length}</span></header><div class="in chks">${sopHTML||'<span class="muted">這個任務沒有 SOP 項目。</span>'}</div></section>
+    <section class="sec"><header><h3>交付內容連結</h3><span class="muted">${links.length} 條</span></header>${linksHTML}${addLink}</section>
+    <section class="sec"><header><h3>備註</h3></header><div class="in"><textarea id="t_note" ${dis} placeholder="給管理者的說明，例如只能完成部分的原因">${esc(t.note||'')}</textarea></div></section>
+    <section class="sec"><header><h3>驗收與交付</h3></header>${action}</section>
+    <section class="sec"><header><h3>紀錄</h3></header>${histHTML}</section>
+   </div>${bar}</aside>`;
+  const pn2=layer.querySelector('.panel');pn2.scrollTop=scroll;if(hadPanel)pn2.style.animation='none';
+}
+
+/* ---------- notifications ---------- */
+const NOTIFY_RULES=[
+ {id:'contract',label:'合約到期',desc:'進行中或暫停的客戶，合約在 N 天內到期或已過期',days:30,unit:'天內',admin:true,ch:['app','push']},
+ {id:'taskDue',label:'任務快到截止日',desc:'還沒送交驗收的任務，截止日在 N 天內',days:2,unit:'天內',admin:false,ch:['app','push']},
+ {id:'taskLate',label:'任務逾期',desc:'超過截止日仍沒交付客戶',days:null,admin:false,ch:['app','push']},
+ {id:'wait',label:'待驗收積壓',desc:'員工送交驗收後，超過 N 天你還沒處理',days:1,unit:'天',admin:true,ch:['app','push']},
+ {id:'rejected',label:'退回後沒重送',desc:'任務被退回超過 N 天，員工還沒重新送交',days:2,unit:'天',admin:false,ch:['app']},
+ {id:'blog',label:'部落文流程卡關',desc:'驗收後 N 天還沒送客戶、送出後 N 天客戶沒回覆、或客戶確認後 N 天還沒發佈',days:3,unit:'天',admin:false,ch:['app','push']},
+ {id:'bill',label:'帳款逾期',desc:'超過繳款日仍有未收餘額',days:null,admin:true,ch:['app','push']},
+ {id:'gen',label:'提醒產生下月任務',desc:'每月 N 日起，下個月的任務還沒產生就提醒',days:25,unit:'日起',admin:true,ch:['app','push']},
+ {id:'draft',label:'提醒產生月帳單草稿',desc:'每月 N 日起，下個月的帳單還沒建立就提醒（繳款日 1 日前 5 天）',days:26,unit:'日起',admin:true,ch:['app','push']}
+];
+const CH_TYPES=[['push','手機推播（Claude App）'],['line','LINE 官方帳號'],['email','Email'],['webhook','Slack／Discord／Webhook'],['other','其他']];
+function ruleCfg(def){const saved=(S.notify.rules||{})[def.id]||{};return {on:saved.on!==false,days:saved.days!=null?saved.days:def.days,ch:Array.isArray(saved.ch)?saved.ch:def.ch.slice()}}
+function computeAlerts(){
+  const out=[],today=todayStr(),tl=taskList();
+  const R={};NOTIFY_RULES.forEach(d=>{R[d.id]=ruleCfg(d)});
+  const on=id=>R[id].on&&R[id].ch.includes('app')&&(isAdmin||!NOTIFY_RULES.find(d=>d.id===id).admin);
+  if(on('contract'))Object.keys(S.clients).sort().forEach(code=>{
+    const i=info(code);
+    if(!(i.c.status==='進行中'||i.c.status==='暫停')||i.days==null||i.days>R.contract.days)return;
+    out.push({sev:i.days<0?'bad':'warn',title:clientName(code)+'・合約 '+(i.days<0?'已過期 '+(-i.days)+' 天':i.days+' 天後到期'),detail:(i.auto?'約定自動續約，請確認後按「續約」登記':'不自動續約，請決定續約或結案')+'（到期日 '+i.latestEnd+'）',act:{a:'open',code}});
+  });
+  tl.forEach(t=>{
+    const nm=clientName(t.clientCode)+'・'+t.title;
+    const base={a:'openTask',id:t.id};
+    if(t.late&&on('taskLate')&&t.state!=='待驗收'){out.push({sev:'bad',title:nm+'・逾期 '+diffDays(today,t.due)+' 天',detail:'狀態：'+t.state+'（截止 '+t.due+'）',act:base});return}
+    if(t.late&&on('taskLate')&&t.state==='待驗收'&&isAdmin){out.push({sev:'bad',title:nm+'・逾期未驗收',detail:'已送交但超過截止日 '+diffDays(today,t.due)+' 天',act:base});return}
+    if(!t.late&&['待處理','進行中','退回'].includes(t.state)&&on('taskDue')){const d=t.due?diffDays(t.due,today):-1;if(d>=0&&d<=R.taskDue.days)out.push({sev:'warn',title:nm+'・'+(d===0?'今天截止':d+' 天後截止'),detail:'目前 '+(t.done||0)+'／'+t.target+' '+unit(t.kind)+'，SOP '+(t.checked||[]).filter(Boolean).length+'／'+(t.sop||[]).length,act:base})}
+    if(t.state==='待驗收'&&on('wait')){
+      const h=(t.history||[]).filter(x=>x.text==='送交驗收').pop();
+      if(h&&(Date.now()-new Date(h.at).getTime())>=R.wait.days*864e5)out.push({sev:'warn',title:nm+'・等你驗收',detail:'送交於 '+h.at.slice(0,10),act:base});
+    }
+    if(t.kind==='月部落文'&&t.state==='已驗收'&&on('blog')){
+      const a=S.accept[t.id],N=R.blog.days*864e5,since=x=>Date.now()-new Date(x).getTime();
+      let msg=null;
+      if(!t.sentAt&&a&&since(a.at)>=N)msg='驗收後還沒送客戶確認（驗收於 '+a.at.slice(0,10)+'）';
+      else if(t.sentAt&&!t.confirmedAt&&since(t.sentAt)>=N)msg='送客戶確認後客戶還沒回覆（送出 '+t.sentAt+'）';
+      else if(t.confirmedAt&&!t.publishedAt&&since(t.confirmedAt)>=N)msg='客戶已確認但還沒發佈（確認 '+t.confirmedAt+'）';
+      if(msg)out.push({sev:'warn',title:nm+'・流程卡關',detail:msg,act:base});
+    }
+    if(t.state==='退回'&&on('rejected')){
+      const a=S.accept[t.id];const at=t.revise?t.reviseAt:(a&&a.at);
+      if(at&&(Date.now()-new Date(at).getTime())>=R.rejected.days*864e5)out.push({sev:'warn',title:nm+(t.revise?'・客戶要求修改後沒重送':'・退回後沒重送'),detail:(t.revise?'客戶要求：'+(t.reviseNote||''):'退回：'+((a&&a.reason)||''))+'（'+at.slice(0,10)+'）',act:base});
+    }
+  });
+  if(on('bill'))Object.entries(S.bills).forEach(([id,b])=>{const c=billCalc(b);if(c.bal>0&&b.due&&b.due<today)out.push({sev:'bad',title:clientName(b.clientCode)+'・帳款逾期 '+diffDays(today,b.due)+' 天',detail:b.period+' 未收 '+money(c.bal),act:{a:'goto',v:'bills'}})});
+  const dom=Number(today.slice(8,10)),next=shiftPeriod(curPeriod(),1);
+  if(on('gen')&&dom>=R.gen.days&&!Object.values(S.tasks).some(t=>t.period===next))out.push({sev:'warn',title:'該產生 '+next+' 月任務了',detail:'按「產生月任務」；合約已過期的客戶要先續約',act:{a:'goGen',p:next}});
+  if(on('draft')&&isAdmin&&dom>=R.draft.days&&!Object.values(S.bills).some(b=>b.period===next))out.push({sev:'warn',title:'該產生 '+next+' 月帳單草稿了',detail:'繳款日 '+next+'-01；到「帳款」按「產生月帳單草稿」',act:{a:'goto',v:'bills'}});
+  out.sort((x,y)=>(x.sev==='bad'?0:1)-(y.sev==='bad'?0:1));
+  return out;
+}
+function alertBtn(al){
+  const a=al.act;
+  if(a.a==='open')return `<button class="btn sm" data-act="open" data-code="${esc(a.code)}">查看</button>`;
+  if(a.a==='openTask')return `<button class="btn sm" data-act="openTask" data-id="${esc(a.id)}">查看</button>`;
+  if(a.a==='goGen')return `<button class="btn sm" data-act="goGen" data-p="${esc(a.p)}">前往</button>`;
+  return `<button class="btn sm" data-act="goto" data-v="${esc(a.v)}">前往</button>`;
+}
+function renderNotify(){
+  const al=computeAlerts();
+  const alHTML=al.length?al.map(x=>`<div class="item"><span class="pill ${x.sev}">${x.sev==='bad'?'緊急':'提醒'}</span><div class="main"><div class="title">${esc(x.title)}</div><div class="sub">${esc(x.detail)}</div></div>${alertBtn(x)}</div>`).join(''):'<div class="in muted">目前沒有需要通知的事項。</div>';
+  const chs=Object.entries(S.channels).map(([id,c])=>Object.assign({id},c));
+  const chName=id=>id==='app'?'應用內':((chs.find(c=>c.id===id)||{}).name||id);
+  const rulesHTML=NOTIFY_RULES.map(d=>{
+    const c=ruleCfg(d);
+    return `<div class="item"><div class="main"><div class="title">${esc(d.label)}<span class="pill ${c.on?'ok':'mute'}">${c.on?'啟用':'停用'}</span>${d.days!=null?`<span class="muted">${d.id==='gen'||d.id==='draft'?'每月 '+c.days+' 日起':c.days+' '+d.unit}</span>`:''}${d.admin?'':'<span class="pill info">員工也會看到</span>'}</div><div class="sub">${esc(d.desc.replace('N',d.days!=null?c.days:'N'))}</div><div class="chips" style="margin-top:4px">${c.ch.map(x=>`<span class="chip">${esc(chName(x))}</span>`).join('')||'<span class="muted">未選任何通知方式</span>'}</div></div>${canWrite&&isAdmin?`<button class="btn sm" data-act="editRule" data-id="${d.id}">設定</button>`:''}</div>`}).join('');
+  const chHTML=chs.length?chs.map(c=>{
+    const t=(CH_TYPES.find(x=>x[0]===c.type)||[0,'其他'])[1];
+    const live=false;
+    return `<div class="item"><div class="main"><div class="title">${esc(c.name||t)}<span class="pill ${c.enabled===false?'mute':'info'}">${esc(t)}</span><span class="pill warn">${c.type==='push'?'尚未啟用每日檢查':'待串接'}</span></div><div class="sub">${c.target?'收件：'+esc(c.target):'未填收件對象'}${c.note?'・'+esc(c.note):''}</div></div>${canWrite?`<button class="btn sm" data-act="editChannel" data-id="${esc(c.id)}">編輯</button>`:''}</div>`}).join(''):'<div class="in muted">還沒有通知方式。按右上「新增通知方式」。</div>';
+  $('#main').innerHTML=`<section class="sec"><header><h3>現在需要處理的通知</h3><span class="pill ${al.length?'warn':'mute'}">${al.length}</span></header>${alHTML}</section>
+  ${isAdmin?`<div class="note warn"><div><b>目前只有「應用內」會即時通知。</b>你打開這個頁面時，上面的清單就是依下方規則算出來的。<br>要在你沒開頁面時也收到推播、LINE 或 Email，需要一個定時執行的程式去檢查並發送，這部分還沒啟用：手機推播要建立「每日檢查」排程，LINE 與 Email 要在階段一的後端接上發送。下方的設定會先存起來，之後直接沿用。</div></div>
+  <section class="sec"><header><h3>通知規則</h3></header>${rulesHTML}</section>
+  <section class="sec"><header><h3>通知方式</h3>${canWrite?'<button class="btn sm" data-act="newChannel">＋ 新增通知方式</button>':''}</header>${chHTML}<div class="in muted" style="border-top:1px solid var(--line);font-size:12.5px">收件欄只填對象（例如 LINE 群組名稱、Email 地址）。請不要貼 token、密碼或含金鑰的網址；發送用的金鑰要放在後端環境設定，不放在這個頁面。</div></section>`:`<div class="note"><div>這裡只顯示和你工作有關的提醒（任務截止、逾期、被退回）。</div></div>`}`;
+}
+function editRuleForm(id){
+  const d=NOTIFY_RULES.find(x=>x.id===id),c=ruleCfg(d);
+  const chs=Object.entries(S.channels).map(([cid,x])=>[cid,x.name||cid]);
+  openForm({title:'通知規則：'+d.label,fields:[
+    {k:'i',type:'info',html:esc(d.desc)},
+    {k:'on',label:'啟用',type:'bool'},
+    d.days!=null?{k:'days',label:d.unit==='日起'?'每月幾日起提醒':'天數門檻（'+d.unit+'）',type:'number',req:true}:null,
+    {k:'ch',label:'通知方式',type:'checks',opts:[['app','應用內（通知頁）'],...chs]}],
+    values:{on:c.on,days:c.days,ch:c.ch},
+    onSubmit:v=>{const cfg={on:v.on!==false,ch:v.ch};if(d.days!=null)cfg.days=v.days;return setDoc('notify','rules',Object.assign({},S.notify.rules||{},{[id]:cfg}))}});
+}
+function channelForm(id){
+  const x=id?S.channels[id]:{type:'line',enabled:true};
+  openForm({title:id?'編輯通知方式':'新增通知方式',fields:[
+    {k:'type',label:'類型',type:'select',opts:CH_TYPES,req:true,half:true},{k:'name',label:'名稱',req:true,half:true,ph:'例如：我的 LINE'},
+    {k:'target',label:'收件對象',ph:'例如：Jimmy 的 LINE、jimmy@xinhow.com.tw',hint:'只填對象，不要貼 token 或密碼。'},
+    {k:'note',label:'備註',type:'textarea'},{k:'enabled',label:'啟用',type:'bool'}],values:x,
+    dangerLabel:id?'刪除通知方式':null,onDanger:()=>del('channels',id),
+    onSubmit:v=>setDoc('channels',id||newId('channels'),Object.assign({},x,v))});
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',async e=>{
+  const el=e.target.closest('[data-act]');if(!el)return;
+  const a=el.dataset.act,code=el.dataset.code,id=el.dataset.id;
+  if(a==='nav'){view=el.dataset.v;openCode=null;openTask=null;queue();return}
+  if(a==='tab'){tab=el.dataset.v;query='';queue();return}
+  if(a==='open'){openCode=code;openTask=null;queue();return}
+  if(a==='closePanel'){openCode=null;openTask=null;queue();return}
+  if(a==='openTask'){openTask=id;openCode=null;queue();return}
+  if(a==='pshift'){period=shiftPeriod(period,Number(el.dataset.d));queue();return}
+  if(a==='pnow'){period=curPeriod();queue();return}
+  if(a==='goto'){view=el.dataset.v;openCode=null;openTask=null;queue();return}
+  if(a==='goGen'){view='board';boardAll=false;period=el.dataset.p;openCode=null;openTask=null;queue();if(canWrite&&isAdmin)setTimeout(openGenerate,50);return}
+  if(a==='bfilter'){boardFilter=el.dataset.v;queue();return}
+  if(a==='ofilter'){ownerFilter=el.dataset.v;queue();return}
+  if(a==='bperiod'){boardAll=el.dataset.v==='all';queue();return}
+  if(a==='jumpBoard'){const m={'待處理':'todo','進行中':'todo','退回':'todo','待驗收':'wait','已驗收':'acc','已交付':'done'};view='board';boardAll=false;boardFilter=m[el.dataset.v];queue();return}
+  if(a==='jumpOld'){view='board';boardAll=true;boardFilter='all';queue();return}
+  if(a==='openBoardClient'){view='board';boardAll=false;boardFilter='all';queue();return}
+  if(a==='dismissPw'){ls.set('pwBannerOff','1');queue();return}
+  if(a==='billFilter'){billFilter=el.dataset.v;queue();return}
+  if(!canWrite)return;
+  if(a==='newClient')newClient();
+  else if(a==='editClient')editClient(code);
+  else if(a==='delClient')delClient(code);
+  else if(a==='renew')openRenew(code,id||null);
+  else if(a==='close')openClose(code);
+  else if(a==='reopen')openReopen(code);
+  else if(a==='activate'){await run(async()=>{await upd('clients',code,{status:'進行中'});await addLog(code,'設為進行中')},'已設為進行中');tab='active';queue()}
+  else if(a==='newContact')contactForm(code);else if(a==='editContact')contactForm(code,id);
+  else if(a==='newAsset')assetForm(code);else if(a==='editAsset')assetForm(code,id);
+  else if(a==='newContract')contractForm(code);else if(a==='editContract')contractForm(code,id);
+  else if(a==='newPlan')planForm(code);else if(a==='editPlan')planForm(code,id);
+  else if(a==='newService')serviceForm(code);else if(a==='editService')serviceForm(code,id);
+  else if(a==='resolveConfirm'){const c=S.clients[code];const arr=(c.confirm||[]).filter((_,n)=>n!==Number(el.dataset.n));await run(()=>upd('clients',code,{confirm:arr}),'已標示為確認')}
+  else if(a==='genTasks')openGenerate();
+  else if(a==='taskNames')openTaskNames();
+  else if(a==='newTask')newTaskForm();
+  else if(a==='tedit')editTaskForm(openTask);
+  else if(a==='tcount'){const t=S.tasks[openTask];await run(()=>tUpd(openTask,{done:Math.max(0,(t.done||0)+Number(el.dataset.d))}))}
+  else if(a==='taddlink'){
+    const title=$('#tl_title').value.trim(),url=$('#tl_url').value.trim();
+    if(!safeUrl(url)){toast('請貼上 http 或 https 開頭的完整網址');return}
+    const t=S.tasks[openTask];await run(()=>tUpd(openTask,{links:(t.links||[]).concat({title:title||('連結 '+((t.links||[]).length+1)),url})}));
+  }
+  else if(a==='tdellink'){const t=S.tasks[openTask];await run(()=>tUpd(openTask,{links:(t.links||[]).filter((_,n)=>n!==Number(el.dataset.i))}))}
+  else if(a==='tsubmit')trySubmit(openTask);
+  else if(a==='taccept'){if(!isAdmin)return;const t=S.tasks[openTask];await run(()=>setDoc('accept',openTask,{result:'pass',forSub:t.subN,at:new Date().toISOString()}),'已驗收通過')}
+  else if(a==='treject'){if(isAdmin)openReject(openTask)}
+  else if(a==='tnext'){openTask=el.dataset.id;queue()}
+  else if(a==='tdeliver')openDeliver(openTask);
+  else if(a==='tsend')openSend(openTask);
+  else if(a==='tconfirm')openConfirm(openTask);
+  else if(a==='tpublish')openPublish(openTask);
+  else if(a==='trevoke'){if(!isAdmin)return;await run(async()=>{await del('accept',openTask);await tUpd(openTask,{deliveredAt:null,deliveredVia:null,deliveredNote:null,sentAt:null,sentVia:null,sentNote:null,confirmedAt:null,confirmNote:null,publishedAt:null,pubLinks:null},'管理者撤銷驗收')},'已撤銷')}
+  else if(a==='editSop')sopForm(id);
+  else if(a==='newSop')sopForm(null);
+  else if(a==='editRates')openRates();
+  else if(a==='editRule')editRuleForm(id);
+  else if(a==='newChannel')channelForm();
+  else if(a==='editChannel')channelForm(id);
+  else if(a==='newTodo')todoForm();else if(a==='editTodo')todoForm(id);
+  else if(a==='newBill')billForm();else if(a==='editBill')billForm(id);
+  else if(a==='draftBills')draftBills();
+  else if(a==='payBill'){const b=S.bills[id];if(!b)return;const bc=billCalc(b);
+    openForm({title:'收款',submit:'登記收款',fields:[{k:'i',type:'info',html:`${esc(b.clientCode)} ${esc(b.period)}　含稅 ${money(bc.total)}，已收 ${money(b.received||0)}`},{k:'received',label:'累計已收金額（含稅）',type:'money',req:true},{k:'receivedAt',label:'收款日',type:'date'}],values:{received:bc.total,receivedAt:todayStr()},okMsg:'已登記收款',onSubmit:v=>upd('bills',id,{received:v.received,receivedAt:v.receivedAt})})}
+});
+document.addEventListener('change',async e=>{
+  const el=e.target.closest('[data-act="toggleTodo"]');
+  if(el&&canWrite){await run(()=>upd('todos',el.dataset.id,{done:el.checked}))}
+  const ck=e.target.closest('[data-act="tcheck"]');
+  if(ck&&canWrite&&openTask){const t=S.tasks[openTask];const arr=(t.checked||(t.sop||[]).map(()=>false)).slice();arr[Number(ck.dataset.i)]=ck.checked;await run(()=>tUpd(openTask,{checked:arr}))}
+  if(e.target.id==='t_done'&&canWrite&&openTask){await run(()=>tUpd(openTask,{done:Math.max(0,Number(e.target.value)||0)}))}
+  if(e.target.id==='t_note'&&canWrite&&openTask){await run(()=>tUpd(openTask,{note:e.target.value.trim()||null}))}
+});
+document.addEventListener('focusout',e=>{if(e.target.closest&&e.target.closest('#layer .panel'))setTimeout(queue,300)});
+document.addEventListener('input',e=>{if(e.target.id==='q'){query=e.target.value;renderClients()}
+  if(e.target.id==='bq'){boardQuery=e.target.value;renderBoard(view==='mine');const el=$('#bq');if(el){el.focus();el.setSelectionRange(boardQuery.length,boardQuery.length)}}});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){if($('#modalroot').firstChild)closeModal();else if(openCode||openTask){openCode=null;openTask=null;queue()}}
+  if((e.key==='Enter'||e.key===' ')&&e.target.classList&&e.target.classList.contains('crow')){e.preventDefault();openCode=e.target.dataset.code;queue()}
+  if((e.key==='Enter'||e.key===' ')&&e.target.dataset&&e.target.dataset.act==='openTask'&&e.target.getAttribute('role')==='button'){e.preventDefault();openTask=e.target.dataset.id;openCode=null;queue()}
+});
+
+/* ---------- boot ---------- */
+async function boot(){
+  const cl=window.claude;
+  if(!cl||!cl.use){$('#main').innerHTML='<div class="empty">請在 claude.ai 裡開啟這個頁面。</div>';return}
+  db=await cl.use('db');
+  const user=await cl.use('user');
+  if(!db){$('#main').innerHTML='<div class="empty">需要登入才能讀取客戶資料。</div>';return}
+  try{isAdmin=user?await user.canEdit():false}catch(e){isAdmin=false}
+  if(!isAdmin)view='mine';
+  try{const w=user?await user.can('data.write'):null;canWrite=w!==false}catch(e){}
+  const timer=setTimeout(()=>{if(!loaded.clients)toast('連線較慢，資料可能還沒到齊')},10000);
+  COLS.forEach(c=>{
+    if((c==='fees'||c==='bills'||c==='settings'||c==='channels'||c==='plans')&&!isAdmin){loaded[c]=true;return}
+    db.collection(c).onSnapshot(snap=>{
+      const o={};snap.docs.forEach(d=>{o[d.id]=d.data()});
+      S[c]=o;loaded[c]=true;if(c==='clients')clearTimeout(timer);queue();
+    },err=>{loaded[c]=true;if(err&&err.code!=='revoked')toast('讀取 '+c+' 失敗：'+err.message);queue()});
+  });
+  queue();
+}
+boot();
+})();
+</script>
+
+</body></html>
