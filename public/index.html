@@ -409,7 +409,7 @@ function renderPanel(){
   const plans=rows('plans',c.code).sort((a,b)=>PRESETS.findIndex(x=>x.id===a.preset)-PRESETS.findIndex(x=>x.id===b.preset));
   const plansHTML=plans.length?plans.map(q=>{
     const pr=PRESET[q.preset]||{label:q.preset,freq:'月'};
-    return `<div class="item"><div class="main"><div class="title">${esc(pr.label)}${q.active===false?'<span class="pill mute">暫停</span>':''}</div><div class="sub">${pr.freq==='週'?'每週 '+esc(q.count)+' 篇':'每月 '+esc(q.count)+' '+(pr.kind==='月報告'?'份':'篇')}・負責 ${esc(ownerLabel(q.assignee||'Mio'))}${q.dueDay&&pr.freq==='月'?'・每月 '+esc(q.dueDay)+' 號截止':''}${q.rewrite?'・批量改寫 '+esc(q.rewrite)+' 篇（我）':''}${q.start||q.end?'・'+esc(q.start||'—')+' ～ '+esc(q.end||'—'):''}</div>${q.note?`<div class="sub">${esc(q.note)}</div>`:''}</div>${edit('editPlan',q.id)}</div>`}).join(''):'<div class="in muted">還沒有設定。按「＋ 新增設定」選這個客戶要做的任務（每週 SEO／GEO 文章、每月 SEO／GEO 報告、每月部落格文章）；沒有設定，就不會替這個客戶產生任務。</div>';
+    return `<div class="item"><div class="main"><div class="title">${esc(pr.label)}${q.active===false?'<span class="pill mute">暫停</span>':''}</div><div class="sub">${pr.freq==='週'?'每週 '+esc(q.count)+' 篇':'每月 '+esc(q.count)+' '+(pr.kind==='月報告'?'份':'篇')}・負責 ${esc(ownerLabel(q.assignee||defaultAssignee()))}${q.dueDay&&pr.freq==='月'?'・每月 '+esc(q.dueDay)+' 號截止':''}${q.rewrite?'・批量改寫 '+esc(q.rewrite)+' 篇（我）':''}${q.start||q.end?'・'+esc(q.start||'—')+' ～ '+esc(q.end||'—'):''}</div>${q.note?`<div class="sub">${esc(q.note)}</div>`:''}</div>${edit('editPlan',q.id)}</div>`}).join(''):'<div class="in muted">還沒有設定。按「＋ 新增設定」選這個客戶要做的任務（每週 SEO／GEO 文章、每月 SEO／GEO 報告、每月部落格文章）；沒有設定，就不會替這個客戶產生任務。</div>';
   const contactsHTML=contacts.length?contacts.map(x=>`<div class="item"><div class="main"><div class="title">${esc(x.name)}${x.primary?'<span class="pill info">主要窗口</span>':''}</div><div class="sub">${[x.phone,x.email,x.line?'LINE '+x.line:''].filter(Boolean).map(esc).join('・')||'未填聯絡方式'}</div></div>${edit('editContact',x.id)}</div>`).join(''):'<div class="in muted">尚無窗口</div>';
   const assetsHTML=assets.length?assets.map(x=>`<div class="item"><div class="main"><div class="title">${esc(x.type)}<span class="pill ${x.status==='已授權'?'ok':x.status==='待授權'?'warn':'mute'}">${esc(x.status||'未設定')}</span></div><div class="sub">${[x.owner&&'擁有者 '+x.owner,x.level&&'我方權限 '+x.level,x.grantedAt&&'授權 '+x.grantedAt].filter(Boolean).map(esc).join('・')}</div>${x.note?`<div class="sub">${esc(x.note)}</div>`:''}</div>${edit('editAsset',x.id)}</div>`).join(''):'<div class="in muted">尚無資產權限紀錄</div>';
   const logHTML=logs.length?`<ul class="tl">${logs.map(l=>`<li><time>${esc(l.at.slice(0,10))}</time><span><b>${esc(l.action)}</b>${l.note?'　'+esc(l.note):''}</span></li>`).join('')}</ul>`:'<div class="in muted">尚無紀錄。續約、結案與重新開啟都會記在這裡。</div>';
@@ -721,9 +721,18 @@ const DEFAULT_SOP={
   '其他':['依合約內容完成交付','成果連結已記錄在「交付內容連結」']
 };
 let period=todayStr().slice(0,7),boardAll=false,boardFilter=null,openTask=null,ownerFilter='all',boardQuery='';
-const ownerOf=t=>t.assignee||'Mio';
-const isMine=t=>ownerOf(t)===(isAdmin?'Jimmy':'Mio');
-const ownerLabel=o=>o==='Jimmy'?(isAdmin?'我':'Jimmy'):o==='Mio'?(isAdmin?'Mio':'我'):o;
+/* 帳號：Railway 版由伺服器提供 window.__me / window.__users；Artifact 版沒有，退回 jimmy(管理者)/mio(員工) */
+const USERS=()=>(window.__users&&window.__users.length)?window.__users:[{name:'jimmy',display:'楊濬騰',role:'admin'},{name:'mio',display:'Mio',role:'staff'}];
+const meName=()=>(window.__me&&window.__me.name)||(isAdmin?'jimmy':'mio');
+const lc=o=>String(o||'').toLowerCase();
+const ownerOf=t=>lc(t.assignee)||'mio';
+const isMine=t=>ownerOf(t)===meName();
+const ownerLabel=o=>{o=lc(o);if(o===meName())return '我';const u=USERS().find(x=>x.name===o);return u?u.display:o};
+const activeUsers=()=>USERS().filter(u=>!u.disabled);
+const defaultAssignee=()=>{const u=activeUsers().find(x=>x.role==='staff');return u?u.name:meName()};
+const rewriteAssignee=()=>{const u=activeUsers().find(x=>x.role==='admin');return u?u.name:meName()};
+const isAdminUser=o=>{const u=USERS().find(x=>x.name===lc(o));return !!u&&u.role==='admin'};
+const assigneeOpts=cur=>{const o=activeUsers().map(u=>[u.name,u.name===meName()?u.display+'（我）':u.display]);const c=lc(cur);if(c&&!o.some(x=>x[0]===c))o.push([c,ownerLabel(c)+'（已停用）']);return o};
 const curPeriod=()=>todayStr().slice(0,7);
 const shiftPeriod=(p,n)=>{const [y,m]=p.split('-').map(Number);const d=new Date(Date.UTC(y,m-1+n,1));return d.getUTCFullYear()+'-'+p2(d.getUTCMonth()+1)};
 const lastDayOf=p=>{const [y,m]=p.split('-').map(Number);return new Date(Date.UTC(y,m,0)).getUTCDate()};
@@ -770,7 +779,7 @@ function genPlan(p){
       if(!pl.start&&!pl.end&&!cov){skipped.add(code);return}
       const sop=sopFor(pr.svc,pr.kind);
       const due=pl.dueDay?p+'-'+p2(Math.min(pl.dueDay,lastDayOf(p))):dueFor(code,p);
-      const fin=o=>Object.assign({assignee:pl.assignee||'Mio',clientCode:code,planId:pl.id,serviceId:null,period:p,kind:pr.kind,done:0,rate:rateFor(pr.kind),links:[],note:null,submitted:false,subN:0,history:[],sop:sop.slice(),checked:sop.map(()=>false)},o);
+      const fin=o=>Object.assign({assignee:lc(pl.assignee)||defaultAssignee(),clientCode:code,planId:pl.id,serviceId:null,period:p,kind:pr.kind,done:0,rate:rateFor(pr.kind),links:[],note:null,submitted:false,subN:0,history:[],sop:sop.slice(),checked:sop.map(()=>false)},o);
       if(pr.kind==='週文章'){
         fridaysOf(p).forEach(fr=>{
           const mon=addDays(fr,-4);
@@ -781,7 +790,7 @@ function genPlan(p){
         mk(`${pl.id}_${p}`,fin({title:`${pr.svc}・${pr.kind}`,target:pl.count,due}));
         if(pr.id==='blog'&&pl.rewrite>0){
           const rs=sopFor(pr.svc,'批量改寫');
-          mk(`${pl.id}_${p}_批量改寫`,{clientCode:code,planId:pl.id,serviceId:null,period:p,kind:'批量改寫',title:`${pr.svc}・批量改寫`,target:pl.rewrite,due,assignee:'Jimmy',done:0,rate:null,links:[],note:null,submitted:false,subN:0,history:[],sop:rs.slice(),checked:rs.map(()=>false)});
+          mk(`${pl.id}_${p}_批量改寫`,{clientCode:code,planId:pl.id,serviceId:null,period:p,kind:'批量改寫',title:`${pr.svc}・批量改寫`,target:pl.rewrite,due,assignee:rewriteAssignee(),done:0,rate:null,links:[],note:null,submitted:false,subN:0,history:[],sop:rs.slice(),checked:rs.map(()=>false)});
         }
       }
     });
@@ -789,7 +798,7 @@ function genPlan(p){
   return {create,skipped:[...skipped]};
 }
 function planForm(code,id){
-  const x=id?S.plans[id]:{assignee:'Mio',active:true};
+  const x=id?Object.assign({},S.plans[id],{assignee:lc(S.plans[id].assignee)||defaultAssignee()}):{assignee:defaultAssignee(),active:true};
   const used=new Set(rows('plans',code).map(q=>q.preset));
   const avail=PRESETS.filter(q=>!used.has(q.id));
   if(!id&&!avail.length){toast('五種任務都已設定過了');return}
@@ -797,7 +806,7 @@ function planForm(code,id){
   openForm({title:id?`編輯任務設定：${pr?pr.label:''}`:`新增任務設定　${clientName(code)}`,fields:[
     id?{k:'i',type:'info',html:`<b>${esc(pr?pr.label:x.preset)}</b>（不能改類型；要換請刪除再新增）`}:{k:'preset',label:'任務類型',type:'select',opts:avail.map(q=>[q.id,q.label]),req:true},
     {k:'count',label:'數量',type:'number',req:true,half:true,hint:'每週文章＝每週篇數；報告、部落文＝每月的量'},
-    {k:'assignee',label:'負責人',type:'select',opts:[['Mio','Mio'],['Jimmy','我（楊濬騰）']],half:true},
+    {k:'assignee',label:'負責人',type:'select',opts:assigneeOpts(x&&x.assignee),half:true},
     {k:'dueDay',label:'每月截止日（幾號）',type:'number',half:true,hint:'週文章固定每週五；空白＝客戶設定或當月最後一個週五'},
     {k:'rewrite',label:'批量改寫篇數',type:'number',half:true,hint:'只有部落格文章用；由我製作並發佈，會另產生一張我的任務'},
     {k:'start',label:'起算日',type:'date',half:true,hint:'空白＝依合約期間'},{k:'end',label:'結束日',type:'date',half:true},
@@ -842,10 +851,10 @@ function newTaskForm(){
     ...(taskNames().length?[{k:'titlePick',label:'任務名稱',type:'select',opts:[['','請選擇已存的名稱'],...taskNames().map(x=>[x.name,x.name]),['__new','＋ 新名稱…']],req:true}]:[]),
     {k:'title',label:taskNames().length?'新名稱':'任務名稱',req:!taskNames().length,ph:'例如：短影音拍攝剪輯',hint:'第一次建立後會自動存起來，下次直接點選。'},
     {k:'kind',label:'類型',type:'select',opts:['週文章','月報告','月部落文','批量改寫','其他'],half:true},{k:'target',label:'目標數量',type:'number',req:true,half:true},
-    {k:'assignee',label:'負責人',type:'select',opts:[['Mio','Mio'],['Jimmy','我（楊濬騰）']],half:true},
+    {k:'assignee',label:'負責人',type:'select',opts:assigneeOpts(),half:true},
     {k:'period',label:'期別 (YYYY-MM)',req:true,half:true},{k:'due',label:'截止日',type:'date',half:true,hint:'空白＝當月最後一個週五'},
     {k:'rate',label:'單價（員工每篇／份，元）',type:'money',hint:'空白＝依類型的預設單價；只有管理者看得到'}],
-    values:{kind:'其他',target:1,period:period,assignee:'Mio'},
+    values:{kind:'其他',target:1,period:period,assignee:defaultAssignee()},
     validate:v=>{
       if(!/^\d{4}-\d{2}$/.test(v.period||''))return '期別格式為 YYYY-MM';
       if(v.titlePick&&v.titlePick!=='__new')v.title=v.titlePick;
@@ -855,7 +864,7 @@ function newTaskForm(){
       await saveTaskName(v);
       const sop=sopFor('default',v.kind);
       const id=newId('tasks');
-      await setDoc('tasks',id,{assignee:v.assignee||'Mio',clientCode:v.clientCode,serviceId:null,period:v.period,kind:v.kind,title:v.title,target:v.target,done:0,due:v.due||dueFor(v.clientCode,v.period),rate:v.rate!=null?v.rate:rateFor(v.kind),sop:sop.slice(),checked:sop.map(()=>false),links:[],note:null,submitted:false,subN:0,history:[]});
+      await setDoc('tasks',id,{assignee:lc(v.assignee)||defaultAssignee(),clientCode:v.clientCode,serviceId:null,period:v.period,kind:v.kind,title:v.title,target:v.target,done:0,due:v.due||dueFor(v.clientCode,v.period),rate:v.rate!=null?v.rate:rateFor(v.kind),sop:sop.slice(),checked:sop.map(()=>false),links:[],note:null,submitted:false,subN:0,history:[]});
     }});
   const pk=$('#f_titlePick');
   if(pk){
@@ -872,7 +881,7 @@ function editTaskForm(id){
   const t=S.tasks[id];
   openForm({title:'編輯任務',fields:[
     {k:'title',label:'任務名稱',req:true},{k:'target',label:'目標數量',type:'number',req:true,half:true},{k:'due',label:'截止日',type:'date',half:true},
-    {k:'assignee',label:'負責人',type:'select',opts:[['Mio','Mio'],['Jimmy','我（楊濬騰）']]},
+    {k:'assignee',label:'負責人',type:'select',opts:assigneeOpts(ownerOf(t))},
     {k:'rate',label:'單價（員工每篇／份，元）',type:'money',hint:'空白＝不計成本'}],values:Object.assign({},t,{assignee:ownerOf(t)}),
     dangerLabel:'刪除任務',onDanger:async()=>{await del('tasks',id);await del('accept',id).catch(()=>{});openTask=null;queue()},
     onSubmit:async v=>{await upd('tasks',id,v);await saveTaskName(Object.assign({kind:t.kind},v))}});
@@ -964,7 +973,7 @@ function renderDash(){
   const late=ts.filter(t=>t.late).length;
   const carry=all.filter(t=>t.period<period&&t.state!=='已交付').length;
   let cost=0,costAll=0,noRate=0;
-  ts.forEach(t=>{if(ownerOf(t)==='Jimmy')return;if(t.rate==null){noRate++;return}costAll+=(t.target||0)*t.rate;if(accepted(t))cost+=(t.done||0)*t.rate});
+  ts.forEach(t=>{if(isAdminUser(ownerOf(t)))return;if(t.rate==null){noRate++;return}costAll+=(t.target||0)*t.rate;if(accepted(t))cost+=(t.done||0)*t.rate});
   const waiting=ts.filter(t=>t.state==='待驗收'),todo=ts.filter(t=>t.state==='退回'||(t.late&&t.state!=='待驗收'));
   const clients=[...new Set(ts.map(t=>t.clientCode))].sort();
   const crow=code=>{
@@ -1009,7 +1018,7 @@ function renderBoard(mine){
       ${t.state==='已交付'?`<div class="sub muted">${esc(t.deliveredAt||'')}<br>${esc(t.deliveredVia||'')}</div>`:'<div></div>'}</div>`}).join('');
   $('#main').innerHTML=`<div class="tools">${boardAll?'<b>所有期別未交付</b><button class="btn sm ghost" data-act="bperiod" data-v="cur">回到期別檢視</button>':periodBar()}<span class="grow"></span>${boardAll?'':'<button class="btn sm" data-act="bperiod" data-v="all">看所有往期未交付</button>'}${canWrite&&isAdmin?'<button class="btn ghost" data-act="taskNames">任務名稱</button><button class="btn" data-act="newTask">＋ 新增任務</button><button class="btn primary" data-act="genTasks">產生月任務</button>':''}</div>
   ${mine?`<div class="sumline"><span><b>${base.filter(t=>['待處理','進行中'].includes(t.state)).length}</b>待我完成</span><span><b>${base.filter(t=>t.state==='退回').length}</b>退回要修改</span><span><b>${base.filter(t=>t.state==='待驗收').length}</b>等驗收</span><span><b>${base.filter(t=>t.state==='已驗收'||t.state==='已交付').length}／${base.length}</b>已完成</span><span><b style="color:${base.some(t=>t.late)?'var(--bad)':'inherit'}">${base.filter(t=>t.late).length}</b>逾期</span></div>`:''}
-  <div class="tools"><input type="search" id="bq" placeholder="搜尋客戶或任務" value="${esc(boardQuery)}" aria-label="搜尋任務" style="max-width:200px"><div class="tabs">${tabs}</div>${mine?'':`<span class="grow"></span><div class="tabs">${[['all','全部負責人'],['Jimmy',isAdmin?'我的':'Jimmy'],['Mio',isAdmin?'Mio':'我的']].map(([k,n])=>`<button data-act="ofilter" data-v="${k}" aria-pressed="${ownerFilter===k}">${n}</button>`).join('')}</div>`}</div>
+  <div class="tools"><input type="search" id="bq" placeholder="搜尋客戶或任務" value="${esc(boardQuery)}" aria-label="搜尋任務" style="max-width:200px"><div class="tabs">${tabs}</div>${mine?'':`<span class="grow"></span><div class="tabs">${[['all','全部負責人']].concat(activeUsers().map(u=>[u.name,u.name===meName()?'我的':u.display])).map(([k,n])=>`<button data-act="ofilter" data-v="${k}" aria-pressed="${ownerFilter===k}">${n}</button>`).join('')}</div>`}</div>
   <div class="list">${list.length?rowsHTML:`<div class="empty">${base.length?'這個分類沒有任務。':(mine?'這個期別沒有指派給你的任務。':'這個期別還沒有任務。'+(isAdmin?'按「產生月任務」建立。':''))}</div>`}</div>`;
 }
 function renderSop(){

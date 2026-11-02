@@ -1,6 +1,15 @@
 /* 讓原本為 claude.ai 寫的頁面，改用自己的伺服器資料庫與登入。實作頁面用到的 db / user 介面。 */
 (function () {
-  const meP = fetch('/api/me', { credentials: 'same-origin' }).then(r => { if (r.status === 401) { location.href = '/login'; return new Promise(() => {}); } return r.json(); });
+  const toLogin = () => { location.href = '/login'; return new Promise(() => {}); };
+  // 先取得登入者與帳號清單，頁面啟動前 window.__me / window.__users 就已就緒
+  const meP = fetch('/api/me', { credentials: 'same-origin' }).then(async r => {
+    if (r.status === 401) return toLogin();
+    const me = await r.json();
+    if (me.mustChange) { location.href = '/change-password'; return new Promise(() => {}); }
+    window.__me = me;
+    try { const u = await fetch('/api/users/public', { credentials: 'same-origin' }); if (u.ok) window.__users = await u.json(); } catch (e) {}
+    return me;
+  });
   const J = { 'Content-Type': 'application/json' };
   async function api(method, url, body) {
     const r = await fetch(url, { method, headers: body !== undefined ? J : undefined, body: body !== undefined ? JSON.stringify(body) : undefined, credentials: 'same-origin' });
@@ -55,9 +64,13 @@
   document.addEventListener('DOMContentLoaded', async () => {
     const me = await meP, w = document.querySelector('.top .wrap');
     if (!w) return;
-    const b = document.createElement('button');
-    b.className = 'btn sm'; b.style.cssText = 'margin-left:auto;margin-bottom:10px'; b.textContent = '登出（' + me.name + '）';
-    b.onclick = () => window.__logout(); w.appendChild(b);
+    const box = document.createElement('div');
+    box.style.cssText = 'margin-left:auto;margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center';
+    const add = (t, fn) => { const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = t; b.onclick = fn; box.appendChild(b); };
+    if (me.role === 'admin') add('帳號管理', () => { location.href = '/admin'; });
+    add('改密碼', () => { location.href = '/change-password'; });
+    add('登出（' + me.display + '）', () => window.__logout());
+    w.appendChild(box);
   });
   window.__logout = async () => { await api('POST', '/api/logout', {}); location.href = '/login'; };
 })();
