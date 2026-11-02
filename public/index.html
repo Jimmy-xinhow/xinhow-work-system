@@ -409,10 +409,11 @@ function renderPanel(){
       <div class="sub">${s.articles!=null?'每月文章 '+esc(s.articles)+' 篇・':''}${s.reports!=null?'每月報告 '+esc(s.reports)+' 份・':''}${esc(s.start||'—')} ～ ${esc(s.end||'—')}${s.contractNo?'・合約 '+esc(s.contractNo):''}</div>
       ${s.desc?`<div class="sub">${esc(s.desc)}</div>`:''}</div>
       ${isAdmin?`<div class="num" style="text-align:right">${f&&f.amount!=null?money(f.amount):'<span class="muted">未填</span>'}${s.feeDerived?'<div class="warnmark">含稅換算</div>':''}</div>`:''}${edit('editService',s.id)}</div>`}).join(''):'<div class="in muted">尚無服務項目</div>';
-  const plans=rows('plans',c.code).sort((a,b)=>PRESETS.findIndex(x=>x.id===a.preset)-PRESETS.findIndex(x=>x.id===b.preset));
+  const pidx=q=>{const i=PRESETS.findIndex(x=>x.id===q.preset);return i<0?99:i};
+  const plans=rows('plans',c.code).sort((a,b)=>pidx(a)-pidx(b)||String(a.label||'').localeCompare(String(b.label||''),'zh-Hant'));
   const plansHTML=plans.length?plans.map(q=>{
-    const pr=PRESET[q.preset]||{label:q.preset,freq:'月'};
-    return `<div class="item"><div class="main"><div class="title">${esc(pr.label)}${q.active===false?'<span class="pill mute">暫停</span>':''}</div><div class="sub">${pr.freq==='週'?'每週 '+esc(q.count)+' 篇':'每月 '+esc(q.count)+' '+(pr.kind==='月報告'?'份':'篇')}・負責 ${esc(ownerLabel(q.assignee||defaultAssignee()))}${q.dueDay&&pr.freq==='月'?'・每月 '+esc(q.dueDay)+' 號截止':''}${q.rewrite?'・批量改寫 '+esc(q.rewrite)+' 篇（我）':''}${q.start||q.end?'・'+esc(q.start||'—')+' ～ '+esc(q.end||'—'):''}</div>${q.note?`<div class="sub">${esc(q.note)}</div>`:''}</div>${edit('editPlan',q.id)}</div>`}).join(''):'<div class="in muted">還沒有設定。按「＋ 新增設定」選這個客戶要做的任務（每週 SEO／GEO 文章、每月 SEO／GEO 報告、每月部落格文章）；沒有設定，就不會替這個客戶產生任務。</div>';
+    const sp=planSpec(q),wk=isWeekly(sp.freq);
+    return `<div class="item"><div class="main"><div class="title">${esc(sp.label)}${sp.custom?'<span class="pill info">自訂</span>':''}${q.active===false?'<span class="pill mute">暫停</span>':''}</div><div class="sub">${esc(FREQ_NAME[sp.freq])} ${esc(q.count)} ${esc(unit(sp.kind))}・負責 ${esc(ownerLabel(q.assignee||defaultAssignee()))}・${wk?esc(WD_NAME[q.weekday||5])+'截止':(q.dueDay?'每期 '+esc(q.dueDay)+' 號截止':'月底前最後一個週五截止')}${q.rewrite?'・批量改寫 '+esc(q.rewrite)+' 篇（我）':''}${q.start||q.end?'・'+esc(q.start||'—')+' ～ '+esc(q.end||'—'):''}</div>${q.note?`<div class="sub">${esc(q.note)}</div>`:''}</div>${edit('editPlan',q.id)}</div>`}).join(''):'<div class="in muted">還沒有設定。按「＋ 預設任務」選常用的（每週 SEO／GEO 文章、每月 SEO／GEO 報告、每月部落格文章），或按「＋ 自訂任務」自己命名、選頻率（每週、每兩週、每月、每季…）與截止日；沒有設定，就不會替這個客戶產生任務。</div>';
   const contactsHTML=contacts.length?contacts.map(x=>`<div class="item"><div class="main"><div class="title">${esc(x.name)}${x.primary?'<span class="pill info">主要窗口</span>':''}</div><div class="sub">${[x.phone,x.email,x.line?'LINE '+x.line:''].filter(Boolean).map(esc).join('・')||'未填聯絡方式'}</div></div>${edit('editContact',x.id)}</div>`).join(''):'<div class="in muted">尚無窗口</div>';
   const assetsHTML=assets.length?assets.map(x=>`<div class="item"><div class="main"><div class="title">${esc(x.type)}<span class="pill ${x.status==='已授權'?'ok':x.status==='待授權'?'warn':'mute'}">${esc(x.status||'未設定')}</span></div><div class="sub">${[x.owner&&'擁有者 '+x.owner,x.level&&'我方權限 '+x.level,x.grantedAt&&'授權 '+x.grantedAt].filter(Boolean).map(esc).join('・')}</div>${x.note?`<div class="sub">${esc(x.note)}</div>`:''}</div>${edit('editAsset',x.id)}</div>`).join(''):'<div class="in muted">尚無資產權限紀錄</div>';
   const logHTML=logs.length?`<ul class="tl">${logs.map(l=>`<li><time>${esc(String(l.at||'').slice(0,10))}</time><span><b>${esc(l.action)}</b>${l.note?'　'+esc(l.note):''}</span></li>`).join('')}</ul>`:'<div class="in muted">尚無紀錄。續約、結案與重新開啟都會記在這裡。</div>';
@@ -429,7 +430,7 @@ function renderPanel(){
       <dt>Drive 資料夾</dt><dd>${link(c.folderUrl,'開啟資料夾')}</dd><dt>約定與範圍</dt><dd>${esc(c.terms||'—')}</dd></dl></div></section>
     <section class="sec"><header><h3>合約</h3>${secBtn('newContract','＋ 新增合約')}</header>${contractsHTML}</section>
     <section class="sec"><header><h3>服務項目</h3>${secBtn('newService','＋ 新增服務')}</header>${servicesHTML}</section>
-    ${isAdmin?`<section class="sec"><header><h3>週期任務設定</h3>${secBtn('newPlan','＋ 新增設定')}</header>${plansHTML}</section>`:''}
+    ${isAdmin?`<section class="sec"><header><h3>週期任務設定</h3>${secBtn('newPlan','＋ 預設任務')}${secBtn('newPlanCustom','＋ 自訂任務')}</header>${plansHTML}</section>`:''}
     <section class="sec"><header><h3>窗口</h3>${secBtn('newContact','＋ 新增窗口')}</header>${contactsHTML}</section>
     <section class="sec"><header><h3>資產與權限</h3>${secBtn('newAsset','＋ 新增資產')}</header>${assetsHTML}</section>
     <section class="sec"><header><h3>交付紀錄</h3></header>${tasksHTML}</section>
@@ -774,6 +775,19 @@ const PRESETS=[
   {id:'blog',label:'每月部落格文章（原創文／測試文）',kind:'月部落文',svc:'內容行銷',freq:'月'}
 ];
 const PRESET=Object.fromEntries(PRESETS.map(x=>[x.id,x]));
+/* 週期任務：五種預設 + 自訂（自己命名、選頻率、選週幾／幾號截止）。plan.preset==='custom' 的用 plan 自己的 label/kind/freq。 */
+const FREQS=[['週','每週'],['雙週','每兩週'],['月','每月'],['2月','每兩個月'],['季','每季（3 個月）'],['半年','每半年'],['年','每年']];
+const FREQ_NAME=Object.fromEntries(FREQS);
+const MSTEP={'月':1,'2月':2,'季':3,'半年':6,'年':12};
+const WDAYS=[['1','週一'],['2','週二'],['3','週三'],['4','週四'],['5','週五'],['6','週六'],['7','週日']];
+const WD_NAME=Object.fromEntries(WDAYS);
+const CUSTOM_KINDS=['週文章','月報告','月部落文','其他'];
+const planSpec=pl=>{const pr=PRESET[pl.preset];return pr?{id:pr.id,label:pr.label,kind:pr.kind,svc:pr.svc,freq:pr.freq,custom:false}:{id:'custom',label:pl.label||'（未命名）',kind:pl.kind||'其他',svc:pl.svc||'',freq:FREQ_NAME[pl.freq]?pl.freq:'月',custom:true}};
+const isWeekly=f=>f==='週'||f==='雙週';
+const weekdayDates=(p,wd)=>{const [y,m]=p.split('-').map(Number);const o=[];for(let d=1;d<=lastDayOf(p);d++){if((new Date(Date.UTC(y,m-1,d)).getUTCDay()||7)===wd)o.push(p+'-'+p2(d))}return o};
+const weekIdx=s=>Math.floor((toUTC(s)/864e5+3)/7);   // 以週一為起點的週序號
+const biweekOK=(dt,start)=>(((weekIdx(dt)-weekIdx(start||'1970-01-05'))%2)+2)%2===0;
+const monthIdx=s=>{const [y,m]=s.split('-').map(Number);return y*12+m-1};
 const coverOK=(code,ps,pe)=>{const cs=rows('contracts',code);return !cs.length||cs.some(k=>k.status==='有效'&&(!k.start||k.start<=pe)&&(!k.end||k.end>=ps))};
 function genPlan(p){
   const ps=p+'-01',pe=p+'-'+p2(lastDayOf(p));
@@ -783,25 +797,34 @@ function genPlan(p){
     if(S.clients[code].status!=='進行中')return;
     const cov=coverOK(code,ps,pe);
     rows('plans',code).filter(x=>x.active!==false).forEach(pl=>{
-      const pr=PRESET[pl.preset];if(!pr||!(pl.count>0))return;
+      if(!PRESET[pl.preset]&&pl.preset!=='custom')return;
+      const sp=planSpec(pl);if(!(pl.count>0))return;
       if((pl.start&&pl.start>pe)||(pl.end&&pl.end<ps))return;
-      if(!pl.start&&!pl.end&&!cov){skipped.add(code);return}
-      const sop=sopFor(pr.svc,pr.kind);
+      const sop=sopFor(sp.svc,sp.kind);
+      const rate=(pl.rate!=null&&pl.rate!=='')?Number(pl.rate):rateFor(sp.kind);
       const due=pl.dueDay?p+'-'+p2(Math.min(pl.dueDay,lastDayOf(p))):dueFor(code,p);
-      const fin=o=>Object.assign({assignee:lc(pl.assignee)||defaultAssignee(),clientCode:code,planId:pl.id,serviceId:null,period:p,kind:pr.kind,done:0,rate:rateFor(pr.kind),links:[],note:null,submitted:false,subN:0,history:[],sop:sop.slice(),checked:sop.map(()=>false)},o);
-      if(pr.kind==='週文章'){
-        fridaysOf(p).forEach(fr=>{
-          const mon=addDays(fr,-4);
-          if((pl.start&&pl.start>fr)||(pl.end&&pl.end<mon))return;
-          mk(`${pl.id}_w${fr}`,fin({title:`${pr.svc}・週文章 ${mon.slice(5).replace('-','/')}～${fr.slice(5).replace('-','/')}`,target:pl.count,due:fr,weekStart:mon}));
+      const fin=o=>Object.assign({assignee:lc(pl.assignee)||defaultAssignee(),clientCode:code,planId:pl.id,serviceId:null,period:p,kind:sp.kind,done:0,rate,links:[],note:null,submitted:false,subN:0,history:[],sop:sop.slice(),checked:sop.map(()=>false)},o);
+      const cand=[];   // 這個設定這個月該建的任務；有才檢查合約是否涵蓋
+      if(isWeekly(sp.freq)){
+        const wd=Number(pl.weekday)||5,f5=s=>s.slice(5).replace('-','/');
+        weekdayDates(p,wd).forEach(dt=>{
+          if(sp.freq==='雙週'&&!biweekOK(dt,pl.start))return;
+          const mon=addDays(dt,-(wd-1));
+          if((pl.start&&pl.start>dt)||(pl.end&&pl.end<mon))return;
+          cand.push([`${pl.id}_w${dt}`,fin({title:sp.custom?`${sp.label} ${f5(mon)}～${f5(dt)}`:`${sp.svc}・週文章 ${f5(mon)}～${f5(dt)}`,target:pl.count,due:dt,weekStart:mon})]);
         });
       }else{
-        mk(`${pl.id}_${p}`,fin({title:`${pr.svc}・${pr.kind}`,target:pl.count,due}));
-        if(pr.id==='blog'&&pl.rewrite>0){
-          const rs=sopFor(pr.svc,'批量改寫');
-          mk(`${pl.id}_${p}_批量改寫`,{clientCode:code,planId:pl.id,serviceId:null,period:p,kind:'批量改寫',title:`${pr.svc}・批量改寫`,target:pl.rewrite,due,assignee:rewriteAssignee(),done:0,rate:null,links:[],note:null,submitted:false,subN:0,history:[],sop:rs.slice(),checked:rs.map(()=>false)});
+        const step=MSTEP[sp.freq]||1;
+        if(step>1){const anchor=pl.start?monthIdx(pl.start):0;if((((monthIdx(p)-anchor)%step)+step)%step!==0)return}
+        cand.push([`${pl.id}_${p}`,fin({title:sp.custom?`${sp.label} ${p}`:`${sp.svc}・${sp.kind}`,target:pl.count,due})]);
+        if(sp.id==='blog'&&pl.rewrite>0){
+          const rs=sopFor(sp.svc,'批量改寫');
+          cand.push([`${pl.id}_${p}_批量改寫`,{clientCode:code,planId:pl.id,serviceId:null,period:p,kind:'批量改寫',title:`${sp.svc}・批量改寫`,target:pl.rewrite,due,assignee:rewriteAssignee(),done:0,rate:null,links:[],note:null,submitted:false,subN:0,history:[],sop:rs.slice(),checked:rs.map(()=>false)}]);
         }
       }
+      if(!cand.length)return;
+      if(!pl.start&&!pl.end&&!cov){skipped.add(code);return}
+      cand.forEach(([id,d])=>mk(id,d));
     });
   });
   return {create,skipped:[...skipped]};
@@ -810,24 +833,50 @@ function planForm(code,id){
   const x=id?Object.assign({},S.plans[id],{assignee:lc(S.plans[id].assignee)||defaultAssignee()}):{assignee:defaultAssignee(),active:true};
   const used=new Set(rows('plans',code).map(q=>q.preset));
   const avail=PRESETS.filter(q=>!used.has(q.id));
-  if(!id&&!avail.length){toast('五種任務都已設定過了');return}
+  if(!id&&!avail.length){toast('五種預設任務都設定過了；要新增其他的，請按「＋ 自訂任務」');return}
   const pr=id?PRESET[x.preset]:null;
   openForm({title:id?`編輯任務設定：${pr?pr.label:''}`:`新增任務設定　${clientName(code)}`,fields:[
     id?{k:'i',type:'info',html:`<b>${esc(pr?pr.label:x.preset)}</b>（不能改類型；要換請刪除再新增）`}:{k:'preset',label:'任務類型',type:'select',opts:avail.map(q=>[q.id,q.label]),req:true},
     {k:'count',label:'數量',type:'number',req:true,half:true,hint:'每週文章＝每週篇數；報告、部落文＝每月的量'},
     {k:'assignee',label:'負責人',type:'select',opts:assigneeOpts(x&&x.assignee),half:true},
-    {k:'dueDay',label:'每月截止日（幾號）',type:'number',half:true,hint:'週文章固定每週五；空白＝客戶設定或當月最後一個週五'},
+    {k:'dueDay',label:'每月截止日（幾號）',type:'number',half:true,hint:'每月的任務用；空白＝客戶設定或當月最後一個週五'},
+    {k:'weekday',label:'每週截止日',type:'select',opts:WDAYS,half:true,hint:'每週的任務用，預設週五'},
     {k:'rewrite',label:'批量改寫篇數',type:'number',half:true,hint:'只有部落格文章用；由我製作並發佈，會另產生一張我的任務'},
     {k:'start',label:'起算日',type:'date',half:true,hint:'空白＝依合約期間'},{k:'end',label:'結束日',type:'date',half:true},
     {k:'state',label:'狀態',type:'select',opts:[['on','執行中'],['off','暫停（不產生任務）']]},
     {k:'note',label:'備註',type:'textarea'}],
-    values:Object.assign({},x,{state:x.active===false?'off':'on'}),
+    values:Object.assign({},x,{state:x.active===false?'off':'on',weekday:String(x.weekday||5)}),
     dangerLabel:id?'刪除設定':null,onDanger:()=>del('plans',id),
     onSubmit:async v=>{
-      const pid=id||(code+'-'+v.preset);const d=Object.assign({},x,v,{clientCode:code,preset:id?x.preset:v.preset,active:v.state!=='off'});
+      const pid=id||(code+'-'+v.preset);const d=Object.assign({},x,v,{clientCode:code,preset:id?x.preset:v.preset,active:v.state!=='off',weekday:Number(v.weekday)||5});
       delete d.state;delete d.i;
       await setDoc('plans',pid,d);
       await addLog(code,id?'修改任務設定':'新增任務設定',PRESET[d.preset].label+' × '+d.count);
+    }});
+}
+function planFormCustom(code,id){
+  const x=id?Object.assign({},S.plans[id],{assignee:lc(S.plans[id].assignee)||defaultAssignee()}):{assignee:defaultAssignee(),active:true,freq:'週',kind:'其他',weekday:5,count:1};
+  openForm({title:id?`編輯自訂任務：${x.label||''}`:`新增自訂任務　${clientName(code)}`,fields:[
+    {k:'label',label:'任務名稱',req:true,ph:'例如：IG 貼文、官網維護巡檢、Google 商家動態',hint:'會當成每次產生的任務標題，所以要讓員工一看就懂。'},
+    {k:'freq',label:'頻率',type:'select',opts:FREQS,half:true},
+    {k:'kind',label:'任務類型',type:'select',opts:CUSTOM_KINDS,half:true,hint:'決定單位、預設單價與驗收流程：週文章／月部落文＝文章單價；月報告＝報告單價；其他＝不計成本（除非填單價）。月部落文會多出「送客戶確認→發佈」。'},
+    {k:'count',label:'每次的數量',type:'number',req:true,half:true,hint:'每週／每兩週＝每一期要做幾件；每月以上＝每次產生要做幾件'},
+    {k:'assignee',label:'負責人',type:'select',opts:assigneeOpts(x&&x.assignee),half:true},
+    {k:'weekday',label:'每週截止日',type:'select',opts:WDAYS,half:true,hint:'頻率是每週／每兩週才用'},
+    {k:'dueDay',label:'每月截止日（幾號）',type:'number',half:true,hint:'頻率是每月以上才用；空白＝客戶設定或當月最後一個週五'},
+    {k:'rate',label:'單價（每件，元）',type:'money',hint:'空白＝依類型的預設單價；只有管理者看得到'},
+    {k:'start',label:'起算日',type:'date',half:true,hint:'每兩週、每季、每半年、每年會從起算日那一期開始算；空白＝依合約期間（每季等會從 1 月起算）'},{k:'end',label:'結束日',type:'date',half:true},
+    {k:'state',label:'狀態',type:'select',opts:[['on','執行中'],['off','暫停（不產生任務）']]},
+    {k:'note',label:'備註',type:'textarea'}],
+    values:Object.assign({},x,{state:x.active===false?'off':'on',weekday:String(x.weekday||5)}),
+    validate:v=>!(Number(v.count)>0)?'每次的數量要大於 0':null,
+    dangerLabel:id?'刪除設定':null,onDanger:()=>del('plans',id),
+    onSubmit:async v=>{
+      const pid=id||(code+'-c_'+Date.now().toString(36));
+      const d=Object.assign({},x,v,{clientCode:code,preset:'custom',active:v.state!=='off',weekday:Number(v.weekday)||5});
+      delete d.state;delete d.i;
+      await setDoc('plans',pid,d);
+      await addLog(code,id?'修改自訂任務設定':'新增自訂任務設定',d.label+'（'+FREQ_NAME[d.freq]+'）× '+d.count);
     }});
 }
 function openGenerate(){
@@ -1231,7 +1280,7 @@ document.addEventListener('click',async e=>{
   else if(a==='newContact')contactForm(code);else if(a==='editContact')contactForm(code,id);
   else if(a==='newAsset')assetForm(code);else if(a==='editAsset')assetForm(code,id);
   else if(a==='newContract')contractForm(code);else if(a==='editContract')contractForm(code,id);
-  else if(a==='newPlan')planForm(code);else if(a==='editPlan')planForm(code,id);
+  else if(a==='newPlan')planForm(code);else if(a==='newPlanCustom')planFormCustom(code);else if(a==='editPlan'){const q=S.plans[id];if(q&&q.preset==='custom')planFormCustom(code,id);else planForm(code,id)}
   else if(a==='newService')serviceForm(code);else if(a==='editService')serviceForm(code,id);
   else if(a==='resolveConfirm'){const c=S.clients[code];const arr=(c.confirm||[]).filter((_,n)=>n!==Number(el.dataset.n));await run(()=>upd('clients',code,{confirm:arr}),'已標示為確認')}
   else if(a==='genTasks')openGenerate();
