@@ -65,8 +65,14 @@
     const me = await meP, w = document.querySelector('.top .wrap');
     if (!w) return;
     const box = document.createElement('div');
-    box.className = 'acct'; box.style.cssText = 'margin-left:auto;margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center';
-    const add = (t, fn) => { const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = t; b.onclick = fn; box.appendChild(b); };
+    box.className = 'acct';
+    box.style.cssText = 'margin-left:auto;margin-bottom:10px;display:flex;gap:6px;align-items:center';
+    const menu = document.createElement('div'); menu.className = 'acct-menu';
+    const tg = document.createElement('button'); tg.className = 'btn sm acct-toggle'; tg.textContent = me.display + ' ▾';
+    tg.onclick = e => { e.stopPropagation(); box.classList.toggle('open'); };
+    document.addEventListener('click', () => box.classList.remove('open'));
+    box.appendChild(tg); box.appendChild(menu);
+    const add = (t, fn) => { const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = t; b.onclick = fn; menu.appendChild(b); };
     if (me.role === 'admin') add('帳號管理', () => { location.href = '/admin'; });
     add('改密碼', () => { location.href = '/change-password'; });
     add('登出（' + me.display + '）', () => window.__logout());
