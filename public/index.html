@@ -173,7 +173,7 @@ td.r,th.r{text-align:right}
 tr.click{cursor:pointer}tr.click:hover{background:var(--accent-soft)}
 .trow{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) auto minmax(0,.9fr) auto;gap:14px;align-items:center;padding:12px 16px;border-top:1px solid var(--line);cursor:pointer}
 .list .trow:first-child{border-top:0}.trow:hover{background:var(--accent-soft)}
-.trow .code{font-size:12px;color:var(--muted);margin-right:6px}.trow .sub{font-size:12.5px}
+.grp{border-top:1px solid var(--line)}.list .grp:first-child{border-top:0}.grp .grp-head{border-top:0}.grp-body{background:var(--accent-soft);border-top:1px solid var(--line)}.grp-body .trow{padding-left:34px}.grp-head .chev{display:inline-block;width:16px;color:var(--muted)}.trow .code{font-size:12px;color:var(--muted);margin-right:6px}.trow .sub{font-size:12.5px}
 .mini{height:6px;background:var(--line);border-radius:3px;margin-top:5px;overflow:hidden}.mini i{display:block;height:100%;background:var(--accent)}
 @media (max-width:820px){.trow{grid-template-columns:minmax(0,1fr) auto;gap:8px}.trow > :nth-child(2),.trow > :nth-child(3){grid-column:auto}.trow > :nth-child(5){display:none}}
 .chks{display:flex;flex-direction:column;gap:10px}
@@ -726,7 +726,7 @@ const DEFAULT_SOP={
   '批量改寫':['本月批量改寫已全部完成，篇數達到數量','已逐篇檢查，沒有與原文過度重複或違規內容','每篇發佈後的連結都已記錄在「交付內容連結」'],
   '其他':['依合約內容完成交付','成果連結已記錄在「交付內容連結」']
 };
-let period=todayStr().slice(0,7),boardAll=false,boardFilter=null,openTask=null,ownerFilter='all',boardQuery='';
+let period=todayStr().slice(0,7),boardAll=false,boardFilter=null,openTask=null,ownerFilter='all',boardQuery='',boardOpen=new Set(),boardExpandAll=false;
 /* 帳號：Railway 版由伺服器提供 window.__me / window.__users；Artifact 版沒有，退回 jimmy(管理者)/mio(員工) */
 const USERS=()=>(window.__users&&window.__users.length)?window.__users:[{name:'jimmy',display:'楊濬騰',role:'admin'},{name:'mio',display:'Mio',role:'staff'}];
 const meName=()=>(window.__me&&window.__me.name)||(isAdmin?'jimmy':'mio');
@@ -819,7 +819,7 @@ function genPlan(p){
         cand.push([`${pl.id}_${p}`,fin({title:sp.custom?`${sp.label} ${p}`:`${sp.svc}・${sp.kind}`,target:pl.count,due})]);
         if(sp.id==='blog'&&pl.rewrite>0){
           const rs=sopFor(sp.svc,'批量改寫');
-          cand.push([`${pl.id}_${p}_批量改寫`,{clientCode:code,planId:pl.id,serviceId:null,period:p,kind:'批量改寫',title:`${sp.svc}・批量改寫`,target:pl.rewrite,due,assignee:rewriteAssignee(),done:0,rate:null,links:[],note:null,submitted:false,subN:0,history:[],sop:rs.slice(),checked:rs.map(()=>false)}]);
+          cand.push([`${pl.id}_${p}_rewrite`,{clientCode:code,planId:pl.id,serviceId:null,period:p,kind:'批量改寫',title:`${sp.svc}・批量改寫`,target:pl.rewrite,due,assignee:rewriteAssignee(),done:0,rate:null,links:[],note:null,submitted:false,subN:0,history:[],sop:rs.slice(),checked:rs.map(()=>false)}]);
         }
       }
       if(!cand.length)return;
@@ -1066,18 +1066,39 @@ function renderBoard(mine){
   const key=boardFilter||(isAdmin&&base.some(t=>t.state==='待驗收')?'wait':'todo');
   const list=base.filter(F[key][1]).sort((a,b)=>(a.due||'').localeCompare(b.due||'')||a.clientCode.localeCompare(b.clientCode));
   const tabs=Object.entries(F).map(([k,[n,f]])=>`<button data-act="bfilter" data-v="${k}" aria-pressed="${key===k}">${n}<span class="n">${base.filter(f).length}</span></button>`).join('');
-  const rowsHTML=list.map(t=>{
+  const taskRow=(t,inGrp)=>{
     const sopDone=(t.checked||[]).filter(Boolean).length,sopN=(t.sop||[]).length;
     const prog=Math.min(100,Math.round((t.done||0)/Math.max(1,t.target||1)*100));
-    return `<div class="trow" data-act="openTask" data-id="${esc(t.id)}" role="button" tabindex="0">
-      <div style="min-width:0"><div><span class="code mono">${esc(t.clientCode)}</span><b>${esc(clientName(t.clientCode))}</b>${clientAka(t.clientCode)?`<span class="muted" style="margin-left:6px">${esc(clientAka(t.clientCode))}</span>`:''}${mine?'':`<span class="pill ${isMine(t)?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(ownerOf(t)))}</span>`}</div><div class="sub muted">${esc(t.title)}${boardAll?'・'+esc(t.period):''}</div></div>
+    const who=inGrp?`<div><b>${esc(t.title)}</b>${boardAll?`<span class="muted" style="margin-left:6px">${esc(t.period)}</span>`:''}${mine?'':`<span class="pill ${isMine(t)?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(ownerOf(t)))}</span>`}</div>`
+      :`<div><span class="code mono">${esc(t.clientCode)}</span><b>${esc(clientName(t.clientCode))}</b>${clientAka(t.clientCode)?`<span class="muted" style="margin-left:6px">${esc(clientAka(t.clientCode))}</span>`:''}${mine?'':`<span class="pill ${isMine(t)?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(ownerOf(t)))}</span>`}</div><div class="sub muted">${esc(t.title)}${boardAll?'・'+esc(t.period):''}</div>`;
+    return `<div class="trow${inGrp?' in-grp':''}" data-act="openTask" data-id="${esc(t.id)}" role="button" tabindex="0">
+      <div style="min-width:0">${who}</div>
       <div><div class="num">${t.done||0}／${t.target||0} ${unit(t.kind)}</div><div class="mini"><i style="width:${prog}%"></i></div></div>
       <div class="num muted">SOP ${sopDone}／${sopN}</div>
       <div class="stack">${pillState(t.state)}${(t.kind==='月部落文'&&t.state==='已驗收')?'<span class="pill info">'+subStage(t)+'</span>':''}${t.late?'<span class="pill bad">逾期 '+diffDays(todayStr(),t.due)+' 天</span>':`<span class="muted mono" style="font-size:12px">截止 ${esc((t.due||'').slice(5))}</span>`}</div>
-      ${t.state==='已交付'?`<div class="sub muted">${esc(t.deliveredAt||'')}<br>${esc(t.deliveredVia||'')}</div>`:'<div></div>'}</div>`}).join('');
+      ${t.state==='已交付'?`<div class="sub muted">${esc(t.deliveredAt||'')}<br>${esc(t.deliveredVia||'')}</div>`:'<div></div>'}</div>`};
+  /* 同一個客戶（品牌）的任務收成一筆，點開才展開；只有一項任務的直接顯示 */
+  const grp=new Map();list.forEach(t=>{if(!grp.has(t.clientCode))grp.set(t.clientCode,[]);grp.get(t.clientCode).push(t)});
+  const groups=[...grp.entries()].sort((x,y)=>(x[1][0].due||'').localeCompare(y[1][0].due||'')||x[0].localeCompare(y[0]));
+  const multi=groups.filter(g=>g[1].length>1).map(g=>g[0]);
+  const rowsHTML=groups.map(([code,ts])=>{
+    if(ts.length===1)return taskRow(ts[0],false);
+    const open=boardExpandAll||!!bqn||boardOpen.has(code);
+    const cnt=f=>ts.filter(f).length;
+    const doneN=cnt(t=>t.state==='已驗收'||t.state==='已交付'),late=cnt(t=>t.late),ret=cnt(t=>t.state==='退回'),wait=cnt(t=>t.state==='待驗收'),todoN=cnt(t=>['待處理','進行中'].includes(t.state));
+    const owners=[...new Set(ts.map(ownerOf))];
+    const due=ts.map(t=>t.due).filter(Boolean).sort()[0]||'';
+    const pr=Math.round(doneN/ts.length*100);
+    const head=`<div class="trow grp-head" data-act="bgrp" data-id="${esc(code)}" role="button" tabindex="0" aria-expanded="${open}">
+      <div style="min-width:0"><div><span class="chev">${open?'▾':'▸'}</span><span class="code mono">${esc(code)}</span><b>${esc(clientName(code))}</b>${clientAka(code)?`<span class="muted" style="margin-left:6px">${esc(clientAka(code))}</span>`:''}${mine?'':owners.map(o=>`<span class="pill ${o===meName()?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(o))}</span>`).join('')}</div><div class="sub muted">${ts.length} 項任務${boardAll?'・跨期別':''}</div></div>
+      <div><div class="num">${doneN}／${ts.length} 項完成</div><div class="mini"><i style="width:${pr}%"></i></div></div>
+      <div class="num muted"></div>
+      <div class="stack">${todoN?`<span class="pill mute">需處理 ${todoN}</span>`:''}${ret?`<span class="pill bad">退回 ${ret}</span>`:''}${wait?`<span class="pill info">待驗收 ${wait}</span>`:''}${late?`<span class="pill bad">逾期 ${late}</span>`:`<span class="muted mono" style="font-size:12px">最早截止 ${esc(due.slice(5))}</span>`}</div><div></div></div>`;
+    return `<div class="grp">${head}${open?`<div class="grp-body">${ts.map(t=>taskRow(t,true)).join('')}</div>`:''}</div>`;
+  }).join('');
   $('#main').innerHTML=`<div class="tools">${boardAll?'<b>所有期別未交付</b><button class="btn sm ghost" data-act="bperiod" data-v="cur">回到期別檢視</button>':periodBar()}<span class="grow"></span>${boardAll?'':'<button class="btn sm" data-act="bperiod" data-v="all">看所有往期未交付</button>'}${canWrite&&isAdmin?'<button class="btn ghost" data-act="taskNames">任務名稱</button><button class="btn" data-act="newTask">＋ 新增任務</button><button class="btn primary" data-act="genTasks">產生月任務</button>':''}</div>
   ${mine?`<div class="sumline"><span><b>${base.filter(t=>['待處理','進行中'].includes(t.state)).length}</b>待我完成</span><span><b>${base.filter(t=>t.state==='退回').length}</b>退回要修改</span><span><b>${base.filter(t=>t.state==='待驗收').length}</b>等驗收</span><span><b>${base.filter(t=>t.state==='已驗收'||t.state==='已交付').length}／${base.length}</b>已完成</span><span><b style="color:${base.some(t=>t.late)?'var(--bad)':'inherit'}">${base.filter(t=>t.late).length}</b>逾期</span></div>`:''}
-  <div class="tools"><input type="search" id="bq" placeholder="搜尋客戶或任務" value="${esc(boardQuery)}" aria-label="搜尋任務" style="max-width:200px"><div class="tabs">${tabs}</div>${mine?'':`<span class="grow"></span><div class="tabs">${[['all','全部負責人']].concat(activeUsers().map(u=>[u.name,u.name===meName()?'我的':u.display])).map(([k,n])=>`<button data-act="ofilter" data-v="${k}" aria-pressed="${ownerFilter===k}">${n}</button>`).join('')}</div>`}</div>
+  <div class="tools"><input type="search" id="bq" placeholder="搜尋客戶或任務" value="${esc(boardQuery)}" aria-label="搜尋任務" style="max-width:200px"><div class="tabs">${tabs}</div>${multi.length?`<button class="btn sm ghost" data-act="bexpand">${boardExpandAll?'全部收合':'全部展開'}</button>`:''}${mine?'':`<span class="grow"></span><div class="tabs">${[['all','全部負責人']].concat(activeUsers().map(u=>[u.name,u.name===meName()?'我的':u.display])).map(([k,n])=>`<button data-act="ofilter" data-v="${k}" aria-pressed="${ownerFilter===k}">${n}</button>`).join('')}</div>`}</div>
   <div class="list">${list.length?rowsHTML:`<div class="empty">${base.length?'這個分類沒有任務。':(mine?'這個期別沒有指派給你的任務。':'這個期別還沒有任務。'+(isAdmin?'按「產生月任務」建立。':''))}</div>`}</div>`;
 }
 function renderSop(){
@@ -1261,6 +1282,8 @@ document.addEventListener('click',async e=>{
   if(a==='pnow'){period=curPeriod();queue();return}
   if(a==='goto'){view=el.dataset.v;openCode=null;openTask=null;queue();return}
   if(a==='goGen'){view='board';boardAll=false;period=el.dataset.p;openCode=null;openTask=null;queue();if(canWrite&&isAdmin)setTimeout(openGenerate,50);return}
+  if(a==='bgrp'){const c=el.dataset.id;boardExpandAll=false;if(boardOpen.has(c))boardOpen.delete(c);else boardOpen.add(c);queue();return}
+  if(a==='bexpand'){boardExpandAll=!boardExpandAll;boardOpen.clear();queue();return}
   if(a==='bfilter'){boardFilter=el.dataset.v;queue();return}
   if(a==='ofilter'){ownerFilter=el.dataset.v;queue();return}
   if(a==='bperiod'){boardAll=el.dataset.v==='all';queue();return}

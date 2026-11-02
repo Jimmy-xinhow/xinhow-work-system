@@ -30,7 +30,7 @@ const RULES = {
 const ruleOf = c => RULES[c] || { read: 'staff', write: 'staff' };
 const can = (role, c, op) => (LV[role] || 0) >= (ruleOf(c)[op] === 'any' ? 1 : LV[ruleOf(c)[op]]);
 const COLL_RE = /^[A-Za-z0-9_-]{1,64}$/;
-const ID_RE = /^[A-Za-z0-9_.:@+~-]{1,200}$/;
+const ID_RE = /^[\p{L}\p{N}_.:@+~-]{1,200}$/u;
 
 /* ---- 密碼雜湊（scrypt）---- */
 const scrypt = (pw, salt) => new Promise((ok, no) => crypto.scrypt(pw, salt, 64, (e, k) => e ? no(e) : ok(k)));
