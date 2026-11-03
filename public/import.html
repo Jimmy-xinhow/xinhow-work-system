@@ -4,14 +4,14 @@
 @media (prefers-color-scheme:dark){:root{--bg:#0E1420;--surface:#172030;--ink:#E7ECF4;--muted:#9BA8BC;--line:#2A3649;--accent:#9DBBF2;--bad:#F2958E;--ok:#6FD0A0}}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);font:15px/1.6 "Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;padding:16px}
 .box{width:min(480px,100%);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:24px;display:grid;gap:14px}
-h1{margin:0;font-size:18px}p{margin:0;color:var(--muted);font-size:14px}input{width:100%}
+h1{margin:0;font-size:18px}p{margin:0;color:var(--muted);font-size:14px}input{width:100%}input[type=checkbox]{width:20px;height:20px;flex:none;margin:0}input[type=file]{padding:8px 0}
 button{padding:10px;border:0;border-radius:6px;background:var(--accent);color:var(--bg);font:inherit;font-weight:500;cursor:pointer}
 @media (prefers-color-scheme:light){button{color:#fff}}button:disabled{opacity:.5}
-#m{min-height:1.4em;font-size:14px}.bad{color:var(--bad)}.ok{color:var(--ok)}a{color:var(--accent)}
+#m{min-height:1.4em;font-size:14px}.bad{color:var(--bad)}.ok{color:var(--ok)}a{color:var(--accent);display:inline-block;padding:8px 0}
 @media (max-width:820px){input,select,textarea{font-size:16px}}
 </style></head><body><div class="box"><h1>匯入資料</h1>
 <p>選擇初始資料檔（seed.json）或先前下載的備份檔。預設「只新增、不覆蓋」：已存在的文件一律保留不動，只補上沒有的。取消勾選則同編號文件會被覆蓋。</p>
-<label style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="sk" checked>只新增沒有的文件，不覆蓋現有資料</label>
+<label style="display:flex;gap:10px;align-items:flex-start;margin:8px 0"><input type="checkbox" id="sk" checked>只新增沒有的文件，不覆蓋現有資料</label>
 <input type="file" id="f" accept=".json,application/json"><button id="b" disabled>匯入</button><div id="m" role="status"></div><p><a href="/">回系統</a></p></div>
 <script>
 let data=null;const m=document.getElementById('m'),b=document.getElementById('b');

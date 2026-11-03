@@ -501,6 +501,18 @@ h1,h2,h3{font-weight:600}
 .xchip.pre.add{border-style:dashed;color:var(--accent)}
 .xchip.pre.del{border-color:var(--bad);color:var(--bad)}.xchip.pre .px{margin-left:6px}
 .linkbtn{border:0;background:none;color:var(--accent);font:inherit;font-size:13px;cursor:pointer;padding:2px 4px}
+
+/* RWD: phone cards instead of wide tables */
+.bcards,.pcards{display:none}
+.bcard,.pcard{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.pcard.click{cursor:pointer}.bcards{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}.bcard:last-child,.pcard:last-child{border-bottom:0}
+.bc-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.bc-n{min-width:0;overflow-wrap:anywhere}
+.bc-m{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.bc-m span{display:flex;flex-direction:column;min-width:0}.bc-m i{font-style:normal;font-size:11.5px;color:var(--muted)}.bc-m b{font-size:14px;white-space:nowrap;font-weight:600}.bc-m b.bad{color:var(--bad)}
+.bc-f{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}.bc-note{overflow-wrap:anywhere}
+.bcard .acts{justify-content:flex-start;flex-wrap:wrap;gap:8px}
+@media (max-width:640px){.bcards,.pcards{display:block}.tablewrap.wide{display:none}.pcards{background:var(--surface)}.pcards .bc-f{margin-top:-2px}}
+/* tab strips: fade hint when they scroll sideways on phones */
+@media (max-width:640px){.tabs{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);padding-right:20px;gap:18px}.tabs .n{margin-left:3px}}
 </style>
 
 <div class="top"><div class="wrap">
@@ -941,12 +953,15 @@ function renderBills(){
   const st=billStat(byM[billMonth]||[],t);
   const earlier=all.filter(b=>!b.pending&&b.bal>0&&b.due&&b.due<t&&b.mk<billMonth);
   const early=earlier.length?`<div class="infobox warn" style="margin:12px 0 0">之前月份還有 <b>${earlier.length}</b> 筆逾期，共 <b>${money(earlier.reduce((s,b)=>s+b.bal,0))}</b>　<button class="btn sm" data-act="billMonth" data-m="${earlier[0].mk}">看最早的月份</button></div>`:'';
+  const cardL=[];
   const trs=L.map(b=>{
     const cl=S.clients[b.clientCode];
     const sp=b.pending?'<span class="pill mute">金額待定</span>':b.bal<=0?'<span class="pill ok">已收</span>':(b.due&&b.due<t)?'<span class="pill bad">逾期</span>':'<span class="pill warn">未收</span>';
     const inv=!billInv(b)?'<span class="muted">免開</span>':b.invoiceNo?`<span class="mono">${esc(b.invoiceNo)}</span>`:(!b.pending&&b.bal<=0)?'<span class="pill warn">待開立</span>':'<span class="muted">收款後開</span>';
+    const actH=`<div class="acts">${canWrite?`${!b.pending&&b.bal>0?`<button class="btn sm primary" data-act="payBill" data-id="${esc(b.id)}">收款</button>`:''}${billInv(b)&&!b.pending&&b.bal<=0&&!b.invoiceNo?`<button class="btn sm primary" data-act="invBill" data-id="${esc(b.id)}">登記發票</button>`:''}<button class="btn sm" data-act="editBill" data-id="${esc(b.id)}">編輯</button>`:''}</div>`;
+    cardL.push(`<div class="bcard"><div class="bc-h"><div class="bc-n"><span class="mono muted">${esc(b.clientCode)}</span> <b>${esc(cl?cl.brand||cl.fullName:'')}</b></div>${sp}</div><div class="bc-m"><span><i>繳款日</i><b class="mono">${esc((b.due||'—').slice(5))}</b></span><span><i>金額</i><b class="num">${b.pending?'待定':money(b.total)}</b></span><span><i>未收</i><b class="num ${!b.pending&&b.bal>0?'bad':''}">${b.pending?'—':money(b.bal)}</b></span></div>${(billInv(b)||b.note)?`<div class="bc-f">${billInv(b)?`<span>發票：${inv}</span>`:''}${b.note?`<span class="bc-note">${esc(b.note)}</span>`:''}</div>`:''}${canWrite?actH:''}</div>`);
     return `<tr><td><span class="mono muted">${esc(b.clientCode)}</span> ${esc(cl?cl.brand||cl.fullName:'')}</td><td class="mono">${esc((b.due||'—').slice(5))}</td><td class="r num">${b.pending?'<span class="muted">—</span>':money(b.total)}</td><td class="r num">${money(b.received||0)}</td><td class="r num"><b>${b.pending?'':money(b.bal)}</b></td><td>${sp}</td><td>${inv}</td><td class="bnote" title="${esc(b.note||'')}">${esc(b.note||'')}</td>
-      <td><div class="acts">${canWrite?`${!b.pending&&b.bal>0?`<button class="btn sm primary" data-act="payBill" data-id="${esc(b.id)}">收款</button>`:''}${billInv(b)&&!b.pending&&b.bal<=0&&!b.invoiceNo?`<button class="btn sm primary" data-act="invBill" data-id="${esc(b.id)}">登記發票</button>`:''}<button class="btn sm" data-act="editBill" data-id="${esc(b.id)}">編輯</button>`:''}</div></td></tr>`}).join('');
+      <td>${actH}</td></tr>`}).join('');
   const extra=(st.invN?`<div class="sumline" style="margin-top:2px"><span><b>${st.invN}</b>筆已收款、待開發票</span></div>`:'');
   const mBills=(byM[billMonth]||[]).filter(b=>!b.pending);
   const byCl={};mBills.forEach(b=>{byCl[b.clientCode]=(byCl[b.clientCode]||0)+b.total});
@@ -954,7 +969,7 @@ function renderBills(){
   const charts=mBills.length?`<div class="two-col top" style="margin-top:14px">${chartCard('收款狀態',segParts([{label:'已收',v:Math.min(st.got,st.due),color:'var(--cv1)'},{label:'未收（未到期）',v:Math.max(0,st.bal-st.late),color:'var(--cvn)'},{label:'逾期',v:st.late,color:'var(--bad)'}]),'本月應收 '+money(st.due))}${chartCard('各客戶應收',rankBars(clItems),'本月，含稅')}</div>`:'';
   $('#main').innerHTML=head+`<h3 class="bh">${yr} 年 ${+billMonth.slice(5)} 月收入${billMonth===nowM?'（本月）':''}</h3>`+sumBox(st,extra)+charts+early
    +`<div class="tools" style="margin-top:14px"><div class="tabs"><button data-act="billFilter" data-v="all" aria-pressed="${billFilter!=='open'}">全部</button><button data-act="billFilter" data-v="open" aria-pressed="${billFilter==='open'}">待處理</button></div></div>`
-   +(L.length?`<div class="tablewrap"><table class="btable"><thead><tr><th>客戶</th><th>繳款日</th><th class="r">金額（含稅）</th><th class="r">已收</th><th class="r">未收餘額</th><th>狀態</th><th>發票</th><th>備註</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`
+   +(L.length?`<div class="bcards">${cardL.join('')}</div><div class="tablewrap wide"><table class="btable"><thead><tr><th>客戶</th><th>繳款日</th><th class="r">金額（含稅）</th><th class="r">已收</th><th class="r">未收餘額</th><th>狀態</th><th>發票</th><th>備註</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`
      :`<div class="list"><div class="empty">${(byM[billMonth]||[]).length?'這個月沒有待處理的帳款。':'這個月還沒有帳款。可以按「新增帳款」先記下預計要收的款項與備註，金額還沒確定也可以留空。'}</div></div>`);
 }
 let lastExpCat=null;
@@ -1705,6 +1720,18 @@ function renderDash(){
   ts.forEach(t=>{if(isAdminUser(ownerOf(t)))return;if(t.rate==null){noRate++;return}costAll+=(t.target||0)*t.rate;if(accepted(t))cost+=(t.done||0)*t.rate});
   const waiting=ts.filter(t=>t.state==='待驗收'),todo=ts.filter(t=>t.state==='退回'||(t.late&&t.state!=='待驗收'));
   const clients=[...new Set(ts.map(t=>t.clientCode))].sort();
+  const ccard=code=>{
+    const cts=ts.filter(t=>t.clientCode===code);
+    const cc={};STATES.forEach(s=>cc[s]=cts.filter(t=>t.state===s).length);
+    const sm=kind=>{const x=cts.filter(t=>t.kind===kind);return {d:x.filter(accepted).reduce((n,t)=>n+(t.done||0),0),t:x.reduce((n,t)=>n+(t.target||0),0)}};
+    const w=sm('週文章'),rp=sm('月報告'),bl=sm('月部落文');
+    const due=cts.reduce((m,t)=>(!m||t.due<m)?t.due:m,'');
+    const lt=cts.some(t=>t.late);
+    const done=cc['已交付']===cts.length;
+    const stt=done?'<span class="pill done">全部已交付</span>':lt?'<span class="pill bad">有逾期</span>':cc['待驗收']?'<span class="pill warn">待驗收</span>':cc['退回']?'<span class="pill bad">被退回</span>':'<span class="pill info">進行中</span>';
+    const bits=[w.t?`週文章 ${w.d}／${w.t}`:'',rp.t?`月報告 ${rp.d}／${rp.t}`:'',bl.t?`部落文 ${bl.d}／${bl.t}`:''].filter(Boolean).join('　');
+    return `<div class="pcard click" data-act="openBoardClient" data-code="${esc(code)}"><div class="bc-h"><div class="bc-n"><span class="mono muted">${esc(code)}</span> <b>${esc(clientName(code))}</b></div>${stt}</div>${segBar(cc,cts.length)}<div class="bc-f"><span>${bits||'—'}</span><span class="mono">${due?'截止 '+esc(due.slice(5)):''}</span></div></div>`;
+  };
   const crow=code=>{
     const cts=ts.filter(t=>t.clientCode===code);
     const cc={};STATES.forEach(s=>cc[s]=cts.filter(t=>t.state===s).length);
@@ -1727,7 +1754,7 @@ function renderDash(){
     <div class="kpis"><div><b class="num">${gW.d}／${gW.t}</b><span>週文章（已驗收）</span></div><div><b class="num">${gR.d}／${gR.t}</b><span>月報告（已驗收）</span></div><div><b class="num">${gB.d}／${gB.t}</b><span>月部落文（已驗收）</span></div><div><b class="num" style="color:${late?'var(--bad)':'inherit'}">${late}</b><span>逾期未交付</span></div>${isAdmin?`<div><b class="num">${money(cost)}</b><span>員工成本（已驗收）／預估 ${money(costAll)}${noRate?`，${noRate} 項未設單價`:''}</span></div>`:''}</div></div></section>
   <div class="two-col"><section class="sec"><header><h3>${isAdmin?'等你驗收':'已送交，等管理者驗收'}</h3><span class="pill warn">${waiting.length}</span></header>${listRows(waiting,isAdmin?'驗收':'查看')}</section>
   <section class="sec"><header><h3>需要處理（退回／逾期）</h3><span class="pill ${todo.length?'bad':'mute'}">${todo.length}</span></header>${listRows(todo,'開啟')}</section></div>
-  <section class="sec"><header><h3>各客戶進度</h3></header><div class="tablewrap" style="border:0;border-radius:0"><table><thead><tr><th>客戶</th><th>週文章</th><th>月報告</th><th>月部落文</th><th>進度</th><th>最早截止</th><th>狀態</th></tr></thead><tbody>${clients.map(crow).join('')}</tbody></table></div></section>`:empty}`;
+  <section class="sec"><header><h3>各客戶進度</h3></header><div class="pcards">${clients.map(ccard).join('')}</div><div class="tablewrap wide" style="border:0;border-radius:0"><table><thead><tr><th>客戶</th><th>週文章</th><th>月報告</th><th>月部落文</th><th>進度</th><th>最早截止</th><th>狀態</th></tr></thead><tbody>${clients.map(crow).join('')}</tbody></table></div></section>`:empty}`;
 }
 function renderBoard(mine){
   mine=mine||!isAdmin;
