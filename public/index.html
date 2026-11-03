@@ -621,6 +621,39 @@ h1,h2,h3{font-weight:600}
   .monc .kr{flex-direction:column;align-items:flex-start;gap:4px;padding:12px 14px}.monc .ks{text-align:left}
   .dtools{display:grid!important;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center}.dtools .grow{display:none}.dtools .btn{padding-inline:8px;white-space:nowrap}
 }
+
+/* ===== 客戶卡片 ===== */
+.list.cl{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));gap:12px;background:none;border:0;border-radius:0;overflow:visible}
+.list.cl>.empty{grid-column:1/-1;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.cc2{display:flex;flex-direction:column;gap:12px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:10px;cursor:pointer;min-width:0}
+.cc2:hover{background:var(--hover);border-color:var(--muted)}
+.cc2-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.cc2-n{min-width:0}.cc2-n .nm{font-weight:700;font-size:15px}.cc2-n .code{font-size:12px;color:var(--muted);margin-right:6px}
+.cc2-n .full{color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cc2-r{display:flex;align-items:center;gap:6px;flex:none;flex-wrap:wrap;justify-content:flex-end;max-width:55%}
+.kebab{background:none;border:0;border-radius:6px;padding:4px;color:var(--muted);cursor:pointer;display:inline-flex;min-width:32px;min-height:32px;align-items:center;justify-content:center}.kebab:hover{background:var(--hover);color:var(--ink)}
+.cc2-hl{display:flex;flex-wrap:wrap;gap:6px}
+.ht{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;padding:3px 9px;border-radius:999px;background:var(--hover);color:var(--muted)}
+.ht.ok{color:var(--ok);background:var(--ok-soft,rgba(29,116,72,.1))}.ht.warn{color:var(--warn);background:var(--warn-soft,rgba(180,110,10,.12))}.ht.bad{color:var(--bad);background:var(--bad-soft)}
+.cc2-f{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-top:auto}.cc2-f .chips{display:flex;flex-wrap:wrap;gap:6px;min-width:0}.cc2-f .mrr{font-weight:600;white-space:nowrap;text-align:right}
+.kpop{position:fixed;z-index:120;min-width:160px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.22);padding:6px;display:flex;flex-direction:column}
+.kpop button{background:none;border:0;text-align:left;padding:9px 12px;border-radius:6px;font:inherit;color:var(--ink);cursor:pointer;min-height:40px}.kpop button:hover{background:var(--hover)}.kpop .danger{color:var(--bad)}.ksep{height:1px;background:var(--line);margin:4px 2px}
+
+/* ===== 帳款：狀態分頁／批次選取 ===== */
+.selall{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer}
+.bck,.selall input{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;vertical-align:middle;margin-right:8px;flex:none}
+.btable .ckc{width:34px;padding-right:0}.btable tr.sel{background:var(--accent-soft)}.bcard.sel{background:var(--accent-soft)}
+.bulkbar{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:40;display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:10px 14px;width:min(640px,calc(100vw - 32px))}
+@media (min-width:1024px){.bulkbar{left:calc(50% + var(--sbw)/2)}}
+@media (max-width:640px){.bulkbar{bottom:calc(72px + env(safe-area-inset-bottom,0px));flex-wrap:wrap}}
+
+.btable td,.btable th{white-space:nowrap}.btable td:nth-child(2){white-space:normal;min-width:150px}.btable{min-width:980px}
+
+.fxl{border:1px solid var(--line);border-radius:8px;margin-bottom:12px}.fxr{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line)}.fxr:first-child{border-top:0}.fxr>div:first-child{flex:1;min-width:0}
+.fxadd{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.2fr) minmax(0,1fr) 78px auto;gap:8px;align-items:center}.fxadd input,.fxadd select{width:100%;min-width:0}
+@media (max-width:640px){.fxadd{grid-template-columns:1fr 1fr}.fxadd #fxn{grid-column:1/-1}.fxadd #fxadd{grid-column:1/-1}}
+.bnote{max-width:150px!important}
+
+#fxb{padding:4px 20px 10px}.fxadd input,.fxadd select{padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:inherit;font:inherit;min-height:40px}
 </style>
 
 <div class="top"><div class="wrap">
@@ -862,20 +895,70 @@ function rowActions0(i){
   if(s==='進行中'||s==='暫停')return `<button class="btn sm primary" data-act="renew" data-code="${k}">續約</button><button class="btn sm" data-act="close" data-code="${k}">結案</button>`;
   return `<button class="btn sm" data-act="activate" data-code="${k}">設為進行中</button><button class="btn sm" data-act="close" data-code="${k}">結案</button>`;
 }
+/* 客戶卡片：一眼看健康度（逾期款／合約到期／任務逾期），操作收進 ⋯ 選單（同 HubSpot／Stripe 客戶列表慣例） */
+let _ht=null;
+function clientHealth(i){
+  const c=i.c,t=todayStr(),tags=[];let lv='ok';
+  const live=c.status==='進行中'||c.status==='暫停';
+  if(!live)return {lv:'mute',tags:[]};
+  const bump=l=>{if(l==='bad'||(l==='warn'&&lv==='ok'))lv=l};
+  if(isAdmin){
+    const bs=rows('bills',c.code).filter(b=>b.amount!=null).map(b=>billCalc(b)&&Object.assign({due:b.due},billCalc(b)));
+    const od=bs.filter(b=>b.bal>0&&b.due&&b.due<t),odSum=od.reduce((m,b)=>m+b.bal,0);
+    if(od.length){bump('bad');tags.push({c:'bad',t:'逾期未收 '+money(odSum)})}
+    else{const open=bs.filter(b=>b.bal>0),sum=open.reduce((m,b)=>m+b.bal,0);if(open.length)tags.push({c:'mute',t:'待收 '+money(sum)})}
+  }
+  const ts=(_ht||taskList()).filter(x=>x.clientCode===c.code&&x.state!=='已交付');
+  const late=ts.filter(x=>x.late).length,back=ts.filter(x=>x.state==='退回').length;
+  if(late){bump('bad');tags.push({c:'bad',t:'任務逾期 '+late})}
+  if(back){bump('warn');tags.push({c:'warn',t:'被退回 '+back})}
+  if(i.days!=null){
+    if(i.days<0){bump('bad');tags.push({c:'bad',t:'合約已過期 '+(-i.days)+' 天'})}
+    else if(i.days<=45){bump('warn');tags.push({c:'warn',t:'合約 '+i.days+' 天後到期'})}
+  }
+  if(!tags.length)tags.push({c:'ok',t:'一切正常'});
+  return {lv,tags};
+}
+const HL_ICON={ok:'<polyline points="20 6 9 17 4 12"/>',warn:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',bad:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'};
 function clientRow(i){
-  const c=i.c;
+  const c=i.c,h=clientHealth(i);
   const types=[...new Set(i.services.filter(s=>s.status!=='結束'||c.status==='結案').map(s=>s.type).filter(Boolean))];
   const m=isAdmin?i.services.reduce((t,s)=>t+monthlyOf(s),0):0;
-  const rk=i.needs?'back':c.status==='進行中'?'doing':c.status==='結案'?'done':'todo';
-  return `<div class="crow s-${rk}" role="button" tabindex="0" data-act="open" data-code="${esc(c.code)}">
-    <div><div><span class="code mono">${esc(c.code)}</span><span class="nm">${esc(c.brand||c.fullName||'（未命名）')}</span></div><div class="full">${esc(c.fullName&&c.fullName!==c.brand?c.fullName:(c.taxId?'統編 '+c.taxId:''))}</div>${c.brands?`<div class="full">旗下／別稱：${esc(c.brands)}</div>`:''}</div>
-    <div class="stack">${statusPill(c)}${deadlinePill(i)}</div>
-    <div class="chips">${types.map(t=>`<span class="chip">${esc(t)}</span>`).join('')||'<span class="muted">尚無服務</span>'}</div>
-    <div class="num" style="text-align:right">${isAdmin?(m?money(m)+'<div class="muted" style="font-size:12px">每月</div>':'<span class="muted">—</span>'):''}</div>
-    <div class="acts">${rowActions(i)}</div>
+  const sub=c.fullName&&c.fullName!==c.brand?c.fullName:(c.taxId?'統編 '+c.taxId:'');
+  const kebab=(canWrite&&isAdmin)?`<button type="button" class="kebab" data-kmenu="${esc(c.code)}" aria-label="更多操作" aria-haspopup="menu"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button>`:'';
+  const tag=x=>`<span class="ht ${x.c}">${x.c==='ok'||x.c==='warn'||x.c==='bad'?`<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HL_ICON[x.c]}</svg>`:''}${esc(x.t)}</span>`;
+  return `<div class="cc2" role="button" tabindex="0" data-act="open" data-code="${esc(c.code)}">
+    <div class="cc2-h"><div class="cc2-n"><div><span class="code mono">${esc(c.code)}</span><span class="nm">${esc(c.brand||c.fullName||'（未命名）')}</span></div>${sub?`<div class="full">${esc(sub)}</div>`:''}${c.brands?`<div class="full">旗下／別稱：${esc(c.brands)}</div>`:''}</div><div class="cc2-r">${statusPill(c)}${deadlinePill(i)}${kebab}</div></div>
+    ${h.tags.length?`<div class="cc2-hl">${h.tags.map(tag).join('')}</div>`:''}
+    <div class="cc2-f"><div class="chips">${types.map(t=>`<span class="chip">${esc(t)}</span>`).join('')||'<span class="muted">尚無服務</span>'}</div>${isAdmin?`<div class="num mrr">${m?money(m)+'<span class="muted"> /月</span>':''}</div>`:''}</div>
   </div>`;
 }
+/* ⋯ 選單 */
+(function(){
+  let pop=null;const close=()=>{if(pop){pop.remove();pop=null}};
+  document.addEventListener('click',e=>{
+    const k=e.target.closest&&e.target.closest('[data-kmenu]');
+    if(!k){if(pop&&!e.target.closest('.kpop'))close();else if(pop)setTimeout(close,0);return}
+    e.stopPropagation();e.preventDefault();
+    const was=pop&&pop._for===k;close();if(was)return;
+    const code=k.dataset.kmenu,c=S.clients[code];if(!c)return;
+    const s=c.status,it=[];
+    if(s==='結案')it.push(['reopen','重新開啟']);
+    else if(s==='進行中'||s==='暫停'){it.push(['renew','續約']);it.push(['close','結案'])}
+    else{it.push(['activate','設為進行中']);it.push(['close','結案'])}
+    it.push(['open','查看詳情']);
+    pop=document.createElement('div');pop.className='kpop';pop.setAttribute('role','menu');pop._for=k;
+    pop.innerHTML=it.map(([a,l])=>`<button type="button" role="menuitem" data-act="${a}" data-code="${esc(code)}">${l}</button>`).join('')+`<div class="ksep"></div><button type="button" role="menuitem" class="danger" data-act="delClient" data-code="${esc(code)}">刪除客戶…</button>`;
+    document.body.appendChild(pop);
+    const r=k.getBoundingClientRect(),w=pop.offsetWidth,h=pop.offsetHeight;
+    let l=Math.min(innerWidth-w-8,Math.max(8,r.right-w)),tp=r.bottom+4;if(tp+h>innerHeight-8)tp=Math.max(8,r.top-h-4);
+    pop.style.left=l+'px';pop.style.top=tp+'px';
+  },true);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+  window.addEventListener('scroll',close,true);
+})();
 function renderClients(){
+  _ht=taskList();
   const all=Object.keys(S.clients).sort().map(info);
   const counts={};TABS.forEach(([k])=>counts[k]=all.filter(i=>inTab(i,k)).length);
   if(tab==null&&loaded.clients&&loaded.contracts)tab=counts.action?'action':'active';
@@ -898,7 +981,7 @@ function renderClients(){
   const body=!loaded.clients?'<div class="empty">載入中…</div>':list.length?list.map(clientRow).join(''):
     `<div class="empty">${q?'找不到符合的客戶。':all.length?'這個分類目前沒有客戶。':'還沒有客戶資料。按右上方「新增客戶」建立第一筆。'}</div>`;
   const focus=document.activeElement&&document.activeElement.id==='q';
-  $('#main').innerHTML=`${banner}${sum}${cch}<div class="tools"><div class="tabs">${tabs}</div><span class="grow"></span><input type="search" id="q" placeholder="搜尋名稱、編號、統編" value="${esc(query)}" aria-label="搜尋客戶">${newBtn}</div><div class="list board cards">${body}</div>`;
+  $('#main').innerHTML=`${banner}${sum}${cch}<div class="tools"><div class="tabs">${tabs}</div><span class="grow"></span><input type="search" id="q" placeholder="搜尋名稱、編號、統編" value="${esc(query)}" aria-label="搜尋客戶">${newBtn}</div><div class="list board cards cl">${body}</div>`;
   if(focus){const el=$('#q');el.focus();el.setSelectionRange(query.length,query.length)}
 }
 
@@ -1089,7 +1172,7 @@ function renderBills(){
     <div class="utabs">${tabs}</div><span class="grow" style="flex:1"></span>
     <div class="stepper"><button class="btn" data-act="billYear" data-d="-1" aria-label="上一年">‹</button><b class="num" style="align-self:center;min-width:48px;text-align:center">${yr}</b><button class="btn" data-act="billYear" data-d="1" aria-label="下一年">›</button></div>
     <button class="btn" data-act="billMonth" data-m="${nowM}">本月</button>
-    ${canWrite?`${billView!=='expense'?'<button class="btn" data-act="draftBills">產生月帳單草稿</button>':''}<button class="btn ${billView==='expense'?'':'primary'}" data-act="newBill">＋ 新增帳款</button><button class="btn ${billView==='expense'?'primary':''}" data-act="newExpense">＋ 新增支出</button>`:''}</div>
+    ${canWrite?`${billView!=='expense'?'<button class="btn" data-act="draftBills">產生月帳單草稿</button>':'<button class="btn" data-act="fixedExp">固定支出</button>'}<button class="btn ${billView==='expense'?'':'primary'}" data-act="newBill">＋ 新增帳款</button><button class="btn ${billView==='expense'?'primary':''}" data-act="newExpense">＋ 新增支出</button>`:''}</div>
     ${billView!=='overview'?`<div class="calstrip bstrip" style="--n:12">${mkStrip(billView)}</div>`:''}${canWrite&&billView!=='income'?'<button class="fab" data-act="newExpense">＋ 記一筆</button>':''}`;
   const sumBox=(st,extra)=>`<div class="bsum"><div><div class="k">應收（含稅）</div><div class="v num">${money(st.due)}</div></div><div><div class="k">已收</div><div class="v num ok">${money(st.got)}</div><div class="prog"><i style="width:${st.pct}%"></i></div></div><div><div class="k">未收</div><div class="v num">${money(st.bal)}</div></div><div><div class="k">逾期</div><div class="v num ${st.late>0?'bad':''}">${money(st.late)}</div>${st.lateN?`<div class="k">${st.lateN} 筆</div>`:''}</div></div>${extra||''}`;
   const box=(k,v,cls,sub)=>`<div><div class="k">${k}</div><div class="v num ${cls||''}">${v}</div>${sub?`<div class="k">${sub}</div>`:''}</div>`;
@@ -1147,7 +1230,13 @@ function renderBills(){
       <div class="split2" style="margin-top:14px"><div>${L.length?`<div class="xlist">${dayHTML}</div>`:`<div class="list"><div class="empty">這個月還沒有支出。按右下角「記一筆」，金額、類別、完成。</div></div>`}</div><div class="cstack">${expCharts}</div></div>`;
     return}
   /* ---------- 收入 ---------- */
-  const L=(byM[billMonth]||[]).filter(b=>billFilter!=='open'||b.bal>0||(b.bal<=0&&!b.pending&&billInv(b)&&!b.invoiceNo)||b.pending);
+  /* 帳款階段（同 Xero／Stripe 發票的狀態分頁）：待收款 → 逾期 → 已收待開發票 → 已完成 */
+  const stageOf=b=>b.pending?'pend':b.bal>0?((b.due&&b.due<t)?'late':'due'):(billInv(b)&&!b.invoiceNo)?'inv':'done';
+  if(!['all','due','late','inv','done','pend'].includes(billFilter))billFilter='all';
+  const mAll=byM[billMonth]||[],stg={all:mAll.length,due:0,late:0,inv:0,done:0,pend:0};mAll.forEach(b=>{stg[stageOf(b)]++});
+  const L=mAll.filter(b=>billFilter==='all'||stageOf(b)===billFilter);
+  const payable=L.filter(b=>!b.pending&&b.bal>0);
+  const alive=new Set(payable.map(b=>b.id));[...billSel].forEach(id=>{if(!alive.has(id))billSel.delete(id)});
   const st=billStat(byM[billMonth]||[],t);
   const earlier=all.filter(b=>!b.pending&&b.bal>0&&b.due&&b.due<t&&b.mk<billMonth);
   const early=earlier.length?`<div class="infobox warn" style="margin:12px 0 0">之前月份還有 <b>${earlier.length}</b> 筆逾期，共 <b>${money(earlier.reduce((s,b)=>s+b.bal,0))}</b>　<button class="btn sm" data-act="billMonth" data-m="${earlier[0].mk}">看最早的月份</button></div>`:'';
@@ -1157,8 +1246,9 @@ function renderBills(){
     const sp=b.pending?'<span class="pill mute">金額待定</span>':b.bal<=0?'<span class="pill ok">已收</span>':(b.due&&b.due<t)?'<span class="pill bad">逾期</span>':'<span class="pill warn">未收</span>';
     const inv=!billInv(b)?'<span class="muted">免開</span>':b.invoiceNo?`<span class="mono">${esc(b.invoiceNo)}</span>`:(!b.pending&&b.bal<=0)?'<span class="pill warn">待開立</span>':'<span class="muted">收款後開</span>';
     const actH=`<div class="acts">${canWrite?`${!b.pending&&b.bal>0?`<button class="btn sm primary" data-act="payBill" data-id="${esc(b.id)}">收款</button>`:''}${billInv(b)&&!b.pending&&b.bal<=0&&!b.invoiceNo?`<button class="btn sm primary" data-act="invBill" data-id="${esc(b.id)}">登記發票</button>`:''}<button class="btn sm" data-act="editBill" data-id="${esc(b.id)}">編輯</button>`:''}</div>`;
-    cardL.push(`<div class="bcard"><div class="bc-h"><div class="bc-n"><span class="mono muted">${esc(b.clientCode)}</span> <b>${esc(cl?cl.brand||cl.fullName:'')}</b></div>${sp}</div><div class="bc-m"><span><i>繳款日</i><b class="mono">${esc((b.due||'—').slice(5))}</b></span><span><i>金額</i><b class="num">${b.pending?'待定':money(b.total)}</b></span><span><i>未收</i><b class="num ${!b.pending&&b.bal>0?'bad':''}">${b.pending?'—':money(b.bal)}</b></span></div>${(billInv(b)||b.note)?`<div class="bc-f">${billInv(b)?`<span>發票：${inv}</span>`:''}${b.note?`<span class="bc-note">${esc(b.note)}</span>`:''}</div>`:''}${canWrite?actH:''}</div>`);
-    return `<tr><td><span class="mono muted">${esc(b.clientCode)}</span> ${esc(cl?cl.brand||cl.fullName:'')}</td><td class="mono">${esc((b.due||'—').slice(5))}</td><td class="r num">${b.pending?'<span class="muted">—</span>':money(b.total)}</td><td class="r num">${money(b.received||0)}</td><td class="r num"><b>${b.pending?'':money(b.bal)}</b></td><td>${sp}</td><td>${inv}</td><td class="bnote"${b.note?` data-tip="${esc(tipHTML('備註',[{n:b.note,v:''}]))}"`:''}>${esc(b.note||'')}</td>
+    const ck=(canWrite&&!b.pending&&b.bal>0)?`<input type="checkbox" class="bck" data-act="bsel" data-id="${esc(b.id)}" ${billSel.has(b.id)?'checked':''} aria-label="選取 ${esc(b.clientCode)} ${esc(b.period||'')}">`:'';
+    cardL.push(`<div class="bcard${billSel.has(b.id)?' sel':''}"><div class="bc-h"><div class="bc-n">${ck}<span class="mono muted">${esc(b.clientCode)}</span> <b>${esc(cl?cl.brand||cl.fullName:'')}</b></div>${sp}</div><div class="bc-m"><span><i>繳款日</i><b class="mono">${esc((b.due||'—').slice(5))}</b></span><span><i>金額</i><b class="num">${b.pending?'待定':money(b.total)}</b></span><span><i>未收</i><b class="num ${!b.pending&&b.bal>0?'bad':''}">${b.pending?'—':money(b.bal)}</b></span></div>${(billInv(b)||b.note)?`<div class="bc-f">${billInv(b)?`<span>發票：${inv}</span>`:''}${b.note?`<span class="bc-note">${esc(b.note)}</span>`:''}</div>`:''}${canWrite?actH:''}</div>`);
+    return `<tr class="${billSel.has(b.id)?'sel':''}"><td class="ckc">${ck}</td><td><span class="mono muted">${esc(b.clientCode)}</span> ${esc(cl?cl.brand||cl.fullName:'')}</td><td class="mono">${esc((b.due||'—').slice(5))}</td><td class="r num">${b.pending?'<span class="muted">—</span>':money(b.total)}</td><td class="r num">${money(b.received||0)}</td><td class="r num"><b>${b.pending?'':money(b.bal)}</b></td><td>${sp}</td><td>${inv}</td><td class="bnote"${b.note?` data-tip="${esc(tipHTML('備註',[{n:b.note,v:''}]))}"`:''}>${esc(b.note||'')}</td>
       <td>${actH}</td></tr>`}).join('');
   const extra=(st.invN?`<div class="sumline" style="margin-top:2px"><span><b>${st.invN}</b>筆已收款、待開發票</span></div>`:'');
   const mBills=(byM[billMonth]||[]).filter(b=>!b.pending);
@@ -1166,10 +1256,35 @@ function renderBills(){
   const clItems=Object.entries(byCl).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([c,v])=>({label:esc(clientName(c)),plain:c,v}));
   const charts=mBills.length?`<div class="two-col tc" style="margin-top:14px">${chartCard('收款狀態',segParts([{label:'已收',v:Math.min(st.got,st.due),color:'var(--cv1)'},{label:'未收（未到期）',v:Math.max(0,st.bal-st.late),color:'var(--cvn)'},{label:'逾期',v:st.late,color:'var(--bad)'}]),'本月應收 '+money(st.due))}${chartCard('各客戶應收',rankBars(clItems),'本月，含稅')}</div>`:'';
   $('#main').innerHTML=head+`<h3 class="bh">${yr} 年 ${+billMonth.slice(5)} 月收入${billMonth===nowM?'（本月）':''}</h3>`+sumBox(st,extra)+charts+early
-   +`<div class="tools" style="margin-top:14px"><div class="tabs"><button data-act="billFilter" data-v="all" aria-pressed="${billFilter!=='open'}">全部</button><button data-act="billFilter" data-v="open" aria-pressed="${billFilter==='open'}">待處理</button></div></div>`
-   +(L.length?`<div class="bcards">${cardL.join('')}</div><div class="tablewrap wide"><table class="btable"><thead><tr><th>客戶</th><th>繳款日</th><th class="r">金額（含稅）</th><th class="r">已收</th><th class="r">未收餘額</th><th>狀態</th><th>發票</th><th>備註</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`
-     :`<div class="list"><div class="empty">${(byM[billMonth]||[]).length?'這個月沒有待處理的帳款。':'這個月還沒有帳款。可以按「新增帳款」先記下預計要收的款項與備註，金額還沒確定也可以留空。'}</div></div>`);
+   +`<div class="tools" style="margin-top:14px"><div class="tabs" role="tablist">${[['all','全部'],['due','待收款'],['late','逾期'],['inv','待開發票'],['done','已完成'],['pend','金額待定']].filter(([k])=>k==='all'||stg[k]>0||billFilter===k).map(([k,l])=>`<button data-act="billFilter" data-v="${k}" aria-pressed="${billFilter===k}">${l}<span class="n">${stg[k]}</span></button>`).join('')}</div>${payable.length&&canWrite?`<span class="grow"></span><label class="selall"><input type="checkbox" data-act="bselAll" ${payable.every(b=>billSel.has(b.id))?'checked':''}> 全選待收款</label>`:''}</div>`
+   +(L.length?`<div class="bcards">${cardL.join('')}</div><div class="tablewrap wide"><table class="btable"><thead><tr><th class="ckc"></th><th>客戶</th><th>繳款日</th><th class="r">金額（含稅）</th><th class="r">已收</th><th class="r">未收餘額</th><th>狀態</th><th>發票</th><th>備註</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`
+     :`<div class="list"><div class="empty">${(byM[billMonth]||[]).length?'這個分類沒有帳款。':'這個月還沒有帳款。可以按「新增帳款」先記下預計要收的款項與備註，金額還沒確定也可以留空。'}</div></div>`)
+   +(billSel.size?`<div class="bulkbar" role="region" aria-label="批次操作"><b>已選 ${billSel.size} 筆</b><span class="muted">共 ${money(payable.filter(b=>billSel.has(b.id)).reduce((m,b)=>m+b.bal,0))}</span><span class="grow"></span><button class="btn" data-act="bselClear">取消選取</button><button class="btn primary" data-act="bulkPay">標記為已收款</button></div>`:'');
 }
+/* 固定支出：每月重複的支出（租金、薪資、勞健保…）建立範本，一鍵產生該月待付項目（同 Xero／Wave 的 repeating bills） */
+function fixedExpForm(){
+  const ym=billMonth||todayStr().slice(0,7);
+  let list=(((S.settings||{}).expFixed||{}).list||[]).map(x=>Object.assign({},x));
+  const save=()=>setDoc('settings','expFixed',{list});
+  const exists=x=>Object.values(S.expenses).some(e=>(e.date||'').slice(0,7)===ym&&e.note===x.n&&e.category===x.c);
+  $('#modalroot').innerHTML=`<div class="mwrap" id="mw"><div class="modal" role="dialog" aria-label="固定支出"><h3>固定支出（每月）</h3><div id="fxb"></div><div class="mfoot"><button class="btn" id="fxclose">關閉</button><button class="btn primary" id="fxmake"></button></div></div></div>`;
+  const draw=()=>{
+    const todo=list.filter(x=>!exists(x));
+    $('#fxb').innerHTML=`<p class="muted" style="margin:0 0 10px">先建立每月固定會發生的支出範本，之後每個月按一下就會產生當月的「待付」項目，付了再標記已付。</p>`
+      +(list.length?`<div class="fxl">${list.map((x,i)=>`<div class="fxr"><div><b>${esc(x.n)}</b><div class="muted">${esc(x.c)}・每月 ${x.d||1} 日${x.k?'・'+esc(x.k):''}</div></div><div class="num">${x.a?money(x.a):'—'}</div>${exists(x)?'<span class="pill ok">已建立</span>':''}<button class="btn sm" data-i="${i}" aria-label="移除">移除</button></div>`).join('')}</div>`:'<div class="muted" style="padding:8px 0">還沒有固定支出。</div>')
+      +`<div class="fxadd"><input id="fxn" placeholder="名稱，例如 辦公室租金"><select id="fxc">${EXP_CATS.map(c=>`<option>${esc(c)}</option>`).join('')}</select><input id="fxa" type="number" inputmode="numeric" placeholder="金額"><input id="fxd" type="number" inputmode="numeric" min="1" max="31" placeholder="每月幾日" value="1"><button class="btn" id="fxadd">加入</button></div><div id="fxe" class="err" style="min-height:1.2em"></div>`;
+    $('#fxmake').textContent=todo.length?'建立 '+ym+' 的固定支出（'+todo.length+' 筆）':'本月已全部建立';$('#fxmake').disabled=!todo.length;
+    $('#fxb').querySelectorAll('.fxr .btn').forEach(b=>b.onclick=async()=>{list.splice(+b.dataset.i,1);await run(save);draw()});
+    $('#fxadd').onclick=async()=>{const n=$('#fxn').value.trim(),a=Number($('#fxa').value)||0,d=Math.min(31,Math.max(1,parseInt($('#fxd').value,10)||1));if(!n){$('#fxe').textContent='請填名稱';return}
+      list.push({n,c:$('#fxc').value,a:a||undefined,d});await run(save);draw()};
+  };
+  draw();
+  $('#fxclose').onclick=closeModal;$('#mw').addEventListener('mousedown',e=>{if(e.target.id==='mw')closeModal()});
+  $('#fxmake').onclick=async()=>{const todo=list.filter(x=>!exists(x));$('#fxmake').disabled=true;
+    const ok=await run(async()=>{for(const x of todo){const last=new Date(+ym.slice(0,4),+ym.slice(5),0).getDate();await setDoc('expenses',newId('expenses'),{date:ym+'-'+p2(Math.min(x.d||1,last)),amount:x.a||0,category:x.c,note:x.n,payee:'',clientCode:x.k||'',paid:false})}},'已建立 '+todo.length+' 筆固定支出（待付）');
+    if(ok){billView='expense';closeModal()}else draw()};
+}
+const billSel=new Set();
 let lastExpCat=null;
 function expenseForm(id,preset){
   const x=id?S.expenses[id]:Object.assign({date:todayStr(),paid:true},preset||{});
@@ -2222,6 +2337,9 @@ document.addEventListener('click',async e=>{
   if(a==='dismissPw'){ls.set('pwBannerOff','1');queue();return}
   if(a==='homeTab'){homeTab=el.dataset.v;queue();return}
   if(a==='billFilter'){billFilter=el.dataset.v;queue();return}
+  if(a==='bselClear'){billSel.clear();queue();return}
+  if(a==='fixedExp'){fixedExpForm();return}
+  if(a==='bulkPay'){bulkPayForm();return}
   if(a==='billMonth'){billMonth=el.dataset.m;if(billView==='overview')billView='income';queue();return}
   if(a==='billView'){billView=el.dataset.v;queue();return}
   if(a==='billYear'){const m=billMonth||todayStr().slice(0,7);billMonth=(+m.slice(0,4)+ +el.dataset.d)+m.slice(4);queue();return}
@@ -2285,7 +2403,15 @@ document.addEventListener('click',async e=>{
   else if(a==='payBill'){const b=S.bills[id];if(!b)return;const bc=billCalc(b);
     openForm({title:'收款',submit:'登記收款',fields:[{k:'i',type:'info',html:`${esc(b.clientCode)} ${esc(b.period)}　應收（含稅）${money(bc.total)}，已收 ${money(b.received||0)}`},{k:'received',label:'累計已收金額（含稅）',type:'money',req:true},{k:'receivedAt',label:'收款日',type:'date'}],values:{received:bc.total,receivedAt:todayStr()},okMsg:'已登記收款',onSubmit:v=>upd('bills',id,{received:v.received,receivedAt:v.receivedAt})})}
 });
+function bulkPayForm(){
+  const ids=[...billSel].filter(id=>S.bills[id]&&billCalc(S.bills[id]).bal>0);if(!ids.length)return;
+  const tot=ids.reduce((m,id)=>m+billCalc(S.bills[id]).bal,0);
+  openForm({title:'批次標記為已收款',submit:'確認收款 '+ids.length+' 筆',fields:[{k:'i',type:'info',html:`共 <b>${ids.length}</b> 筆、合計 <b>${money(tot)}</b>（含稅）。每筆都會登記為「全額已收」。`},{k:'receivedAt',label:'收款日',type:'date'}],values:{receivedAt:todayStr()},okMsg:'已登記 '+ids.length+' 筆收款',
+    onSubmit:async v=>{for(const id of ids){const bc=billCalc(S.bills[id]);await upd('bills',id,{received:bc.total,receivedAt:v.receivedAt})}billSel.clear()}});
+}
 document.addEventListener('change',async e=>{
+  const bs=e.target.closest&&e.target.closest('[data-act="bsel"]');if(bs){if(bs.checked)billSel.add(bs.dataset.id);else billSel.delete(bs.dataset.id);queue();return}
+  const ba=e.target.closest&&e.target.closest('[data-act="bselAll"]');if(ba){document.querySelectorAll('.bck').forEach(c=>{if(ba.checked)billSel.add(c.dataset.id);else billSel.delete(c.dataset.id)});queue();return}
   const el=e.target.closest('[data-act="toggleTodo"]');
   if(el&&canWrite){await run(()=>upd('todos',el.dataset.id,{done:el.checked}))}
   const ck=e.target.closest('[data-act="tcheck"]');
