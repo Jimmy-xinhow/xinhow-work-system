@@ -1,10 +1,11 @@
 {
   "name": "xinhow-work-system",
   "version": "1.0.0",
-  "description": "\u661f\u660a\u79d1\u6280\u5de5\u4f5c\u7ba1\u7406\u7cfb\u7d71",
+  "description": "星昊科技工作管理系統",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test:layout": "node tests/layout.test.js"
   },
   "dependencies": {
     "express": "^5.3.0",

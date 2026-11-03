@@ -654,13 +654,36 @@ h1,h2,h3{font-weight:600}
 .bnote{max-width:150px!important}
 
 #fxb{padding:4px 20px 10px}.fxadd input,.fxadd select{padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:inherit;font:inherit;min-height:40px}
+
+.cc2{position:relative}.cc2-link{background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}.cc2-link::after{content:"";position:absolute;inset:0;border-radius:10px}
+.cc2-link:focus-visible{outline:none}.cc2:has(.cc2-link:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.cc2-r{position:relative;z-index:1}
+
+/* ===== 第四批：無障礙與一致性（WCAG 2.2 / Material 觸控 48dp 規範）===== */
+:root{--r-card:10px;--pad-card:16px}
+.skip{position:absolute;left:12px;top:-60px;z-index:100;background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:8px;font-weight:600;text-decoration:none}
+.skip:focus{top:10px}
+[data-act]:focus-visible,.kebab:focus-visible,.tabs button:focus-visible,summary:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card,.sec,.kcard,.cc2{border-radius:var(--r-card)}
+.brand small,.nav .count,.tabs .n,.bc-m i{font-size:12px}
+.chart .ca{font-size:12px}
+@media (pointer:coarse){
+  .btn{min-height:44px}.btn.sm{min-height:40px}
+  .tabs button{min-height:44px}
+  .kebab{min-width:44px;min-height:44px}
+  .bck,.selall input,.chk input,.todo input[type=checkbox]{width:24px;height:24px}
+  [data-act=pshift]{min-width:44px}
+  .todo a,.item a{display:inline-block;padding:4px 0;min-height:24px}
+  .nav button{font-size:12px}
+}
 </style>
 
+<a class="skip" href="#main">跳到主要內容</a>
 <div class="top"><div class="wrap">
   <div class="brand">星昊科技<small>工作管理系統</small></div>
-  <nav class="nav" id="nav"></nav>
+  <nav class="nav" id="nav" aria-label="主要導覽"></nav>
 </div></div>
-<main class="wrap" id="main"><div class="empty">載入中…</div></main>
+<main class="wrap" id="main" tabindex="-1"><div class="empty">載入中…</div></main>
 <div id="layer"></div>
 <div id="modalroot"></div>
 <div id="toastroot"></div>
@@ -927,8 +950,8 @@ function clientRow(i){
   const sub=c.fullName&&c.fullName!==c.brand?c.fullName:(c.taxId?'統編 '+c.taxId:'');
   const kebab=(canWrite&&isAdmin)?`<button type="button" class="kebab" data-kmenu="${esc(c.code)}" aria-label="更多操作" aria-haspopup="menu"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button>`:'';
   const tag=x=>`<span class="ht ${x.c}">${x.c==='ok'||x.c==='warn'||x.c==='bad'?`<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HL_ICON[x.c]}</svg>`:''}${esc(x.t)}</span>`;
-  return `<div class="cc2" role="button" tabindex="0" data-act="open" data-code="${esc(c.code)}">
-    <div class="cc2-h"><div class="cc2-n"><div><span class="code mono">${esc(c.code)}</span><span class="nm">${esc(c.brand||c.fullName||'（未命名）')}</span></div>${sub?`<div class="full">${esc(sub)}</div>`:''}${c.brands?`<div class="full">旗下／別稱：${esc(c.brands)}</div>`:''}</div><div class="cc2-r">${statusPill(c)}${deadlinePill(i)}${kebab}</div></div>
+  return `<div class="cc2" data-act="open" data-code="${esc(c.code)}">
+    <div class="cc2-h"><div class="cc2-n"><div><span class="code mono">${esc(c.code)}</span><button type="button" class="nm cc2-link" data-act="open" data-code="${esc(c.code)}">${esc(c.brand||c.fullName||'（未命名）')}</button></div>${sub?`<div class="full">${esc(sub)}</div>`:''}${c.brands?`<div class="full">旗下／別稱：${esc(c.brands)}</div>`:''}</div><div class="cc2-r">${statusPill(c)}${deadlinePill(i)}${kebab}</div></div>
     ${h.tags.length?`<div class="cc2-hl">${h.tags.map(tag).join('')}</div>`:''}
     <div class="cc2-f"><div class="chips">${types.map(t=>`<span class="chip">${esc(t)}</span>`).join('')||'<span class="muted">尚無服務</span>'}</div>${isAdmin?`<div class="num mrr">${m?money(m)+'<span class="muted"> /月</span>':''}</div>`:''}</div>
   </div>`;
@@ -1256,7 +1279,7 @@ function renderBills(){
   const clItems=Object.entries(byCl).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([c,v])=>({label:esc(clientName(c)),plain:c,v}));
   const charts=mBills.length?`<div class="two-col tc" style="margin-top:14px">${chartCard('收款狀態',segParts([{label:'已收',v:Math.min(st.got,st.due),color:'var(--cv1)'},{label:'未收（未到期）',v:Math.max(0,st.bal-st.late),color:'var(--cvn)'},{label:'逾期',v:st.late,color:'var(--bad)'}]),'本月應收 '+money(st.due))}${chartCard('各客戶應收',rankBars(clItems),'本月，含稅')}</div>`:'';
   $('#main').innerHTML=head+`<h3 class="bh">${yr} 年 ${+billMonth.slice(5)} 月收入${billMonth===nowM?'（本月）':''}</h3>`+sumBox(st,extra)+charts+early
-   +`<div class="tools" style="margin-top:14px"><div class="tabs" role="tablist">${[['all','全部'],['due','待收款'],['late','逾期'],['inv','待開發票'],['done','已完成'],['pend','金額待定']].filter(([k])=>k==='all'||stg[k]>0||billFilter===k).map(([k,l])=>`<button data-act="billFilter" data-v="${k}" aria-pressed="${billFilter===k}">${l}<span class="n">${stg[k]}</span></button>`).join('')}</div>${payable.length&&canWrite?`<span class="grow"></span><label class="selall"><input type="checkbox" data-act="bselAll" ${payable.every(b=>billSel.has(b.id))?'checked':''}> 全選待收款</label>`:''}</div>`
+   +`<div class="tools" style="margin-top:14px"><div class="tabs">${[['all','全部'],['due','待收款'],['late','逾期'],['inv','待開發票'],['done','已完成'],['pend','金額待定']].filter(([k])=>k==='all'||stg[k]>0||billFilter===k).map(([k,l])=>`<button data-act="billFilter" data-v="${k}" aria-pressed="${billFilter===k}">${l}<span class="n">${stg[k]}</span></button>`).join('')}</div>${payable.length&&canWrite?`<span class="grow"></span><label class="selall"><input type="checkbox" data-act="bselAll" ${payable.every(b=>billSel.has(b.id))?'checked':''}> 全選待收款</label>`:''}</div>`
    +(L.length?`<div class="bcards">${cardL.join('')}</div><div class="tablewrap wide"><table class="btable"><thead><tr><th class="ckc"></th><th>客戶</th><th>繳款日</th><th class="r">金額（含稅）</th><th class="r">已收</th><th class="r">未收餘額</th><th>狀態</th><th>發票</th><th>備註</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`
      :`<div class="list"><div class="empty">${(byM[billMonth]||[]).length?'這個分類沒有帳款。':'這個月還沒有帳款。可以按「新增帳款」先記下預計要收的款項與備註，金額還沒確定也可以留空。'}</div></div>`)
    +(billSel.size?`<div class="bulkbar" role="region" aria-label="批次操作"><b>已選 ${billSel.size} 筆</b><span class="muted">共 ${money(payable.filter(b=>billSel.has(b.id)).reduce((m,b)=>m+b.bal,0))}</span><span class="grow"></span><button class="btn" data-act="bselClear">取消選取</button><button class="btn primary" data-act="bulkPay">標記為已收款</button></div>`:'');
