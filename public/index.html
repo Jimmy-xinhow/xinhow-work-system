@@ -1015,7 +1015,7 @@ function draftBills(){
       if(!drafts.length)return;
       for(const x of drafts){
         if(Object.values(S.bills).some(b=>b.clientCode===x.code&&b.period===v.period))continue;
-        await setDoc('bills',newId('bills'),{clientCode:x.code,period:v.period,amount:x.amount,received:0,due:v.period+'-01',note:'草稿',invoiceNo:null,needInvoice:needsInv(x.code),incl:true});
+        await setDoc('bills',newId('bills'),{clientCode:x.code,period:v.period,amount:x.amount,received:0,due:v.period+'-01',note:'',invoiceNo:null,needInvoice:needsInv(x.code),incl:true});
       }}});
 }
 
