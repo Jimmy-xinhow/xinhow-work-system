@@ -291,15 +291,21 @@ app.post('/api/import', needReady, needJson, async (req, res) => {
     }
   }
   if (rows.length > 20000) return res.status(400).json({ error: '筆數太多' });
+  const skip = req.query.skip === '1'; let added = 0;
   const cx = await pool.connect();
   try {
     await cx.query('BEGIN');
-    for (const r of rows) await cx.query(`INSERT INTO docs(coll,id,data) VALUES($1,$2,$3)
-      ON CONFLICT (coll,id) DO UPDATE SET data=EXCLUDED.data, version=docs.version+1, updated_at=now()`, r);
+    for (const r of rows) {
+      const q = skip
+        ? `INSERT INTO docs(coll,id,data) VALUES($1,$2,$3) ON CONFLICT (coll,id) DO NOTHING`
+        : `INSERT INTO docs(coll,id,data) VALUES($1,$2,$3)
+      ON CONFLICT (coll,id) DO UPDATE SET data=EXCLUDED.data, version=docs.version+1, updated_at=now()`;
+      const rs = await cx.query(q, r); added += rs.rowCount;
+    }
     await cx.query('COMMIT');
   } catch (e) { await cx.query('ROLLBACK'); throw e; } finally { cx.release(); }
   new Set(rows.map(r => r[0])).forEach(broadcast);
-  res.json({ ok: true, count: rows.length });
+  res.json({ ok: true, count: skip ? added : rows.length, skipped: skip ? rows.length - added : 0 });
 });
 
 /* ---- 頁面 ---- */
