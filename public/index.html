@@ -592,7 +592,7 @@ function renderClients(){
   if(q)list=all.filter(i=>[i.c.code,i.c.brand,i.c.brands,i.c.fullName,i.c.taxId].join(' ').toLowerCase().includes(q));
   if(curTab==='action'&&!q)list.sort((a,b)=>a.days-b.days);
   else if(curTab==='closed'&&!q)list.sort((a,b)=>(b.c.closedAt||'').localeCompare(a.c.closedAt||'')||a.c.code.localeCompare(b.c.code));
-  const sum=`<div class="sumline"><span><b>${counts.active}</b>進行中客戶</span><span><b>${counts.action}</b>需處理</span><span><b>${counts.pending}</b>待分類</span>${isAdmin?`<span><b class="num">${money(mrr())}</b>每月經常性收入（未稅）</span>`:''}</div>`;
+  const sum=`<div class="sumline"><span><b>${counts.active}</b>進行中客戶</span><span><b>${counts.action}</b>需處理</span><span><b>${counts.pending}</b>待分類</span>${isAdmin?`<span><b class="num">${money(mrr())}</b>每月經常性收入（含稅）</span>`:''}</div>`;
   const banner=ls.get('pwBannerOff')?'':`<div class="note bad"><div><b>安全提醒：</b>總表「客戶合約款項紀錄」與「主機搬遷」頁有網站後台、網域與信箱的明文密碼，且同一組密碼重複使用。這個系統不存放任何密碼；建議改放密碼管理工具，並換掉重複使用的那組。</div><button class="btn sm" data-act="dismissPw">知道了</button></div>`;
   const newBtn=canWrite?`<button class="btn primary" data-act="newClient">＋ 新增客戶</button>`:'';
   const tabs=TABS.map(([k,t])=>`<button data-act="tab" data-v="${k}" aria-pressed="${curTab===k&&!q}">${t}<span class="n">${counts[k]}</span></button>`).join('');
@@ -634,7 +634,7 @@ function renderPanel(){
     return `<div class="item"><div class="main"><div class="title">${esc(s.type||'')}<span class="pill ${sp}">${esc(s.status||'未設定')}</span><span class="muted">${esc(s.mode||'')}${s.cycle?'・'+esc(s.cycle):''}</span>${s.check?'<span class="warnmark">⚠ 待確認</span>':''}</div>
       <div class="sub">${s.articles!=null?'每月文章 '+esc(s.articles)+' 篇・':''}${s.reports!=null?'每月報告 '+esc(s.reports)+' 份・':''}${esc(s.start||'—')} ～ ${esc(s.end||'—')}${s.contractNo?'・合約 '+esc(s.contractNo):''}</div>
       ${s.desc?`<div class="sub">${esc(s.desc)}</div>`:''}</div>
-      ${isAdmin?`<div class="num" style="text-align:right">${f&&f.amount!=null?money(f.amount):'<span class="muted">未填</span>'}${s.feeDerived?'<div class="warnmark">含稅換算</div>':''}</div>`:''}${edit('editService',s.id)}</div>`}).join(''):'<div class="in muted">尚無服務項目</div>';
+      ${isAdmin?`<div class="num" style="text-align:right">${f&&f.amount!=null?money(f.amount):'<span class="muted">未填</span>'}</div>`:''}${edit('editService',s.id)}</div>`}).join(''):'<div class="in muted">尚無服務項目</div>';
   const pidx=q=>{const i=PRESETS.findIndex(x=>x.id===q.preset);return i<0?99:i};
   const plans=rows('plans',c.code).sort((a,b)=>pidx(a)-pidx(b)||String(a.label||'').localeCompare(String(b.label||''),'zh-Hant'));
   const plansHTML=plans.length?plans.map(q=>{
@@ -652,7 +652,7 @@ function renderPanel(){
     <section class="sec"><header><h3>基本資料</h3></header><div class="in"><dl class="kv">
       <dt>公司全名</dt><dd>${esc(c.fullName||'—')}</dd><dt>旗下品牌／別稱</dt><dd>${esc(c.brands||'—')}</dd><dt>統編</dt><dd class="mono">${esc(c.taxId||'—')}</dd><dt>產業</dt><dd>${esc(c.industry||'—')}</dd>
       <dt>網站</dt><dd>${link(c.website)}</dd><dt>成交日</dt><dd>${esc(c.dealDate||'—')}</dd>
-      <dt>開票抬頭</dt><dd>${esc(c.invoiceTitle||'—')}</dd><dt>開票 Email</dt><dd>${esc(c.invoiceEmail||'—')}</dd>
+      <dt>發票</dt><dd>${c.needInvoice?'需要開立':'不需要'}</dd>
       <dt>Drive 資料夾</dt><dd>${link(c.folderUrl,'開啟資料夾')}</dd><dt>約定與範圍</dt><dd>${esc(c.terms||'—')}</dd></dl></div></section>
     <section class="sec"><header><h3>合約</h3>${secBtn('newContract','＋ 新增合約')}</header>${contractsHTML}</section>
     <section class="sec"><header><h3>服務項目</h3>${secBtn('newService','＋ 新增服務')}</header>${servicesHTML}</section>
@@ -666,21 +666,31 @@ function renderPanel(){
 }
 
 /* bills */
-function billCalc(b){const tax=Math.round((b.amount||0)*0.05);const total=(b.amount||0)+tax;return {tax,total,bal:total-(b.received||0)}}
+/* 所有金額一律含稅，不做稅額換算 */
+function billCalc(b){const total=b.amount||0;return {total,bal:total-(b.received||0)}}
+function needsInv(code){const c=S.clients[code];return !!(c&&c.needInvoice)}
+function legacyMoney(){/* 尚未標記為「含稅」的舊資料（費用／帳單） */
+  const f=Object.entries(S.fees).filter(([id,x])=>x&&x.amount!=null&&!x.incl).map(([id])=>id);
+  const b=Object.entries(S.bills).filter(([id,x])=>x&&x.amount!=null&&!x.incl).map(([id])=>id);
+  return {fees:f,bills:b,n:f.length+b.length}}
+function legacyBanner(){
+  if(!isAdmin)return '';const L=legacyMoney();if(!L.n)return '';
+  return `<div class="infobox warn" style="margin:0 0 12px"><b>有 ${L.n} 筆舊資料的金額是「未稅」</b>（費用 ${L.fees.length}、帳單 ${L.bills.length}）。系統現在一律以含稅記錄，不會自動換算。確認後可一次轉成含稅（金額 × 1.05，四捨五入），已收金額不變；若你想逐筆自己改，也可以略過。<div style="margin-top:8px"><button class="btn sm primary" data-act="migrateIncl">一次轉為含稅</button> <button class="btn sm" data-act="markIncl">不轉換，直接視為已是含稅</button></div></div>`}
 function renderBills(){
   const all=Object.entries(S.bills).map(([id,b])=>Object.assign({id},b,billCalc(b))).sort((a,b)=>(b.due||'').localeCompare(a.due||''));
   const open=all.filter(b=>b.bal>0);
-  const list=billFilter==='open'?open:all;
+  const pendInv=b=>b.bal<=0&&needsInv(b.clientCode)&&!b.invoiceNo;
+  const list=billFilter==='open'?all.filter(b=>b.bal>0||pendInv(b)):all;
   const t=todayStr();
   const owing=open.reduce((s,b)=>s+b.bal,0);
   const trs=list.map(b=>{
     const cl=S.clients[b.clientCode];
     const st=b.bal<=0?'<span class="pill ok">已收</span>':(b.due&&b.due<t)?'<span class="pill bad">逾期</span>':'<span class="pill warn">未收</span>';
-    return `<tr><td><span class="mono muted">${esc(b.clientCode)}</span> ${esc(cl?cl.brand||cl.fullName:'')}</td><td class="mono">${esc(b.period||'')}</td><td class="r num">${money(b.amount)}</td><td class="r num">${money(b.tax)}</td><td class="r num">${money(b.total)}</td><td class="mono">${esc(b.due||'—')}</td><td class="r num">${money(b.received||0)}</td><td class="r num"><b>${money(b.bal)}</b></td><td>${st}</td><td>${b.invoiceNo?`<span class="mono">${esc(b.invoiceNo)}</span>`:'<span class="muted">未開</span>'}</td>
-      <td><div class="acts">${canWrite?`${b.bal>0?`<button class="btn sm primary" data-act="payBill" data-id="${esc(b.id)}">收款</button>`:''}<button class="btn sm" data-act="editBill" data-id="${esc(b.id)}">編輯</button>`:''}</div></td></tr>`}).join('');
-  $('#main').innerHTML=`<div class="sumline"><span><b class="num">${money(owing)}</b>未收餘額（含稅）</span><span><b>${open.length}</b>筆未結清</span></div>
-  <div class="tools"><div class="tabs"><button data-act="billFilter" data-v="open" aria-pressed="${billFilter==='open'}">未結清</button><button data-act="billFilter" data-v="all" aria-pressed="${billFilter==='all'}">全部</button></div><span class="grow"></span>${canWrite?`<button class="btn" data-act="draftBills">產生月帳單草稿</button><button class="btn primary" data-act="newBill">＋ 新增帳單</button>`:''}</div>
-  ${list.length?`<div class="tablewrap"><table><thead><tr><th>客戶</th><th>期別</th><th class="r">未稅</th><th class="r">稅額 5%</th><th class="r">含稅</th><th>繳款日</th><th class="r">已收</th><th class="r">未收餘額</th><th>狀態</th><th>發票</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`:`<div class="list"><div class="empty">${all.length?'目前沒有未結清帳單。':'還沒有帳單。按「新增帳單」記錄一筆，或用「產生月帳單草稿」依進行中的月繳服務建立。'}</div></div>`}`;
+    return `<tr><td><span class="mono muted">${esc(b.clientCode)}</span> ${esc(cl?cl.brand||cl.fullName:'')}</td><td class="mono">${esc(b.period||'')}</td><td class="r num">${money(b.total)}</td><td class="mono">${esc(b.due||'—')}</td><td class="r num">${money(b.received||0)}</td><td class="r num"><b>${money(b.bal)}</b></td><td>${st}</td><td>${!needsInv(b.clientCode)?'<span class="muted">免開</span>':b.invoiceNo?`<span class="mono">${esc(b.invoiceNo)}</span>`:b.bal<=0?'<span class="pill warn">待開立</span>':'<span class="muted">收款後開</span>'}</td>
+      <td><div class="acts">${canWrite?`${b.bal>0?`<button class="btn sm primary" data-act="payBill" data-id="${esc(b.id)}">收款</button>`:''}${needsInv(b.clientCode)&&b.bal<=0&&!b.invoiceNo?`<button class="btn sm primary" data-act="invBill" data-id="${esc(b.id)}">登記發票</button>`:''}<button class="btn sm" data-act="editBill" data-id="${esc(b.id)}">編輯</button>`:''}</div></td></tr>`}).join('');
+  $('#main').innerHTML=`${legacyBanner()}<div class="sumline"><span><b class="num">${money(owing)}</b>未收餘額（含稅）</span><span><b>${open.length}</b>筆未結清</span></div>
+  <div class="tools"><div class="tabs"><button data-act="billFilter" data-v="open" aria-pressed="${billFilter==='open'}">待處理</button><button data-act="billFilter" data-v="all" aria-pressed="${billFilter==='all'}">全部</button></div><span class="grow"></span>${canWrite?`<button class="btn" data-act="draftBills">產生月帳單草稿</button><button class="btn primary" data-act="newBill">＋ 新增帳單</button>`:''}</div>
+  ${list.length?`<div class="tablewrap"><table><thead><tr><th>客戶</th><th>期別</th><th class="r">金額（含稅）</th><th>繳款日</th><th class="r">已收</th><th class="r">未收餘額</th><th>狀態</th><th>發票</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`:`<div class="list"><div class="empty">${all.length?'目前沒有待收款或待開發票的帳單。':'還沒有帳單。按「新增帳單」記錄一筆，或用「產生月帳單草稿」依進行中的月繳服務建立。'}</div></div>`}`;
 }
 /* todos */
 function renderTodos(){
@@ -697,6 +707,7 @@ function fieldHTML(f,v){
   let inp='';
   const val=v==null?'':v;
   if(f.type==='textarea')inp=`<textarea id="${id}" name="${f.k}">${esc(val)}</textarea>`;
+  else if(f.type==='check'){return `<div class="fld"><label class="chk" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="${id}" name="${f.k}" ${v?'checked':''}><span>${esc(f.label)}</span></label>${f.hint?`<div class="hint">${esc(f.hint)}</div>`:''}</div>`}
   else if(f.type==='checks'){const cur=Array.isArray(v)?v:[];inp=`<div class="chkrow">${(f.opts||[]).map(([a,b])=>`<label class="chk"><input type="checkbox" name="${f.k}" value="${esc(a)}" ${cur.includes(a)?'checked':''}><span>${esc(b)}</span></label>`).join('')}</div>`}
   else if(f.type==='select'||f.type==='bool'){
     const opts=f.type==='bool'?[['','未確認'],['true','是'],['false','否']]:(f.opts||[]).map(o=>Array.isArray(o)?o:[o,o]);
@@ -724,6 +735,7 @@ function openForm(o){
     const v={};err.textContent='';
     for(const f of fs){
       if(f.type==='info')continue;
+      if(f.type==='check'){v[f.k]=!!form.querySelector('input[name="'+f.k+'"]:checked');continue}
       if(f.type==='checks'){v[f.k]=[...form.querySelectorAll('input[name="'+f.k+'"]:checked')].map(x=>x.value);continue}
       const el=form.elements[f.k];if(!el)continue;
       let x=el.value.trim();
@@ -748,7 +760,7 @@ const clientFields=(c)=>[
   {k:'website',label:'網站',ph:'https://'},
   c&&c.status==='結案'?null:{k:'status',label:'狀態',type:'select',opts:['洽談中','進行中','暫停'],blank:true,half:true,hint:'結案請用「結案」按鈕'},
   {k:'dealDate',label:'成交日',type:'date',half:true},
-  {k:'invoiceTitle',label:'開票抬頭',half:true},{k:'invoiceEmail',label:'開票 Email',half:true},
+  {k:'needInvoice',type:'check',label:'此客戶需要開立發票',hint:'勾選後，帳款收齊時才會出現「登記發票」。所有金額一律含稅。'},
   {k:'deadlineDay',label:'每月交付截止日（幾號）',type:'number',half:true,hint:'月報告與月部落文用；空白＝當月最後一個週五。週文章固定每週五。'},
   {k:'folderUrl',label:'Drive 資料夾連結',ph:'https://drive.google.com/drive/folders/…'},
   {k:'terms',label:'重要約定與服務範圍界線',type:'textarea'}
@@ -817,7 +829,7 @@ function serviceForm(code,id){
     {k:'type',label:'服務類型',type:'select',opts:SERVICE_TYPES,req:true,half:true},{k:'contractNo',label:'所屬合約',type:'select',opts:cn,blank:true,half:true},
     {k:'mode',label:'計費模式',type:'select',opts:['經常性','專案'],half:true},{k:'cycle',label:'計費週期',type:'select',opts:['月繳','季繳','年繳','一次性'],half:true},
     {k:'articles',label:'每月文章篇數',type:'number',half:true},{k:'reports',label:'每月報告份數',type:'number',half:true},
-    isAdmin?{k:'fee',label:'費用（未稅，元）',type:'money',half:true,hint:'只有管理者看得到'}:null,{k:'status',label:'狀態',type:'select',opts:['進行中','暫停','結束'],blank:true,half:true},
+    isAdmin?{k:'fee',label:'費用（含稅，元）',type:'money',half:true,hint:'依合約的含稅金額填寫；只有管理者看得到'}:null,{k:'status',label:'狀態',type:'select',opts:['進行中','暫停','結束'],blank:true,half:true},
     {k:'start',label:'起算日',type:'date',half:true},{k:'end',label:'結束日',type:'date',half:true},
     {k:'desc',label:'內容說明',type:'textarea'}],
     values:Object.assign({},x,{fee:id&&S.fees[id]?S.fees[id].amount:null}),
@@ -825,7 +837,7 @@ function serviceForm(code,id){
     onSubmit:async v=>{
       const sid=id||newId('services');const fee=v.fee;delete v.fee;
       await setDoc('services',sid,Object.assign({},x,v,{clientCode:code}));
-      if(isAdmin)await setDoc('fees',sid,{amount:fee});
+      if(isAdmin)await setDoc('fees',sid,{amount:fee,incl:true});
     }});
 }
 function todoForm(id){
@@ -841,11 +853,12 @@ function billForm(id,preset){
   openForm({title:id?'編輯帳單':'新增帳單',fields:[
     {k:'clientCode',label:'客戶',type:'select',opts:codes,req:true},
     {k:'period',label:'帳單期別 (YYYY-MM)',req:true,half:true,ph:'2026-12'},{k:'due',label:'繳款日',type:'date',half:true,hint:'空白則為期別當月 1 日'},
-    {k:'amount',label:'未稅金額',type:'money',req:true,half:true,hint:'稅額 5% 自動計算'},{k:'received',label:'已收金額（含稅）',type:'money',half:true},
-    {k:'invoiceNo',label:'發票號碼（易發票人工開立後填入）'},{k:'note',label:'備註',type:'textarea'}],values:x,
+    {k:'amount',label:'應收金額（含稅）',type:'money',req:true,half:true},{k:'received',label:'已收金額（含稅）',type:'money',half:true},
+    {k:'cinv',type:'info',html:'客戶：'+(x.clientCode&&needsInv(x.clientCode)?'<b>需要發票</b>（收款後到易發票人工開立，再回來「登記發票」）':'不需要發票')+'。金額一律填含稅，系統不做稅額換算。'},
+    x.clientCode&&needsInv(x.clientCode)?{k:'invoiceNo',label:'發票號碼'}:null,{k:'note',label:'備註',type:'textarea'}],values:x,
     dangerLabel:id?'刪除帳單':null,onDanger:()=>del('bills',id),
     validate:v=>!/^\d{4}-\d{2}$/.test(v.period||'')?'期別格式為 YYYY-MM':null,
-    onSubmit:v=>{v.due=v.due||(v.period+'-01');v.received=v.received||0;return setDoc('bills',id||newId('bills'),Object.assign({},x,v))}});
+    onSubmit:v=>{v.due=v.due||(v.period+'-01');v.received=v.received||0;return setDoc('bills',id||newId('bills'),Object.assign({},x,v,{incl:true}))}});
 }
 
 /* ---------- renew / close / reopen ---------- */
@@ -865,7 +878,7 @@ function openRenew(code,contractId){
     <div class="two"><div class="fld req"><label for="r_start">新約起日</label><input id="r_start" type="date" value="${start}"></div><div class="fld req"><label for="r_end">新約迄日</label><input id="r_end" type="date" value="${end}"></div></div>
     <div class="two"><div class="fld"><label for="r_sign">簽約日</label><input id="r_sign" type="date" value="${t}"></div><div class="fld"><label for="r_auto">自動續約</label><select id="r_auto"><option value="true" ${base&&base.autoRenew===false?'':'selected'}>是</option><option value="false" ${base&&base.autoRenew===false?'selected':''}>否</option><option value="">未確認</option></select></div></div>
     <div class="fld"><label for="r_file">新合約檔連結</label><input id="r_file" type="text" placeholder="https://drive.google.com/file/d/…"></div>
-    ${svcs.length?`<div><div class="muted" style="font-size:12.5px;margin-bottom:6px">帶入新約的服務項目${isAdmin?'與費用（未稅）':''}；舊服務會標為「結束」。</div><div class="carry">${carry}</div></div>`:'<div class="muted">沒有可帶入的服務項目，續約後可在客戶頁新增。</div>'}
+    ${svcs.length?`<div><div class="muted" style="font-size:12.5px;margin-bottom:6px">帶入新約的服務項目${isAdmin?'與費用（含稅）':''}；舊服務會標為「結束」。</div><div class="carry">${carry}</div></div>`:'<div class="muted">沒有可帶入的服務項目，續約後可在客戶頁新增。</div>'}
     <div class="fld"><label for="r_note">備註</label><textarea id="r_note" placeholder="例如：調漲、改月繳、新增 GEO"></textarea></div>
   </form><div class="err" id="merr"></div>
   <div class="mfoot"><button type="button" class="btn" id="mcancel">取消</button><button type="button" class="btn primary" id="msave">確認續約</button></div></div></div>`;
@@ -887,7 +900,7 @@ function openRenew(code,contractId){
         if(cb.checked){
           const nid=newId('services');
           await setDoc('services',nid,Object.assign({},old,{contractNo:no,start:ns,end:ne,status:'進行中',check:false,feeDerived:false}));
-          if(isAdmin){const fe=document.querySelector(`.cfee[data-sid="${sid}"]`);const amt=fe&&fe.value!==''?Number(fe.value):null;if(amt!=null)await setDoc('fees',nid,{amount:amt})}
+          if(isAdmin){const fe=document.querySelector(`.cfee[data-sid="${sid}"]`);const amt=fe&&fe.value!==''?Number(fe.value):null;if(amt!=null)await setDoc('fees',nid,{amount:amt,incl:true})}
         }
       }
       for(const s of svcs){if(s.status!=='結束')await upd('services',s.id,{status:'結束'})}
@@ -936,7 +949,7 @@ function draftBills(){
       if(!drafts.length)return;
       for(const x of drafts){
         if(Object.values(S.bills).some(b=>b.clientCode===x.code&&b.period===v.period))continue;
-        await setDoc('bills',newId('bills'),{clientCode:x.code,period:v.period,amount:x.amount,received:0,due:v.period+'-01',note:'草稿',invoiceNo:null});
+        await setDoc('bills',newId('bills'),{clientCode:x.code,period:v.period,amount:x.amount,received:0,due:v.period+'-01',note:'草稿',invoiceNo:null,incl:true});
       }}});
 }
 
@@ -1620,8 +1633,18 @@ document.addEventListener('click',async e=>{
   else if(a==='newTodo')todoForm();else if(a==='editTodo')todoForm(id);
   else if(a==='newBill')billForm();else if(a==='editBill')billForm(id);
   else if(a==='draftBills')draftBills();
+  else if(a==='migrateIncl'){const L=legacyMoney();
+    openForm({title:'一次轉為含稅',submit:`轉換 ${L.n} 筆`,fields:[{k:'i',type:'info',warn:true,html:`費用 ${L.fees.length} 筆、帳單 ${L.bills.length} 筆的金額將 × 1.05 並四捨五入，標記為含稅。已收金額不變。這個動作只做一次，請確認這些金額原本確實是未稅。`}],okMsg:'已轉為含稅',
+      onSubmit:async()=>{for(const id of L.fees)await setDoc('fees',id,Object.assign({},S.fees[id],{amount:Math.round(S.fees[id].amount*1.05),incl:true}));
+        for(const id of L.bills)await setDoc('bills',id,Object.assign({},S.bills[id],{amount:Math.round(S.bills[id].amount*1.05),incl:true}))}})}
+  else if(a==='markIncl'){const L=legacyMoney();
+    openForm({title:'直接視為含稅',submit:'確認',fields:[{k:'i',type:'info',html:`${L.n} 筆舊金額不做任何換算，直接標記為含稅。`}],okMsg:'已標記',
+      onSubmit:async()=>{for(const id of L.fees)await setDoc('fees',id,Object.assign({},S.fees[id],{incl:true}));
+        for(const id of L.bills)await setDoc('bills',id,Object.assign({},S.bills[id],{incl:true}))}})}
+  else if(a==='invBill'){const b=S.bills[id];if(!b)return;
+    openForm({title:'登記發票',submit:'儲存',fields:[{k:'i',type:'info',html:`${esc(b.clientCode)} ${esc(b.period)}　含稅 ${money(b.amount)}。請先到易發票人工開立，再填入號碼。`},{k:'invoiceNo',label:'發票號碼',req:true},{k:'invoiceAt',label:'開立日',type:'date'}],values:{invoiceAt:todayStr()},okMsg:'已登記發票',onSubmit:v=>upd('bills',id,{invoiceNo:v.invoiceNo,invoiceAt:v.invoiceAt})})}
   else if(a==='payBill'){const b=S.bills[id];if(!b)return;const bc=billCalc(b);
-    openForm({title:'收款',submit:'登記收款',fields:[{k:'i',type:'info',html:`${esc(b.clientCode)} ${esc(b.period)}　含稅 ${money(bc.total)}，已收 ${money(b.received||0)}`},{k:'received',label:'累計已收金額（含稅）',type:'money',req:true},{k:'receivedAt',label:'收款日',type:'date'}],values:{received:bc.total,receivedAt:todayStr()},okMsg:'已登記收款',onSubmit:v=>upd('bills',id,{received:v.received,receivedAt:v.receivedAt})})}
+    openForm({title:'收款',submit:'登記收款',fields:[{k:'i',type:'info',html:`${esc(b.clientCode)} ${esc(b.period)}　應收（含稅）${money(bc.total)}，已收 ${money(b.received||0)}`},{k:'received',label:'累計已收金額（含稅）',type:'money',req:true},{k:'receivedAt',label:'收款日',type:'date'}],values:{received:bc.total,receivedAt:todayStr()},okMsg:'已登記收款',onSubmit:v=>upd('bills',id,{received:v.received,receivedAt:v.receivedAt})})}
 });
 document.addEventListener('change',async e=>{
   const el=e.target.closest('[data-act="toggleTodo"]');
