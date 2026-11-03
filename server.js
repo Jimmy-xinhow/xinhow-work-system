@@ -21,6 +21,7 @@ const ROLES = ['admin', 'staff', 'worker'];
 const LV = { admin: 3, staff: 2, worker: 1 };
 const RULES = {
   fees: { read: 'admin', write: 'admin' }, bills: { read: 'admin', write: 'admin' },
+  expenses: { read: 'admin', write: 'admin' },
   settings: { read: 'admin', write: 'admin' }, channels: { read: 'admin', write: 'admin' },
   plans: { read: 'admin', write: 'admin' },
   accept: { read: 'any', write: 'admin' }, sops: { read: 'any', write: 'admin' }, notify: { read: 'staff', write: 'admin' },

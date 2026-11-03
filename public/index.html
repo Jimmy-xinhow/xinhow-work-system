@@ -428,6 +428,21 @@ h1,h2,h3{font-weight:600}
   .bsum .v{font-size:17px}
   .lhead.mrow,.lrow.mrow{grid-template-columns:52px minmax(30px,1fr) 88px 88px;gap:8px}.hm{display:none}
 }
+
+.dbar{display:flex;flex-direction:column;gap:3px;min-width:0}.dbar i{display:block;height:5px;border-radius:3px}.dbar i.in,.lg.in{background:var(--ok)}.dbar i.out,.lg.out{background:var(--bad)}
+.lg{display:inline-block;width:8px;height:8px;border-radius:2px;margin:0 2px 0 6px}
+.lhead.orow,.lrow.orow{display:grid;grid-template-columns:62px minmax(60px,1fr) 108px 108px 108px;align-items:center;gap:14px}
+.lrow.orow.now{background:var(--accent-soft)}.lrow.orow.tot{cursor:default;background:var(--hover);font-weight:600}.lrow.orow.tot:hover{background:var(--hover)}
+.orow .r,.crow2 .r,.crow3 .r{text-align:right}
+.lrow.crow2{display:grid;grid-template-columns:110px minmax(60px,1fr) 100px 48px;gap:14px;align-items:center}.lrow.crow2 .pbar{margin:0}
+.lhead.crow3,.lrow.crow3{display:grid;grid-template-columns:minmax(0,1fr) 104px 104px 104px;gap:14px;align-items:center}
+.warnt{color:var(--warn)}.bsum .v.warnt{color:var(--warn)}
+@media (max-width:640px){
+  .lhead.orow,.lrow.orow{grid-template-columns:40px minmax(24px,1fr) 66px 66px 66px;gap:7px;font-size:12.5px}
+  .lrow.crow2{grid-template-columns:76px minmax(24px,1fr) 70px 38px;gap:8px}
+  .lhead.crow3,.lrow.crow3{grid-template-columns:minmax(0,1fr) 68px 68px 68px;gap:7px;font-size:12.5px}
+  .bsum>div:nth-child(n+3){border-top:1px solid var(--line)}.bsum>div:nth-child(3){border-right:1px solid var(--line)}
+}
 </style>
 
 <div class="top"><div class="wrap">
@@ -455,11 +470,11 @@ const safeUrl=u=>/^https?:\/\//i.test(u||'')?u:null;
 const link=(u,t)=>{const s=safeUrl(u);return s?`<a href="${esc(s)}" target="_blank" rel="noopener">${esc(t||u)}</a>`:'—'};
 const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 
-const COLS=['clients','contacts','assets','contracts','services','fees','bills','log','todos','tasks','accept','sops','settings','notify','channels','plans'];
+const COLS=['clients','contacts','assets','contracts','services','fees','bills','expenses','log','todos','tasks','accept','sops','settings','notify','channels','plans'];
 const S={};COLS.forEach(c=>S[c]={});
 const loaded={};
 let db=null,isAdmin=false,canWrite=true;
-let view='dash',tab=null,query='',openCode=null,billFilter='all',billMonth=null,billView='month';
+let view='dash',tab=null,query='',openCode=null,billFilter='all',billMonth=null,billView='overview';
 let renderQueued=false;
 
 const STATUS_PILL={'進行中':'ok','暫停':'warn','洽談中':'info','結案':'mute'};
@@ -701,45 +716,92 @@ function legacyBanner(){
   return `<div class="infobox warn" style="margin:0 0 12px"><b>有 ${L.n} 筆舊資料的金額是「未稅」</b>（費用 ${L.fees.length}、帳單 ${L.bills.length}）。系統現在一律以含稅記錄，不會自動換算。確認後可一次轉成含稅（金額 × 1.05，四捨五入），已收金額不變；若你想逐筆自己改，也可以略過。<div style="margin-top:8px"><button class="btn sm primary" data-act="migrateIncl">一次轉為含稅</button> <button class="btn sm" data-act="markIncl">不轉換，直接視為已是含稅</button></div></div>`}
 const bmk=b=>(b.due||(b.period?b.period+'-01':'')).slice(0,7);
 const bshort=n=>n>=10000?(Math.round(n/1000)/10)+'萬':String(Math.round(n));
+const num0=n=>Math.round(n||0).toLocaleString('en-US');
+const EXP_CATS=['外包／稿費','薪資','廣告費','軟體／工具','主機／網域','租金／水電','稅費','雜支'];
 function billStat(list,t){
   const r={n:0,due:0,got:0,bal:0,late:0,lateN:0,invN:0,pend:0};
   list.forEach(b=>{
     if(b.pending){r.pend++;return}
-    r.n++;r.due+=b.total;r.got+=Math.min(b.received||0,b.total)+Math.max(0,(b.received||0)-b.total);
+    r.n++;r.due+=b.total;r.got+=(b.received||0);
     if(b.bal>0){r.bal+=b.bal;if(b.due&&b.due<t){r.late+=b.bal;r.lateN++}}
     if(b.bal<=0&&billInv(b)&&!b.invoiceNo)r.invN++;
   });
   r.pct=r.due>0?Math.min(100,Math.round(Math.min(r.got,r.due)/r.due*100)):0;
   return r}
+function expStat(list){const r={n:list.length,all:0,paid:0,unpaid:0};list.forEach(e=>{const a=e.amount||0;r.all+=a;if(e.paid===false)r.unpaid+=a;else r.paid+=a});return r}
 function renderBills(){
   const t=todayStr(),nowM=t.slice(0,7);
   if(!billMonth)billMonth=nowM;
+  if(!['overview','income','expense'].includes(billView))billView='overview';
   const yr=billMonth.slice(0,4);
   const all=Object.entries(S.bills).map(([id,b])=>{const c=billCalc(b);return Object.assign({id},b,c,{pending:b.amount==null,mk:bmk(b)})})
     .sort((a,b)=>(a.due||'').localeCompare(b.due||'')||(a.clientCode||'').localeCompare(b.clientCode||''));
   const byM={};all.forEach(b=>{(byM[b.mk]=byM[b.mk]||[]).push(b)});
+  const exps=Object.entries(S.expenses).map(([id,e])=>Object.assign({id},e,{mk:(e.date||'').slice(0,7)}))
+    .sort((a,b)=>(a.date||'').localeCompare(b.date||'')||a.id.localeCompare(b.id));
+  const eByM={};exps.forEach(e=>{(eByM[e.mk]=eByM[e.mk]||[]).push(e)});
   const months=Array.from({length:12},(_,k)=>yr+'-'+p2(k+1));
-  const strip=months.map(m=>{
-    const L=byM[m]||[],st=billStat(L,t);
-    const cls=[m===billMonth&&billView==='month'?'sel':'',m===nowM?'now':''].join(' ');
-    const amt=!L.length?'<span class="cd-n z">—</span>':st.late>0?`<span class="cd-n bad">${bshort(st.late)}</span>`:st.bal>0?`<span class="cd-n">${bshort(st.bal)}</span>`:st.n?`<span class="cd-n ok">✓</span>`:`<span class="cd-n z">${st.pend}備註</span>`;
-    return `<button class="cd bm ${cls}" data-act="billMonth" data-m="${m}" aria-label="${+m.slice(5)}月"><span class="cd-w">${+m.slice(5)}月</span><span class="cd-d">${L.length?L.length+'筆':''}</span>${amt}</button>`}).join('');
+  const mkStrip=(kind)=>months.map(m=>{
+    const cls=[m===billMonth&&billView===kind?'sel':'',m===nowM?'now':''].join(' ');
+    let n,amt;
+    if(kind==='income'){const L=byM[m]||[],st=billStat(L,t);n=L.length;
+      amt=!L.length?'<span class="cd-n z">—</span>':st.late>0?`<span class="cd-n bad">${bshort(st.late)}</span>`:st.bal>0?`<span class="cd-n">${bshort(st.bal)}</span>`:st.n?`<span class="cd-n ok">✓</span>`:`<span class="cd-n z">${st.pend}備註</span>`}
+    else{const L=eByM[m]||[],st=expStat(L);n=L.length;amt=!L.length?'<span class="cd-n z">—</span>':`<span class="cd-n ${st.unpaid>0?'warnt':''}">${bshort(st.all)}</span>`}
+    return `<button class="cd bm ${cls}" data-act="billMonth" data-m="${m}" aria-label="${+m.slice(5)}月"><span class="cd-w">${+m.slice(5)}月</span><span class="cd-d">${n?n+'筆':''}</span>${amt}</button>`}).join('');
+  const tabs=[['overview','總覽'],['income','收入'],['expense','支出']].map(([v,l])=>`<button data-act="billView" data-v="${v}" aria-pressed="${billView===v}">${l}</button>`).join('');
   const head=`${legacyBanner()}<div class="ovhead" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px">
-    <div class="utabs"><button data-act="billView" data-v="month" aria-pressed="${billView==='month'}">月份</button><button data-act="billView" data-v="year" aria-pressed="${billView==='year'}">全年總覽</button></div><span class="grow" style="flex:1"></span>
+    <div class="utabs">${tabs}</div><span class="grow" style="flex:1"></span>
     <div class="stepper"><button class="btn" data-act="billYear" data-d="-1" aria-label="上一年">‹</button><b class="num" style="align-self:center;min-width:48px;text-align:center">${yr}</b><button class="btn" data-act="billYear" data-d="1" aria-label="下一年">›</button></div>
     <button class="btn" data-act="billMonth" data-m="${nowM}">本月</button>
-    ${canWrite?`<button class="btn" data-act="draftBills">產生月帳單草稿</button><button class="btn primary" data-act="newBill">＋ 新增帳款</button>`:''}</div>
-    ${billView==='month'?`<div class="calstrip bstrip" style="--n:12">${strip}</div>`:''}`;
+    ${canWrite?`${billView!=='expense'?'<button class="btn" data-act="draftBills">產生月帳單草稿</button>':''}<button class="btn ${billView==='expense'?'':'primary'}" data-act="newBill">＋ 新增帳款</button><button class="btn ${billView==='expense'?'primary':''}" data-act="newExpense">＋ 新增支出</button>`:''}</div>
+    ${billView!=='overview'?`<div class="calstrip bstrip" style="--n:12">${mkStrip(billView)}</div>`:''}`;
   const sumBox=(st,extra)=>`<div class="bsum"><div><div class="k">應收（含稅）</div><div class="v num">${money(st.due)}</div></div><div><div class="k">已收</div><div class="v num ok">${money(st.got)}</div><div class="pbar"><i style="width:${st.pct}%"></i></div></div><div><div class="k">未收</div><div class="v num">${money(st.bal)}</div></div><div><div class="k">逾期</div><div class="v num ${st.late>0?'bad':''}">${money(st.late)}</div>${st.lateN?`<div class="k">${st.lateN} 筆</div>`:''}</div></div>${extra||''}`;
-  if(billView==='year'){
+  const box=(k,v,cls,sub)=>`<div><div class="k">${k}</div><div class="v num ${cls||''}">${v}</div>${sub?`<div class="k">${sub}</div>`:''}</div>`;
+  const cname=c=>c?`<span class="mono muted">${esc(c)}</span> ${esc(clientName(c))}`:'<span class="muted">公司共同</span>';
+  /* ---------- 總覽 ---------- */
+  if(billView==='overview'){
     const yl=all.filter(b=>b.mk.startsWith(yr)),ys=billStat(yl,t);
-    const rows=months.map(m=>{const L=byM[m]||[],st=billStat(L,t);
-      return `<div class="lrow mrow ${m===nowM?'now':''}" data-act="billMonth" data-m="${m}" role="button" tabindex="0"><div><b>${+m.slice(5)}月</b> <span class="muted">${L.length?L.length+' 筆':''}</span></div><div>${st.n?`<div class="pbar"><i style="width:${st.pct}%"></i></div>`:''}</div><div class="num r">${st.n?money(st.due):'<span class="muted">—</span>'}</div><div class="num r hm">${st.n?money(st.got):''}</div><div class="num r ${st.late>0?'bad':''}">${st.bal>0?money(st.bal):st.n?'<span class="ok">已收齊</span>':''}</div></div>`}).join('');
+    const ye=exps.filter(e=>e.mk.startsWith(yr)),yx=expStat(ye);
+    const net=ys.got-yx.paid,margin=ys.got>0?Math.round(net/ys.got*100):null;
+    const rowsD=months.map(m=>{const st=billStat(byM[m]||[],t),ex=expStat(eByM[m]||[]);return {m,inc:st.got,exp:ex.paid,due:st.due,n:st.n+ex.n,st,ex}});
+    const mx=Math.max(1,...rowsD.map(r=>Math.max(r.inc,r.exp)));
+    const mrows=rowsD.map(r=>`<div class="lrow orow ${r.m===nowM?'now':''}" data-act="billMonth" data-m="${r.m}" role="button" tabindex="0"><div><b>${+r.m.slice(5)}月</b></div><div class="dbar">${r.n?`<i class="in" style="width:${Math.round(r.inc/mx*100)}%"></i><i class="out" style="width:${Math.round(r.exp/mx*100)}%"></i>`:''}</div><div class="num r">${r.inc?num0(r.inc):'<span class="muted">—</span>'}</div><div class="num r">${r.exp?num0(r.exp):'<span class="muted">—</span>'}</div><div class="num r ${r.inc-r.exp<0?'bad':''}">${r.inc||r.exp?num0(r.inc-r.exp):''}</div></div>`).join('');
+    const tot=`<div class="lrow orow tot"><div><b>合計</b></div><div></div><div class="num r"><b>${num0(ys.got)}</b></div><div class="num r"><b>${num0(yx.paid)}</b></div><div class="num r ${net<0?'bad':''}"><b>${num0(net)}</b></div></div>`;
+    const byCat={};ye.forEach(e=>{if(e.paid!==false){const k=e.category||'其他';byCat[k]=(byCat[k]||0)+(e.amount||0)}});
+    const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+    const catHTML=cats.length?`<div class="ledger">${cats.map(([k,v])=>`<div class="lrow crow2" style="cursor:default"><div>${esc(k)}</div><div class="pbar"><i style="width:${Math.round(v/yx.paid*100)}%;background:var(--accent)"></i></div><div class="num r">${num0(v)}</div><div class="num r muted">${Math.round(v/yx.paid*100)}%</div></div>`).join('')}</div>`:'<div class="list"><div class="empty">這一年還沒有支出紀錄。按「新增支出」開始記錄。</div></div>';
+    const cl={};all.forEach(b=>{if(b.mk.startsWith(yr)&&!b.pending&&(b.received||0)>0){const o=cl[b.clientCode]=cl[b.clientCode]||{inc:0,cost:0};o.inc+=b.received||0}});
+    ye.forEach(e=>{if(e.clientCode&&e.paid!==false){const o=cl[e.clientCode]=cl[e.clientCode]||{inc:0,cost:0};o.cost+=e.amount||0}});
+    const clist=Object.entries(cl).sort((a,b)=>b[1].inc-a[1].inc);
+    const clHTML=clist.length?`<div class="ledger"><div class="lhead crow3"><span>客戶</span><span class="r">已收</span><span class="r">歸屬成本</span><span class="r">毛利</span></div>${clist.slice(0,20).map(([c,o])=>`<div class="lrow crow3" style="cursor:default"><div>${cname(c)}</div><div class="num r">${num0(o.inc)}</div><div class="num r">${o.cost?num0(o.cost):'<span class="muted">—</span>'}</div><div class="num r ${o.inc-o.cost<0?'bad':''}">${num0(o.inc-o.cost)}</div></div>`).join('')}</div>`:'<div class="list"><div class="empty">這一年還沒有收款紀錄。</div></div>';
     const byC={};all.forEach(b=>{if(!b.pending&&b.bal>0){const o=byC[b.clientCode]=byC[b.clientCode]||{bal:0,n:0,late:0};o.bal+=b.bal;o.n++;if(b.due&&b.due<t)o.late+=b.bal}});
     const owe=Object.entries(byC).sort((a,b)=>b[1].bal-a[1].bal);
-    const oweHTML=owe.length?`<div class="ledger">${owe.map(([c,o])=>`<div class="lrow" style="cursor:default"><div><span class="mono muted">${esc(c)}</span> ${esc(clientName(c))}　<span class="muted">${o.n} 筆</span></div><div class="num r ${o.late>0?'bad':''}">${money(o.bal)}${o.late>0?'　<span class="pill bad">逾期</span>':''}</div></div>`).join('')}</div>`:'<div class="list"><div class="empty">目前沒有任何未收款。</div></div>';
-    $('#main').innerHTML=head+`<h3 class="bh">${yr} 年統計</h3>`+sumBox(ys)+`<div class="ledger"><div class="lhead mrow"><span>月份</span><span>收款進度</span><span class="r">應收</span><span class="r hm">已收</span><span class="r">未收</span></div>${rows}</div><h3 class="bh">各客戶未收餘額（全部年度）</h3>`+oweHTML;
+    const oweHTML=owe.length?`<div class="ledger">${owe.map(([c,o])=>`<div class="lrow" style="cursor:default"><div>${cname(c)}　<span class="muted">${o.n} 筆</span></div><div class="num r ${o.late>0?'bad':''}">${money(o.bal)}${o.late>0?'　<span class="pill bad">逾期</span>':''}</div></div>`).join('')}</div>`:'<div class="list"><div class="empty">目前沒有任何未收款。</div></div>';
+    const unpaidAll=exps.filter(e=>e.paid===false).reduce((s,e)=>s+(e.amount||0),0);
+    $('#main').innerHTML=head+`<h3 class="bh">${yr} 年收支</h3>
+      <div class="bsum">${box('已收收入',money(ys.got),'ok')}${box('已付支出',money(yx.paid))}${box('淨額（收入 − 支出）',money(net),net<0?'bad':'',margin==null?'':'淨利率 '+margin+'%')}${box('逾期未收',money(ys.late),ys.late>0?'bad':'',ys.lateN?ys.lateN+' 筆':'')}</div>
+      <div class="bsum" style="margin-top:10px">${box('應收總額',money(ys.due))}${box('未收餘額',money(ys.bal))}${box('待付支出（全部）',money(unpaidAll))}${box('待開發票',ys.invN+' 筆')}</div>
+      <div class="muted" style="font-size:12.5px;margin:6px 2px 0">收入依帳款的繳款日歸月，支出依支出日期歸月；金額一律含稅，單位 NT$。</div>
+      <h3 class="bh">逐月收支</h3><div class="ledger"><div class="lhead orow"><span>月份</span><span><i class="lg in" style="margin-left:0"></i>收入<i class="lg out"></i>支出</span><span class="r">已收</span><span class="r">支出</span><span class="r">淨額</span></div>${mrows}${tot}</div>
+      <h3 class="bh">支出分類</h3>${catHTML}
+      <h3 class="bh">各客戶收入與歸屬成本</h3>${clHTML}
+      <h3 class="bh">各客戶未收餘額（全部年度）</h3>`+oweHTML;
     return}
+  /* ---------- 支出 ---------- */
+  if(billView==='expense'){
+    const L=eByM[billMonth]||[],st=expStat(L);
+    const inc=billStat(byM[billMonth]||[],t).got;
+    const byCat={};L.forEach(e=>{const k=e.category||'其他';byCat[k]=(byCat[k]||0)+(e.amount||0)});
+    const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+    const catLine=cats.length?`<div class="sumline" style="margin:10px 2px 0">${cats.map(([k,v])=>`<span><b class="num">${num0(v)}</b>${esc(k)}</span>`).join('')}</div>`:'';
+    const trs=L.map(e=>`<tr><td class="mono">${esc((e.date||'—').slice(5))}</td><td>${esc(e.category||'')}</td><td>${esc(e.payee||'')}</td><td>${e.clientCode?cname(e.clientCode):'<span class="muted">—</span>'}</td><td class="r num"><b>${money(e.amount)}</b></td><td>${e.paid===false?'<span class="pill warn">待付</span>':'<span class="pill ok">已付</span>'}</td><td class="bnote" title="${esc(e.note||'')}">${esc(e.note||'')}</td><td><div class="acts">${canWrite?`${e.paid===false?`<button class="btn sm primary" data-act="payExp" data-id="${esc(e.id)}">標記已付</button>`:''}<button class="btn sm" data-act="editExpense" data-id="${esc(e.id)}">編輯</button>`:''}</div></td></tr>`).join('');
+    $('#main').innerHTML=head+`<h3 class="bh">${yr} 年 ${+billMonth.slice(5)} 月支出${billMonth===nowM?'（本月）':''}</h3>
+      <div class="bsum">${box('支出合計',money(st.all))}${box('已付',money(st.paid))}${box('待付',money(st.unpaid),st.unpaid>0?'warnt':'')}${box('本月淨額（已收 − 已付）',money(inc-st.paid),inc-st.paid<0?'bad':'','已收 '+money(inc))}</div>${catLine}
+      <div style="height:14px"></div>`
+      +(L.length?`<div class="tablewrap"><table class="btable" style="min-width:820px"><thead><tr><th>日期</th><th>類別</th><th>對象</th><th>歸屬客戶</th><th class="r">金額</th><th>狀態</th><th>備註</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`
+       :`<div class="list"><div class="empty">這個月還沒有支出。按「新增支出」記錄；每月固定的支出（租金、訂閱）可以一次建立多個月。</div></div>`);
+    return}
+  /* ---------- 收入 ---------- */
   const L=(byM[billMonth]||[]).filter(b=>billFilter!=='open'||b.bal>0||(b.bal<=0&&!b.pending&&billInv(b)&&!b.invoiceNo)||b.pending);
   const st=billStat(byM[billMonth]||[],t);
   const earlier=all.filter(b=>!b.pending&&b.bal>0&&b.due&&b.due<t&&b.mk<billMonth);
@@ -751,10 +813,33 @@ function renderBills(){
     return `<tr><td><span class="mono muted">${esc(b.clientCode)}</span> ${esc(cl?cl.brand||cl.fullName:'')}</td><td class="mono">${esc((b.due||'—').slice(5))}</td><td class="r num">${b.pending?'<span class="muted">—</span>':money(b.total)}</td><td class="r num">${money(b.received||0)}</td><td class="r num"><b>${b.pending?'':money(b.bal)}</b></td><td>${sp}</td><td>${inv}</td><td class="bnote" title="${esc(b.note||'')}">${esc(b.note||'')}</td>
       <td><div class="acts">${canWrite?`${!b.pending&&b.bal>0?`<button class="btn sm primary" data-act="payBill" data-id="${esc(b.id)}">收款</button>`:''}${billInv(b)&&!b.pending&&b.bal<=0&&!b.invoiceNo?`<button class="btn sm primary" data-act="invBill" data-id="${esc(b.id)}">登記發票</button>`:''}<button class="btn sm" data-act="editBill" data-id="${esc(b.id)}">編輯</button>`:''}</div></td></tr>`}).join('');
   const extra=(st.invN?`<div class="sumline" style="margin-top:2px"><span><b>${st.invN}</b>筆已收款、待開發票</span></div>`:'');
-  $('#main').innerHTML=head+`<h3 class="bh">${yr} 年 ${+billMonth.slice(5)} 月${billMonth===nowM?'（本月）':''}</h3>`+sumBox(st,extra)+early
+  $('#main').innerHTML=head+`<h3 class="bh">${yr} 年 ${+billMonth.slice(5)} 月收入${billMonth===nowM?'（本月）':''}</h3>`+sumBox(st,extra)+early
    +`<div class="tools" style="margin-top:14px"><div class="tabs"><button data-act="billFilter" data-v="all" aria-pressed="${billFilter!=='open'}">全部</button><button data-act="billFilter" data-v="open" aria-pressed="${billFilter==='open'}">待處理</button></div></div>`
    +(L.length?`<div class="tablewrap"><table class="btable"><thead><tr><th>客戶</th><th>繳款日</th><th class="r">金額（含稅）</th><th class="r">已收</th><th class="r">未收餘額</th><th>狀態</th><th>發票</th><th>備註</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`
      :`<div class="list"><div class="empty">${(byM[billMonth]||[]).length?'這個月沒有待處理的帳款。':'這個月還沒有帳款。可以按「新增帳款」先記下預計要收的款項與備註，金額還沒確定也可以留空。'}</div></div>`);
+}
+function expenseForm(id,preset){
+  const x=id?S.expenses[id]:Object.assign({date:todayStr(),paid:true,category:EXP_CATS[0],repeatN:1},preset||{});
+  const codes=[['','（公司共同，不歸屬客戶）'],...Object.keys(S.clients).sort().map(k=>[k,k+'　'+clientFull(k)])];
+  openForm({title:id?'編輯支出':'新增支出',fields:[
+    {k:'date',label:'支出日期',type:'date',req:true,half:true,hint:'決定歸在哪個月；還沒付可填預計付款日'},{k:'amount',label:'金額（元）',type:'money',req:true,half:true},
+    {k:'category',label:'類別',type:'select',opts:EXP_CATS,req:true,half:true},{k:'payee',label:'付給誰／項目',half:true,ph:'例如：外包寫手、Google Ads'},
+    {k:'clientCode',label:'歸屬客戶（選填）',type:'select',opts:codes},
+    {k:'paid',type:'check',label:'已付款',hint:'未勾選＝待付，不計入已付支出。'},
+    id?null:{k:'repeatN',label:'連續幾個月（含本月）',type:'number',half:true,hint:'每月固定支出填 12 就會建立 12 筆；第二個月起自動標為待付。'},
+    {k:'note',label:'備註',type:'textarea'}],values:x,
+    dangerLabel:id?'刪除支出':null,onDanger:()=>del('expenses',id),
+    onSubmit:async v=>{
+      const base={date:v.date,amount:v.amount,category:v.category,payee:v.payee||null,clientCode:v.clientCode||null,paid:!!v.paid,note:v.note||null};
+      if(id)return setDoc('expenses',id,Object.assign({},x,base));
+      const n=Math.max(1,Math.min(60,Math.round(v.repeatN||1)));
+      for(let k=0;k<n;k++){
+        const d=new Date(v.date+'T00:00:00');d.setMonth(d.getMonth()+k);
+        let ds=d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+        const day=+v.date.slice(8,10);const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+        if(d.getDate()!==day){ds=d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(Math.min(day,last))}
+        await setDoc('expenses',newId('expenses'),Object.assign({},base,{date:ds,paid:k===0?!!v.paid:false}));
+      }}});
 }
 /* todos */
 function renderTodos(){
@@ -1652,7 +1737,7 @@ document.addEventListener('click',async e=>{
   if(a==='openBoardClient'){view='board';boardAll=false;boardFilter='all';boardQuery=el.dataset.code||'';ownerFilter='all';queue();return}
   if(a==='dismissPw'){ls.set('pwBannerOff','1');queue();return}
   if(a==='billFilter'){billFilter=el.dataset.v;queue();return}
-  if(a==='billMonth'){billMonth=el.dataset.m;billView='month';queue();return}
+  if(a==='billMonth'){billMonth=el.dataset.m;if(billView==='overview')billView='income';queue();return}
   if(a==='billView'){billView=el.dataset.v;queue();return}
   if(a==='billYear'){const m=billMonth||todayStr().slice(0,7);billMonth=(+m.slice(0,4)+ +el.dataset.d)+m.slice(4);queue();return}
   if(!canWrite)return;
@@ -1700,7 +1785,7 @@ document.addEventListener('click',async e=>{
   else if(a==='newChannel')channelForm();
   else if(a==='editChannel')channelForm(id);
   else if(a==='newTodo')todoForm();else if(a==='editTodo')todoForm(id);
-  else if(a==='newBill')billForm(null,{period:billMonth||todayStr().slice(0,7)});else if(a==='editBill')billForm(id);
+  else if(a==='newBill')billForm(null,{period:billMonth||todayStr().slice(0,7)});else if(a==='newExpense'){const bm=billMonth||todayStr().slice(0,7);expenseForm(null,{date:bm===todayStr().slice(0,7)?todayStr():bm+'-01'})}else if(a==='editExpense')expenseForm(id);else if(a==='payExp'){const e=S.expenses[id];if(e)run(()=>upd('expenses',id,{paid:true}),'已標記為已付')}else if(a==='editBill')billForm(id);
   else if(a==='draftBills')draftBills();
   else if(a==='migrateIncl'){const L=legacyMoney();
     openForm({title:'一次轉為含稅',submit:`轉換 ${L.n} 筆`,fields:[{k:'i',type:'info',warn:true,html:`費用 ${L.fees.length} 筆、帳單 ${L.bills.length} 筆的金額將 × 1.05 並四捨五入，標記為含稅。已收金額不變。這個動作只做一次，請確認這些金額原本確實是未稅。`}],okMsg:'已轉為含稅',
@@ -1744,7 +1829,7 @@ async function boot(){
   try{const w=user?await user.can('data.write'):null;canWrite=w!==false}catch(e){}
   const timer=setTimeout(()=>{if(!loaded.clients)toast('連線較慢，資料可能還沒到齊')},10000);
   COLS.forEach(c=>{
-    if((c==='fees'||c==='bills'||c==='settings'||c==='channels'||c==='plans')&&!isAdmin){loaded[c]=true;return}
+    if((c==='fees'||c==='bills'||c==='expenses'||c==='settings'||c==='channels'||c==='plans')&&!isAdmin){loaded[c]=true;return}
     if(isWorker()&&['contacts','assets','contracts','services','log','notify'].includes(c)){loaded[c]=true;return}
     db.collection(c).onSnapshot(snap=>{
       const o={};snap.docs.forEach(d=>{o[d.id]=d.data()});
