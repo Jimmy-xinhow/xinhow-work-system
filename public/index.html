@@ -417,9 +417,9 @@ h1,h2,h3{font-weight:600}
 .bsum>div{padding:12px 16px;border-right:1px solid var(--line);min-width:0}.bsum>div:last-child{border-right:0}
 .bsum .k{font-size:12.5px;color:var(--muted)}.bsum .v{font-size:20px;font-weight:600;margin-top:2px;white-space:nowrap}
 .bsum .v.ok{color:var(--ok)}.bsum .v.bad{color:var(--bad)}
-.pbar{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:7px}.pbar i{display:block;height:100%;background:var(--ok);border-radius:3px}
+.prog{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:7px}.prog i{display:block;height:100%;background:var(--ok);border-radius:3px}
 .lhead.mrow,.lrow.mrow{display:grid;grid-template-columns:76px minmax(60px,1fr) 120px 120px 120px;align-items:center;gap:14px}
-.lrow.mrow .pbar{margin:0}.mrow .r{text-align:right}.lrow.mrow{cursor:pointer}.lrow.mrow.now{background:var(--accent-soft)}
+.lrow.mrow .prog{margin:0}.mrow .r{text-align:right}.lrow.mrow{cursor:pointer}.lrow.mrow.now{background:var(--accent-soft)}
 .lrow .bad,.num.bad{color:var(--bad)}.num.ok,.ok{color:var(--ok)}
 .btable{min-width:900px}.bnote{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
 @media (max-width:640px){
@@ -434,7 +434,7 @@ h1,h2,h3{font-weight:600}
 .lhead.orow,.lrow.orow{display:grid;grid-template-columns:62px minmax(60px,1fr) 108px 108px 108px;align-items:center;gap:14px}
 .lrow.orow.now{background:var(--accent-soft)}.lrow.orow.tot{cursor:default;background:var(--hover);font-weight:600}.lrow.orow.tot:hover{background:var(--hover)}
 .orow .r,.crow2 .r,.crow3 .r{text-align:right}
-.lrow.crow2{display:grid;grid-template-columns:110px minmax(60px,1fr) 100px 48px;gap:14px;align-items:center}.lrow.crow2 .pbar{margin:0}
+.lrow.crow2{display:grid;grid-template-columns:110px minmax(60px,1fr) 100px 48px;gap:14px;align-items:center}.lrow.crow2 .prog{margin:0}
 .lhead.crow3,.lrow.crow3{display:grid;grid-template-columns:minmax(0,1fr) 104px 104px 104px;gap:14px;align-items:center}
 .warnt{color:var(--warn)}.bsum .v.warnt{color:var(--warn)}
 @media (max-width:640px){
@@ -443,6 +443,36 @@ h1,h2,h3{font-weight:600}
   .lhead.crow3,.lrow.crow3{grid-template-columns:minmax(0,1fr) 68px 68px 68px;gap:7px;font-size:12.5px}
   .bsum>div:nth-child(n+3){border-top:1px solid var(--line)}.bsum>div:nth-child(3){border-right:1px solid var(--line)}
 }
+
+.bsum.click>div{cursor:pointer}.bsum.click>div:hover{background:var(--hover)}
+
+/* quick expense */
+.xq{width:min(460px,100%)}
+.xbody{padding:4px 18px 8px}
+.xamt{display:flex;align-items:baseline;gap:8px;border-bottom:2px solid var(--accent);padding:6px 2px 4px;margin:6px 0 4px}
+.xamt span{color:var(--muted);font-size:15px}.xamt input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:34px;font-weight:700;color:var(--ink);padding:0;font-variant-numeric:tabular-nums}
+.xlab{font-size:12.5px;color:var(--muted);margin:14px 0 6px}
+.xchips{display:flex;flex-wrap:wrap;gap:8px}
+.xchip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;min-height:36px}
+.xchip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.xdate{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.xdate input{border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:inherit;background:var(--surface);color:var(--ink);min-height:36px}
+.xin{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font:inherit;background:var(--surface);color:var(--ink);box-sizing:border-box}
+.xmore{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}.xmore summary{cursor:pointer;color:var(--accent);font-size:14px}
+.xlist{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.xday{display:flex;justify-content:space-between;padding:8px 14px;background:var(--hover);border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.xlist>.xday:first-child{border-top:0}
+.xrow{display:flex;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);cursor:pointer}.xrow:hover{background:var(--hover)}
+.xtag{flex:none;font-size:12px;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:3px 8px;min-width:58px;text-align:center}
+.xmain{flex:1;min-width:0}.xt{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.xs{font-size:12.5px;color:var(--muted)}
+.xr{flex:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.xamt2{font-weight:600}
+.fab{display:none}
+@media (max-width:640px){
+  .fab{display:flex;position:fixed;right:14px;bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:14;background:var(--accent);color:var(--accent-ink);border:0;border-radius:999px;padding:0 20px;min-height:48px;align-items:center;font:inherit;font-weight:600;font-size:15px;box-shadow:0 4px 14px rgba(0,0,0,.22)}
+  .xbody{padding:4px 14px 8px}.xamt input{font-size:32px}
+  .xr{flex-direction:column;align-items:flex-end;gap:4px}
+  .xtag{min-width:0;padding:3px 7px}
+}
+.two-col.top{align-items:start}.qrow>div:first-child{flex:1;min-width:0}.clip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 
 <div class="top"><div class="wrap">
@@ -754,8 +784,8 @@ function renderBills(){
     <div class="stepper"><button class="btn" data-act="billYear" data-d="-1" aria-label="上一年">‹</button><b class="num" style="align-self:center;min-width:48px;text-align:center">${yr}</b><button class="btn" data-act="billYear" data-d="1" aria-label="下一年">›</button></div>
     <button class="btn" data-act="billMonth" data-m="${nowM}">本月</button>
     ${canWrite?`${billView!=='expense'?'<button class="btn" data-act="draftBills">產生月帳單草稿</button>':''}<button class="btn ${billView==='expense'?'':'primary'}" data-act="newBill">＋ 新增帳款</button><button class="btn ${billView==='expense'?'primary':''}" data-act="newExpense">＋ 新增支出</button>`:''}</div>
-    ${billView!=='overview'?`<div class="calstrip bstrip" style="--n:12">${mkStrip(billView)}</div>`:''}`;
-  const sumBox=(st,extra)=>`<div class="bsum"><div><div class="k">應收（含稅）</div><div class="v num">${money(st.due)}</div></div><div><div class="k">已收</div><div class="v num ok">${money(st.got)}</div><div class="pbar"><i style="width:${st.pct}%"></i></div></div><div><div class="k">未收</div><div class="v num">${money(st.bal)}</div></div><div><div class="k">逾期</div><div class="v num ${st.late>0?'bad':''}">${money(st.late)}</div>${st.lateN?`<div class="k">${st.lateN} 筆</div>`:''}</div></div>${extra||''}`;
+    ${billView!=='overview'?`<div class="calstrip bstrip" style="--n:12">${mkStrip(billView)}</div>`:''}${canWrite&&billView!=='income'?'<button class="fab" data-act="newExpense">＋ 記一筆</button>':''}`;
+  const sumBox=(st,extra)=>`<div class="bsum"><div><div class="k">應收（含稅）</div><div class="v num">${money(st.due)}</div></div><div><div class="k">已收</div><div class="v num ok">${money(st.got)}</div><div class="prog"><i style="width:${st.pct}%"></i></div></div><div><div class="k">未收</div><div class="v num">${money(st.bal)}</div></div><div><div class="k">逾期</div><div class="v num ${st.late>0?'bad':''}">${money(st.late)}</div>${st.lateN?`<div class="k">${st.lateN} 筆</div>`:''}</div></div>${extra||''}`;
   const box=(k,v,cls,sub)=>`<div><div class="k">${k}</div><div class="v num ${cls||''}">${v}</div>${sub?`<div class="k">${sub}</div>`:''}</div>`;
   const cname=c=>c?`<span class="mono muted">${esc(c)}</span> ${esc(clientName(c))}`:'<span class="muted">公司共同</span>';
   /* ---------- 總覽 ---------- */
@@ -769,7 +799,7 @@ function renderBills(){
     const tot=`<div class="lrow orow tot"><div><b>合計</b></div><div></div><div class="num r"><b>${num0(ys.got)}</b></div><div class="num r"><b>${num0(yx.paid)}</b></div><div class="num r ${net<0?'bad':''}"><b>${num0(net)}</b></div></div>`;
     const byCat={};ye.forEach(e=>{if(e.paid!==false){const k=e.category||'其他';byCat[k]=(byCat[k]||0)+(e.amount||0)}});
     const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
-    const catHTML=cats.length?`<div class="ledger">${cats.map(([k,v])=>`<div class="lrow crow2" style="cursor:default"><div>${esc(k)}</div><div class="pbar"><i style="width:${Math.round(v/yx.paid*100)}%;background:var(--accent)"></i></div><div class="num r">${num0(v)}</div><div class="num r muted">${Math.round(v/yx.paid*100)}%</div></div>`).join('')}</div>`:'<div class="list"><div class="empty">這一年還沒有支出紀錄。按「新增支出」開始記錄。</div></div>';
+    const catHTML=cats.length?`<div class="ledger">${cats.map(([k,v])=>`<div class="lrow crow2" style="cursor:default"><div>${esc(k)}</div><div class="prog"><i style="width:${Math.round(v/yx.paid*100)}%;background:var(--accent)"></i></div><div class="num r">${num0(v)}</div><div class="num r muted">${Math.round(v/yx.paid*100)}%</div></div>`).join('')}</div>`:'<div class="list"><div class="empty">這一年還沒有支出紀錄。按「新增支出」開始記錄。</div></div>';
     const cl={};all.forEach(b=>{if(b.mk.startsWith(yr)&&!b.pending&&(b.received||0)>0){const o=cl[b.clientCode]=cl[b.clientCode]||{inc:0,cost:0};o.inc+=b.received||0}});
     ye.forEach(e=>{if(e.clientCode&&e.paid!==false){const o=cl[e.clientCode]=cl[e.clientCode]||{inc:0,cost:0};o.cost+=e.amount||0}});
     const clist=Object.entries(cl).sort((a,b)=>b[1].inc-a[1].inc);
@@ -794,12 +824,17 @@ function renderBills(){
     const byCat={};L.forEach(e=>{const k=e.category||'其他';byCat[k]=(byCat[k]||0)+(e.amount||0)});
     const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
     const catLine=cats.length?`<div class="sumline" style="margin:10px 2px 0">${cats.map(([k,v])=>`<span><b class="num">${num0(v)}</b>${esc(k)}</span>`).join('')}</div>`:'';
-    const trs=L.map(e=>`<tr><td class="mono">${esc((e.date||'—').slice(5))}</td><td>${esc(e.category||'')}</td><td>${esc(e.payee||'')}</td><td>${e.clientCode?cname(e.clientCode):'<span class="muted">—</span>'}</td><td class="r num"><b>${money(e.amount)}</b></td><td>${e.paid===false?'<span class="pill warn">待付</span>':'<span class="pill ok">已付</span>'}</td><td class="bnote" title="${esc(e.note||'')}">${esc(e.note||'')}</td><td><div class="acts">${canWrite?`${e.paid===false?`<button class="btn sm primary" data-act="payExp" data-id="${esc(e.id)}">標記已付</button>`:''}<button class="btn sm" data-act="editExpense" data-id="${esc(e.id)}">編輯</button>`:''}</div></td></tr>`).join('');
+    const byD={};L.forEach(e=>{(byD[e.date||'']=byD[e.date||'']||[]).push(e)});
+    const wk=['日','一','二','三','四','五','六'];
+    const dayHTML=Object.keys(byD).sort().reverse().map(d=>{
+      const arr=byD[d],tot=arr.reduce((n,e)=>n+(e.amount||0),0);
+      const wd=d?wk[new Date(d+'T00:00:00').getDay()]:'';
+      return `<div class="xday"><span>${esc(d.slice(5).replace('-','/'))}（${wd}）${d===t?' <b>今天</b>':''}</span><span class="num">${money(tot)}</span></div>`
+       +arr.map(e=>`<div class="xrow" data-act="${canWrite?'editExpense':''}" data-id="${esc(e.id)}" role="button" tabindex="0"><div class="xtag">${esc(e.category||'其他')}</div><div class="xmain"><div class="xt">${esc(e.note||e.payee||e.category||'支出')}</div>${e.clientCode?`<div class="xs">${esc(clientName(e.clientCode))}</div>`:''}</div><div class="xr"><div class="num xamt2">${money(e.amount)}</div>${e.paid===false?`<span class="pill warn">待付</span>${canWrite?`<button class="btn sm" data-act="payExp" data-id="${esc(e.id)}">已付</button>`:''}`:''}</div></div>`).join('')}).join('');
     $('#main').innerHTML=head+`<h3 class="bh">${yr} 年 ${+billMonth.slice(5)} 月支出${billMonth===nowM?'（本月）':''}</h3>
       <div class="bsum">${box('支出合計',money(st.all))}${box('已付',money(st.paid))}${box('待付',money(st.unpaid),st.unpaid>0?'warnt':'')}${box('本月淨額（已收 − 已付）',money(inc-st.paid),inc-st.paid<0?'bad':'','已收 '+money(inc))}</div>${catLine}
       <div style="height:14px"></div>`
-      +(L.length?`<div class="tablewrap"><table class="btable" style="min-width:820px"><thead><tr><th>日期</th><th>類別</th><th>對象</th><th>歸屬客戶</th><th class="r">金額</th><th>狀態</th><th>備註</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`
-       :`<div class="list"><div class="empty">這個月還沒有支出。按「新增支出」記錄；每月固定的支出（租金、訂閱）可以一次建立多個月。</div></div>`);
+      +(L.length?`<div class="xlist">${dayHTML}</div>`:`<div class="list"><div class="empty">這個月還沒有支出。按右下角「記一筆」，金額、類別、完成。</div></div>`);
     return}
   /* ---------- 收入 ---------- */
   const L=(byM[billMonth]||[]).filter(b=>billFilter!=='open'||b.bal>0||(b.bal<=0&&!b.pending&&billInv(b)&&!b.invoiceNo)||b.pending);
@@ -818,28 +853,64 @@ function renderBills(){
    +(L.length?`<div class="tablewrap"><table class="btable"><thead><tr><th>客戶</th><th>繳款日</th><th class="r">金額（含稅）</th><th class="r">已收</th><th class="r">未收餘額</th><th>狀態</th><th>發票</th><th>備註</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`
      :`<div class="list"><div class="empty">${(byM[billMonth]||[]).length?'這個月沒有待處理的帳款。':'這個月還沒有帳款。可以按「新增帳款」先記下預計要收的款項與備註，金額還沒確定也可以留空。'}</div></div>`);
 }
+let lastExpCat=null;
 function expenseForm(id,preset){
-  const x=id?S.expenses[id]:Object.assign({date:todayStr(),paid:true,category:EXP_CATS[0],repeatN:1},preset||{});
-  const codes=[['','（公司共同，不歸屬客戶）'],...Object.keys(S.clients).sort().map(k=>[k,k+'　'+clientFull(k)])];
-  openForm({title:id?'編輯支出':'新增支出',fields:[
-    {k:'date',label:'支出日期',type:'date',req:true,half:true,hint:'決定歸在哪個月；還沒付可填預計付款日'},{k:'amount',label:'金額（元）',type:'money',req:true,half:true},
-    {k:'category',label:'類別',type:'select',opts:EXP_CATS,req:true,half:true},{k:'payee',label:'付給誰／項目',half:true,ph:'例如：外包寫手、Google Ads'},
-    {k:'clientCode',label:'歸屬客戶（選填）',type:'select',opts:codes},
-    {k:'paid',type:'check',label:'已付款',hint:'未勾選＝待付，不計入已付支出。'},
-    id?null:{k:'repeatN',label:'連續幾個月（含本月）',type:'number',half:true,hint:'每月固定支出填 12 就會建立 12 筆；第二個月起自動標為待付。'},
-    {k:'note',label:'備註',type:'textarea'}],values:x,
-    dangerLabel:id?'刪除支出':null,onDanger:()=>del('expenses',id),
-    onSubmit:async v=>{
-      const base={date:v.date,amount:v.amount,category:v.category,payee:v.payee||null,clientCode:v.clientCode||null,paid:!!v.paid,note:v.note||null};
+  const x=id?S.expenses[id]:Object.assign({date:todayStr(),paid:true},preset||{});
+  if(!x)return;
+  let cat=x.category||lastExpCat||EXP_CATS[0];
+  const codes=[['','（公司共同）'],...Object.keys(S.clients).sort().map(k=>[k,k+'　'+clientFull(k)])];
+  const yest=(()=>{const d=new Date();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())})();
+  $('#modalroot').innerHTML=`<div class="mwrap" id="mw"><div class="modal xq" role="dialog" aria-label="${id?'編輯支出':'記一筆支出'}">
+    <h3>${id?'編輯支出':'記一筆支出'}</h3>
+    <div class="xbody">
+      <div class="xamt"><span>NT$</span><input id="xa" type="number" inputmode="decimal" step="any" placeholder="0" value="${x.amount!=null?esc(x.amount):''}" aria-label="金額"></div>
+      <div class="xlab">類別</div>
+      <div class="xchips" id="xc">${EXP_CATS.map(c=>`<button type="button" class="xchip ${c===cat?'on':''}" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+      <div class="xlab">日期</div>
+      <div class="xdate"><button type="button" class="xchip" data-d="${todayStr()}">今天</button><button type="button" class="xchip" data-d="${yest}">昨天</button><input type="date" id="xd" value="${esc(x.date||todayStr())}" aria-label="日期"></div>
+      <div class="xlab">備註</div>
+      <input id="xn" class="xin" placeholder="例如：寫手稿費、Google Ads、辦公室租金" value="${esc(x.note||x.payee||'')}">
+      <details class="xmore" ${x.clientCode||x.paid===false?'open':''}><summary>更多選項</summary>
+        <div class="xlab">歸屬客戶（算專案成本，可不選）</div>
+        <select id="xcl" class="xin">${codes.map(([a,b])=>`<option value="${esc(a)}" ${a===(x.clientCode||'')?'selected':''}>${esc(b)}</option>`).join('')}</select>
+        <label class="chk" style="margin-top:12px"><input type="checkbox" id="xp" ${x.paid===false?'':'checked'}><span>已付款（取消勾選＝待付，先記著還沒付的）</span></label>
+        ${id?'':`<div class="xlab">每月固定支出：連續幾個月</div><input id="xr" class="xin" type="number" inputmode="numeric" min="1" max="60" value="1"><div class="hint">填 12 會建立 12 個月，第二個月起標為待付。</div>`}
+      </details>
+    </div>
+    <div class="err" id="xerr"></div>
+    <div class="mfoot">${id?'<button type="button" class="btn bad left" id="xdel">刪除</button>':''}<button type="button" class="btn" id="xcancel">取消</button>${id?'':'<button type="button" class="btn" id="xagain">存＋再記一筆</button>'}<button type="button" class="btn primary" id="xsave">儲存</button></div></div></div>`;
+  const q=sel=>document.querySelector(sel);
+  setTimeout(()=>{const a=q('#xa');if(a&&!id)a.focus()},50);
+  q('#xc').onclick=e=>{const b=e.target.closest('.xchip');if(!b)return;cat=b.dataset.c;q('#xc').querySelectorAll('.xchip').forEach(c=>c.classList.toggle('on',c===b))};
+  q('.xdate').onclick=e=>{const b=e.target.closest('button[data-d]');if(b)q('#xd').value=b.dataset.d};
+  q('#xcancel').onclick=closeModal;
+  q('#mw').addEventListener('mousedown',e=>{if(e.target.id==='mw')closeModal()});
+  let armed=false;
+  if(id)q('#xdel').onclick=async()=>{if(!armed){armed=true;q('#xdel').textContent='再按一次確認刪除';return}const ok=await run(()=>del('expenses',id),'已刪除');if(ok)closeModal()};
+  const save=async again=>{
+    const err=q('#xerr');err.textContent='';
+    const amount=Number(q('#xa').value);
+    if(!(amount>0)){err.textContent='請輸入金額';q('#xa').focus();return}
+    const date=q('#xd').value||todayStr();
+    const base={date,amount,category:cat,note:q('#xn').value.trim()||null,clientCode:q('#xcl').value||null,paid:q('#xp').checked};
+    lastExpCat=cat;
+    q('#xsave').disabled=true;
+    const ok=await run(async()=>{
       if(id)return setDoc('expenses',id,Object.assign({},x,base));
-      const n=Math.max(1,Math.min(60,Math.round(v.repeatN||1)));
+      const n=Math.max(1,Math.min(60,Math.round(Number(q('#xr')&&q('#xr').value)||1)));
+      const day=+date.slice(8,10);
       for(let k=0;k<n;k++){
-        const d=new Date(v.date+'T00:00:00');d.setMonth(d.getMonth()+k);
-        let ds=d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
-        const day=+v.date.slice(8,10);const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
-        if(d.getDate()!==day){ds=d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(Math.min(day,last))}
-        await setDoc('expenses',newId('expenses'),Object.assign({},base,{date:ds,paid:k===0?!!v.paid:false}));
-      }}});
+        const d=new Date(+date.slice(0,4),+date.slice(5,7)-1+k,1);
+        const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+        const ds=d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(Math.min(day,last));
+        await setDoc('expenses',newId('expenses'),Object.assign({},base,{date:ds,paid:k===0?base.paid:false}));
+      }},'已記下');
+    if(!ok){q('#xsave').disabled=false;return}
+    if(again){expenseForm(null,{date})}else closeModal();
+  };
+  q('#xsave').onclick=()=>save(false);
+  if(!id)q('#xagain').onclick=()=>save(true);
+  q('#xa').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();save(false)}});
 }
 /* todos */
 function renderTodos(){
@@ -1454,6 +1525,38 @@ function renderMyDash(){
   ${old.length?`<details class="late" ${old.length<=3?'open':''}><summary>往期尚未完成<span>${old.length} 項</span></summary><div class="ledger">${old.map(row).join('')}</div></details>`:''}
   ${body?`<div class="ledger">${body}</div>`:`<div class="emptyday">${wk?'這週':'這個月'}沒有要交的任務。</div>`}`;
 }
+function homeOverview(){
+  const t=todayStr(),pm=period;
+  const bills=Object.entries(S.bills).map(([id,b])=>Object.assign({id},b,billCalc(b),{pending:b.amount==null,mk:bmk(b)}));
+  const st=billStat(bills.filter(b=>b.mk===pm),t),stAll=billStat(bills,t);
+  const exps=Object.entries(S.expenses).map(([id,e])=>Object.assign({id},e,{mk:(e.date||'').slice(0,7)}));
+  const ex=expStat(exps.filter(e=>e.mk===pm));
+  const cl=Object.keys(S.clients);
+  const nAct=cl.filter(c=>S.clients[c].status==='進行中').length,nTalk=cl.filter(c=>S.clients[c].status==='洽談中').length;
+  const exp=cl.map(info).filter(i=>(i.c.status==='進行中'||i.c.status==='暫停')&&i.days!=null&&i.days<=60).sort((a,b)=>a.days-b.days);
+  const todos=Object.entries(S.todos).map(([id,x])=>Object.assign({id},x)).filter(x=>!x.done);
+  const al=computeAlerts();
+  const net=st.got-ex.paid;
+  const box=(k,v,cls,sub,act)=>`<div ${act||''}><div class="k">${k}</div><div class="v num ${cls||''}">${v}</div>${sub?`<div class="k">${sub}</div>`:''}</div>`;
+  const gb=(v,m)=>`data-act="gotoBills" data-v="${v}" data-m="${m||pm}" role="button" tabindex="0"`;
+  const fin=`<div class="bsum click">${box(pm+' 已收',money(st.got),'ok',`應收 ${money(st.due)}・${st.pct}%`,gb('income'))}${box(pm+' 已付支出',money(ex.paid),'',ex.unpaid?`待付 ${money(ex.unpaid)}`:'',gb('expense'))}${box('本月淨額',money(net),net<0?'bad':'','已收 − 已付',gb('overview'))}${box('逾期未收',money(stAll.late),stAll.late>0?'bad':'',stAll.lateN?stAll.lateN+' 筆':'沒有逾期',gb('income',t.slice(0,7)))}</div>`;
+  const ops=`<div class="bsum click" style="margin-top:10px">${box('進行中客戶',nAct+' 位','',nTalk?`洽談中 ${nTalk} 位`:'','data-act="goto" data-v="clients" role="button" tabindex="0"')}${box('每月經常性收入（含稅）',money(mrr()),'','','data-act="goto" data-v="clients" role="button" tabindex="0"')}${box('60 天內合約到期',exp.length+' 份','warnt'.repeat(exp.length>0),exp.length?'含已過期':'','data-act="goto" data-v="clients" role="button" tabindex="0"')}${box('未完成待辦',todos.length+' 項','','','data-act="goto" data-v="todos" role="button" tabindex="0"')}</div>`;
+  const alRows=al.slice(0,8).map(x=>`<div class="item"><span class="pill ${x.sev}">${x.sev==='bad'?'緊急':'提醒'}</span><div class="main"><div class="title">${esc(x.title)}</div><div class="sub">${esc(x.detail)}</div></div>${alertBtn(x)}</div>`).join('');
+  const alSec=`<section class="sec"><header><h3>需要你處理</h3><span class="pill ${al.length?(al.some(x=>x.sev==='bad')?'bad':'warn'):'mute'}">${al.length}</span>${al.length>8?'<button class="btn sm" data-act="goto" data-v="notify">看全部</button>':''}</header>${alRows||'<div class="in muted">目前沒有需要處理的事項。</div>'}</section>`;
+  const recv=bills.filter(b=>!b.pending&&b.bal>0).sort((a,b)=>((b.due<t)-(a.due<t))||(a.due||'').localeCompare(b.due||'')).slice(0,6);
+  const recvHTML=recv.length?recv.map(b=>`<div class="qrow" ${gb('income',b.mk)}><div style="min-width:0"><b>${esc(clientName(b.clientCode))}</b><div class="sub muted">繳款日 ${esc(b.due||'—')}${b.due&&b.due<t?'・<span style="color:var(--bad)">逾期 '+diffDays(t,b.due)+' 天</span>':''}</div></div><div class="num">${money(b.bal)}</div></div>`).join(''):'<div class="in muted">目前沒有待收款。</div>';
+  const pay=exps.filter(e=>e.paid===false).sort((a,b)=>(a.date||'').localeCompare(b.date||'')).slice(0,6);
+  const payHTML=pay.length?pay.map(e=>`<div class="qrow" ${gb('expense',e.mk)}><div style="min-width:0"><b>${esc(e.payee||e.category||'支出')}</b><div class="sub muted">${esc(e.date||'—')}・${esc(e.category||'')}</div></div><div class="num">${money(e.amount)}</div></div>`).join(''):'<div class="in muted">目前沒有待付支出。</div>';
+  const expHTML=exp.length?exp.slice(0,6).map(i=>`<div class="qrow" data-act="open" data-code="${esc(i.c.code)}" role="button" tabindex="0"><div style="min-width:0"><b>${esc(clientName(i.c.code))}</b><div class="sub muted">到期 ${esc(i.latestEnd)}・${i.auto?'自動續約':'不自動續約'}</div></div><span class="pill ${i.days<0?'bad':'warn'}">${i.days<0?'已過期 '+(-i.days)+' 天':i.days+' 天'}</span></div>`).join(''):'<div class="in muted">60 天內沒有合約到期。</div>';
+  const todoHTML=todos.length?todos.slice(0,6).map(x=>`<div class="qrow" data-act="goto" data-v="todos" role="button" tabindex="0"><div style="min-width:0"><b>${esc(x.title)}</b>${x.detail?`<div class="sub muted clip">${esc(x.detail)}</div>`:''}</div></div>`).join(''):'<div class="in muted">沒有待辦事項。</div>';
+  return `<h3 class="bh" style="margin-top:4px">財務與營運</h3>${fin}${ops}
+  <div style="height:16px"></div>${alSec}
+  <div class="two-col top"><section class="sec"><header><h3>待收款</h3><span class="pill ${stAll.late>0?'bad':'mute'}">${recv.length}</span><button class="btn sm" data-act="goto" data-v="bills">帳款</button></header>${recvHTML}</section>
+  <section class="sec"><header><h3>待付支出</h3><span class="pill ${pay.length?'warn':'mute'}">${pay.length}</span></header>${payHTML}</section></div>
+  <div class="two-col top"><section class="sec"><header><h3>合約即將到期</h3><span class="pill ${exp.length?'warn':'mute'}">${exp.length}</span></header>${expHTML}</section>
+  <section class="sec"><header><h3>待辦事項</h3><span class="pill ${todos.length?'info':'mute'}">${todos.length}</span><button class="btn sm" data-act="goto" data-v="todos">待辦</button></header>${todoHTML}</section></div>
+  <h3 class="bh">${esc(pm)} 工作交付</h3>`;
+}
 function renderDash(){
   const all=taskList();
   const ts=all.filter(t=>t.period===period);
@@ -1482,6 +1585,7 @@ function renderDash(){
   const listRows=(arr,btnText)=>arr.length?arr.map(t=>`<div class="qrow" data-act="openTask" data-id="${esc(t.id)}" role="button" tabindex="0"><div style="min-width:0"><b>${esc(clientName(t.clientCode))}</b>・${esc(t.title)}<div class="sub muted">${(t.done||0)+'／'+t.target+' '+unit(t.kind)+'・'}截止 ${esc(t.due||'—')}${t.late?'・<span style="color:var(--bad)">已逾期</span>':''}</div></div><span class="btn sm">${btnText}</span></div>`).join(''):'<div class="in muted">目前沒有。</div>';
   const empty=!total?`<div class="list"><div class="empty">${esc(period)} 還沒有任務。<br>${canWrite?'按「產生月任務」，系統會依各客戶詳情裡的「週期任務設定」建立，並自動設定截止日。要先在客戶詳情設定每個客戶要做哪些任務。':''}</div></div>`:'';
   $('#main').innerHTML=`<div class="tools">${periodBar()}<span class="grow"></span>${canWrite&&isAdmin?`<button class="btn" data-act="newTask">＋ 新增任務</button><button class="btn primary" data-act="genTasks">產生月任務</button>`:''}</div>
+  ${homeOverview()}
   ${carry?`<div class="note warn"><div><b>往期還有 ${carry} 項沒完成交付。</b></div><button class="btn sm" data-act="jumpOld">查看</button></div>`:''}
   ${total?`<section class="sec"><div class="in">
     <div class="bighead"><span><b class="big num">${delivered}</b><span class="muted">／${total} 項已交付客戶</span></span><span class="muted">${total?Math.round(delivered/total*100):0}%</span></div>
@@ -1721,6 +1825,7 @@ document.addEventListener('click',async e=>{
   if(a==='openTask'){openTask=id;openCode=null;queue();return}
   if(a==='pshift'){period=shiftPeriod(period,Number(el.dataset.d));queue();return}
   if(a==='pnow'){period=curPeriod();queue();return}
+  if(a==='gotoBills'){view='bills';billView=el.dataset.v||'income';billMonth=el.dataset.m||billMonth;openCode=null;openTask=null;queue();return}
   if(a==='goto'){view=el.dataset.v;openCode=null;openTask=null;queue();return}
   if(a==='goGen'){view='board';boardAll=false;period=el.dataset.p;openCode=null;openTask=null;queue();if(canWrite&&isAdmin)setTimeout(openGenerate,50);return}
   if(a==='ovday'){const t=document.getElementById('g-'+el.dataset.k);if(t)t.scrollIntoView({behavior:'smooth',block:'start'});else toast('這天沒有任務');return}
