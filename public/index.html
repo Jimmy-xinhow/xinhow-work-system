@@ -559,7 +559,7 @@ h1,h2,h3{font-weight:600}
 #ctip .th{display:block;font-weight:600;margin-bottom:4px}
 #ctip .tr{display:flex;align-items:center;gap:7px;white-space:nowrap}#ctip .tr i{width:8px;height:8px;border-radius:2px;flex:none}#ctip .tr span{color:var(--muted)}#ctip .tr b{margin-left:auto;padding-left:14px;font-variant-numeric:tabular-nums}
 .chart .hp{opacity:0;pointer-events:none}.chart .ch:hover+.hp{opacity:1}
-.chart .ch:hover{fill:var(--accent-soft)}
+.chart .ch:hover{fill:var(--ink);fill-opacity:.07}.chart .nop,.chart .nop *{pointer-events:none}
 .rk[data-tip]:hover .rb i{filter:brightness(1.12)}.sgb i[data-tip]:hover{filter:brightness(1.15)}
 </style>
 
@@ -868,7 +868,7 @@ function chartCols(o){
     hit+=`<rect x="${ml+gw*i}" y="${mt}" width="${gw}" height="${ph+mb}" class="ch" data-tip="${esc(tip)}"/>`;
   });
   const leg=o.series.length>1?`<div class="clg">${o.series.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('')}</div>`:'';
-  return leg+`<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(o.aria||'長條圖')}">${g}<line x1="${ml}" x2="${W-mr}" y1="${mt+ph}" y2="${mt+ph}" class="cb"/>${bars}${lab}${hit}</svg>`;
+  return leg+`<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(o.aria||'長條圖')}">${g}${hit}<line x1="${ml}" x2="${W-mr}" y1="${mt+ph}" y2="${mt+ph}" class="cb"/><g class="nop">${bars}${lab}</g></svg>`;
 }
 function chartLine(o){
   const W=o.w,H=o.h||180,ml=42,mr=10,mt=10,mb=22,pw=W-ml-mr,ph=H-mt-mb,n=o.labels.length;
@@ -884,7 +884,7 @@ function chartLine(o){
     hit+=`<rect x="${ml+gw*i}" y="${mt}" width="${gw}" height="${ph+mb}" class="ch" data-tip="${esc(tipHTML(tipHead(o,i),[{c:o.color,n:o.name||'金額',v:money(v)}]))}"/><circle cx="${x(i)}" cy="${y(v)}" r="4.5" class="hp" fill="${o.color}" stroke="var(--surface)" stroke-width="2"/>`});
   o.labels.forEach((lb,i)=>{if(i%step===0)lab+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle" class="ca">${esc(lb)}</text>`});
   const mk=last>=0?`<circle cx="${x(last)}" cy="${y(o.vals[last])}" r="5" fill="${o.color}" stroke="var(--surface)" stroke-width="2"/>`:'';
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(o.aria||'折線圖')}">${g}<line x1="${ml}" x2="${W-mr}" y1="${y(0)}" y2="${y(0)}" class="cb"/><path d="${d}" fill="none" stroke="${o.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${mk}${lab}${hit}</svg>`;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(o.aria||'折線圖')}">${g}${hit}<line x1="${ml}" x2="${W-mr}" y1="${y(0)}" y2="${y(0)}" class="cb nop"/><g class="nop"><path d="${d}" fill="none" stroke="${o.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${mk}${lab}</g></svg>`;
 }
 function segParts(parts){
   const tot=parts.reduce((a,x)=>a+x.v,0);
