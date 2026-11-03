@@ -31,7 +31,8 @@
     if (es) return;
     es = new EventSource('/api/stream');
     es.onmessage = ev => { try { const c = JSON.parse(ev.data).coll; if (subs[c] && subs[c].size) { clearTimeout(listeners[c]); listeners[c] = setTimeout(() => refetch(c), 80); } } catch (e) {} };
-    es.onopen = () => Object.keys(subs).forEach(c => subs[c].size && refetch(c)); // 斷線重連後補抓
+    es.onopen = () => { window.dispatchEvent(new Event('xh-online')); Object.keys(subs).forEach(c => subs[c].size && refetch(c)); }; // 斷線重連後補抓
+    es.onerror = () => window.dispatchEvent(new Event('xh-offline'));
   }
   const rnd = () => Array.from(crypto.getRandomValues(new Uint8Array(10))).map(b => b.toString(16).padStart(2, '0')).join('');
   function collection(c) {

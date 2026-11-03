@@ -561,6 +561,15 @@ h1,h2,h3{font-weight:600}
 .chart .hp{opacity:0;pointer-events:none}.chart .ch:hover+.hp{opacity:1}
 .chart .ch:hover{fill:var(--ink);fill-opacity:.07}.chart .nop,.chart .nop *{pointer-events:none}
 .rk[data-tip]:hover .rb i{filter:brightness(1.12)}.sgb i[data-tip]:hover{filter:brightness(1.15)}
+
+/* snackbar (Material pattern): 單行、可帶一個文字按鈕 */
+#toastroot{left:16px;right:auto;transform:none;align-items:flex-start}
+.toast{display:flex;align-items:center;gap:14px;min-width:260px;max-width:min(560px,calc(100vw - 32px));padding:12px 16px;border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.28);font-size:14px;line-height:1.4}
+.toast span{flex:1}.toast{pointer-events:auto}
+.toast button{background:none;border:0;color:#9DBBF2;font:inherit;font-weight:600;cursor:pointer;padding:6px 4px;margin:-6px -4px -6px 0;min-height:32px}
+.toast button:hover{text-decoration:underline}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .toast button{color:#1F3864}}
+@media (max-width:640px){#toastroot{left:12px;right:12px}.toast{width:100%;max-width:none}}
 </style>
 
 <div class="top"><div class="wrap">
@@ -639,15 +648,33 @@ function inTab(i,t){
 const ref=(coll,id)=>db.collection(coll).doc(id);
 async function setDoc(coll,id,data){await ref(coll,id).set(data)}
 async function upd(coll,id,data){await ref(coll,id).update(data)}
-async function del(coll,id){await ref(coll,id).delete()}
+let _delBuf=[],_delT=null;
+async function del(coll,id){
+  const snap=(S[coll]||{})[id];
+  await ref(coll,id).delete();
+  if(snap){_delBuf.push({coll,id,data:JSON.parse(JSON.stringify(snap))});clearTimeout(_delT);_delT=setTimeout(()=>{const buf=_delBuf;_delBuf=[];
+    const main=buf.find(x=>x.coll==='clients')||buf[0];
+    toast(buf.length>1?'已刪除（共 '+buf.length+' 筆資料）':'已刪除',{action:'復原',fn:async()=>{try{for(const x of buf.slice().reverse())await setDoc(x.coll,x.id,x.data);toast('已復原')}catch(e){toast('復原失敗：'+((e&&e.message)||e))}}})},300)}
+}
 function newId(coll){return db.collection(coll).doc().id}
 async function addLog(code,action,note){
   await db.collection('log').add({at:new Date().toISOString(),clientCode:code,action,note:note||''});
 }
-function toast(msg){
-  const el=document.createElement('div');el.className='toast';el.textContent=msg;
-  $('#toastroot').appendChild(el);setTimeout(()=>el.remove(),3200);
+function toast(msg,opt){
+  opt=opt||{};
+  const root=$('#toastroot');if(!opt.keep)root.querySelectorAll('.toast:not(.sticky)').forEach(x=>x.remove());
+  const el=document.createElement('div');el.className='toast'+(opt.sticky?' sticky':'');el.setAttribute('role','status');
+  const sp=document.createElement('span');sp.textContent=msg;el.appendChild(sp);
+  if(opt.action){const b=document.createElement('button');b.type='button';b.textContent=opt.action;b.onclick=()=>{el.remove();opt.fn&&opt.fn()};el.appendChild(b)}
+  root.appendChild(el);if(!opt.sticky)setTimeout(()=>el.remove(),opt.ms||(opt.action?7000:3200));return el;
 }
+/* 離線／斷線提示（持續顯示，恢復後自動消失） */
+(function(){let el=null;
+  const on=()=>{if(el)return;el=toast('連線中斷，變更可能無法儲存，正在重新連線…',{sticky:true,keep:true})};
+  const off=()=>{if(el){el.remove();el=null;toast('已重新連線')}};
+  window.addEventListener('offline',on);window.addEventListener('online',off);window.addEventListener('xh-offline',()=>{if(!navigator.onLine||true)setTimeout(()=>{if(es_bad())on()},4000)});window.addEventListener('xh-online',off);
+  let bad=false;window.addEventListener('xh-offline',()=>{bad=true});window.addEventListener('xh-online',()=>{bad=false});function es_bad(){return bad}
+})();
 async function run(fn,okMsg){
   try{await fn();if(okMsg)toast(okMsg);return true}
   catch(e){toast('儲存失敗：'+((e&&e.message)||e));return false}
@@ -664,7 +691,54 @@ function nextContractNo(code){
 
 /* ---------- rendering ---------- */
 function queue(){if(renderQueued)return;renderQueued=true;requestAnimationFrame(()=>{renderQueued=false;render()})}
+/* ---------- 路由：把畫面狀態放進網址（可重新整理、可用上一頁、可分享連結） ---------- */
+const ROUTE_VIEWS=['dash','board','mine','clients','bills','notify','sop','todos'];
+function routeParts(){
+  const q=new URLSearchParams();
+  if(period!==curPeriod())q.set('p',period);
+  if(view==='board'||view==='mine'){if(boardFilter)q.set('f',boardFilter);if(ownerFilter!=='all')q.set('o',ownerFilter);if(boardAll)q.set('all','1')}
+  if(view==='clients'&&tab)q.set('tab',tab);
+  if(view==='bills'){if(billView!=='overview')q.set('v',billView);if(billMonth)q.set('m',billMonth);if(billFilter!=='all')q.set('bf',billFilter)}
+  if(view==='dash'&&homeTab!=='al')q.set('h',homeTab);
+  let path='/'+view;if(openCode)path+='/c/'+encodeURIComponent(openCode);else if(openTask)path+='/t/'+encodeURIComponent(openTask);
+  return {key:path,full:'#'+path+(q.toString()?'?'+q.toString():'')};
+}
+let _routeInit=false,_applyingRoute=false,_lastKey=null;
+function applyRoute(){
+  const h=location.hash.replace(/^#/,'');if(!h)return false;
+  const [path,qs]=h.split('?');const seg=path.split('/').filter(Boolean);
+  if(!ROUTE_VIEWS.includes(seg[0]))return false;
+  view=seg[0];openCode=null;openTask=null;
+  if(seg[1]==='c'&&seg[2])openCode=decodeURIComponent(seg[2]);else if(seg[1]==='t'&&seg[2])openTask=decodeURIComponent(seg[2]);
+  const q=new URLSearchParams(qs||'');
+  period=q.get('p')||curPeriod();boardFilter=q.get('f')||null;ownerFilter=q.get('o')||'all';boardAll=q.get('all')==='1';
+  tab=q.get('tab')||null;billView=q.get('v')||'overview';billMonth=q.get('m')||null;billFilter=q.get('bf')||'all';homeTab=q.get('h')||'al';
+  return true;
+}
+function syncRoute(){
+  const r=routeParts();
+  if(!_routeInit){_routeInit=true;_lastKey=r.key;if(location.hash!==r.full)history.replaceState(null,'',r.full);return}
+  if(location.hash===r.full){_lastKey=r.key;return}
+  if(r.key!==_lastKey)history.pushState(null,'',r.full);else history.replaceState(null,'',r.full);
+  _lastKey=r.key;
+}
+window.addEventListener('popstate',()=>{if(applyRoute()){moreOpen=false;queue()}});
+let _lastRenderKey=null;
 function render(){
+  const sy=window.scrollY,rk=view+'|'+(billView||'')+'|'+period;
+  const ae=document.activeElement,aid=ae&&ae.id&&['INPUT','TEXTAREA','SELECT'].includes(ae.tagName)&&ae.closest('#main')?ae.id:null;
+  const asel=aid&&ae.selectionStart!=null?[ae.selectionStart,ae.selectionEnd]:null;
+  const pn=document.querySelector('#layer .panel'),pst=pn?pn.scrollTop:0,pkey=openCode||openTask||'';
+  _render();
+  syncRoute();
+  if(rk===_lastRenderKey)window.scrollTo(0,sy);else window.scrollTo(0,0);
+  _lastRenderKey=rk;
+  if(aid){const n=document.getElementById(aid);if(n&&document.activeElement!==n){n.focus();try{if(asel)n.setSelectionRange(asel[0],asel[1])}catch(e){}}}
+  const pn2=document.querySelector('#layer .panel');if(pn2&&pkey&&pkey===_lastPanelKey)pn2.scrollTop=pst;
+  _lastPanelKey=pkey;
+}
+let _lastPanelKey='';
+function _render(){
   if(!isAdmin&&view==='mine')view='board';
   if(isWorker()&&!['dash','board','sop','todos'].includes(view)){view='dash';openCode=null}
   renderNav();
@@ -1086,7 +1160,7 @@ function expenseForm(id,preset){
   q('#xcancel').onclick=closeModal;
   q('#mw').addEventListener('mousedown',e=>{if(e.target.id==='mw')closeModal()});
   let armed=false;
-  if(id)q('#xdel').onclick=async()=>{if(!armed){armed=true;q('#xdel').textContent='再按一次確認刪除';return}const ok=await run(()=>del('expenses',id),'已刪除');if(ok)closeModal()};
+  if(id)q('#xdel').onclick=async()=>{const ok=await run(()=>del('expenses',id));if(ok)closeModal()};
   const save=async again=>{
     const err=q('#xerr');err.textContent='';
     const amount=Number(q('#xa').value);
@@ -1149,8 +1223,7 @@ function openForm(o){
   $('#mw').addEventListener('mousedown',e=>{if(e.target.id==='mw')closeModal()});
   let delArmed=false;
   if(o.dangerLabel)$('#mdel').onclick=async()=>{
-    if(!delArmed){delArmed=true;$('#mdel').textContent='再按一次確認刪除';return}
-    $('#mdel').disabled=true;const ok=await run(o.onDanger,'已刪除');if(ok)closeModal();else $('#mdel').disabled=false;
+    $('#mdel').disabled=true;const ok=await run(o.onDanger);if(ok)closeModal();else $('#mdel').disabled=false;
   };
   $('#msave').onclick=async()=>{
     const v={};err.textContent='';
@@ -2151,6 +2224,7 @@ async function boot(){
   if(!db){$('#main').innerHTML='<div class="empty">需要登入才能讀取客戶資料。</div>';return}
   try{isAdmin=user?await user.canEdit():false}catch(e){isAdmin=false}
   if(!isAdmin)view='dash';
+  applyRoute();
   try{const w=user?await user.can('data.write'):null;canWrite=w!==false}catch(e){}
   const timer=setTimeout(()=>{if(!loaded.clients)toast('連線較慢，資料可能還沒到齊')},10000);
   COLS.forEach(c=>{
