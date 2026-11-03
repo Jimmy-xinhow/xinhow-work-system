@@ -690,6 +690,8 @@ function renderPanel(){
 /* 所有金額一律含稅，不做稅額換算 */
 function billCalc(b){const total=b.amount||0;return {total,bal:total-(b.received||0)}}
 function needsInv(code){const c=S.clients[code];return !!(c&&c.needInvoice)}
+/* 帳款自己的「要不要開發票」優先；沒設定過就沿用客戶資料 */
+function billInv(b){return typeof b.needInvoice==='boolean'?b.needInvoice:needsInv(b.clientCode)}
 function legacyMoney(){/* 尚未標記為「含稅」的舊資料（費用／帳單） */
   const f=Object.entries(S.fees).filter(([id,x])=>x&&x.amount!=null&&!x.incl).map(([id])=>id);
   const b=Object.entries(S.bills).filter(([id,x])=>x&&x.amount!=null&&!x.incl).map(([id])=>id);
@@ -705,7 +707,7 @@ function billStat(list,t){
     if(b.pending){r.pend++;return}
     r.n++;r.due+=b.total;r.got+=Math.min(b.received||0,b.total)+Math.max(0,(b.received||0)-b.total);
     if(b.bal>0){r.bal+=b.bal;if(b.due&&b.due<t){r.late+=b.bal;r.lateN++}}
-    if(b.bal<=0&&needsInv(b.clientCode)&&!b.invoiceNo)r.invN++;
+    if(b.bal<=0&&billInv(b)&&!b.invoiceNo)r.invN++;
   });
   r.pct=r.due>0?Math.min(100,Math.round(Math.min(r.got,r.due)/r.due*100)):0;
   return r}
@@ -738,16 +740,16 @@ function renderBills(){
     const oweHTML=owe.length?`<div class="ledger">${owe.map(([c,o])=>`<div class="lrow" style="cursor:default"><div><span class="mono muted">${esc(c)}</span> ${esc(clientName(c))}　<span class="muted">${o.n} 筆</span></div><div class="num r ${o.late>0?'bad':''}">${money(o.bal)}${o.late>0?'　<span class="pill bad">逾期</span>':''}</div></div>`).join('')}</div>`:'<div class="list"><div class="empty">目前沒有任何未收款。</div></div>';
     $('#main').innerHTML=head+`<h3 class="bh">${yr} 年統計</h3>`+sumBox(ys)+`<div class="ledger"><div class="lhead mrow"><span>月份</span><span>收款進度</span><span class="r">應收</span><span class="r hm">已收</span><span class="r">未收</span></div>${rows}</div><h3 class="bh">各客戶未收餘額（全部年度）</h3>`+oweHTML;
     return}
-  const L=(byM[billMonth]||[]).filter(b=>billFilter!=='open'||b.bal>0||(b.bal<=0&&!b.pending&&needsInv(b.clientCode)&&!b.invoiceNo)||b.pending);
+  const L=(byM[billMonth]||[]).filter(b=>billFilter!=='open'||b.bal>0||(b.bal<=0&&!b.pending&&billInv(b)&&!b.invoiceNo)||b.pending);
   const st=billStat(byM[billMonth]||[],t);
   const earlier=all.filter(b=>!b.pending&&b.bal>0&&b.due&&b.due<t&&b.mk<billMonth);
   const early=earlier.length?`<div class="infobox warn" style="margin:12px 0 0">之前月份還有 <b>${earlier.length}</b> 筆逾期，共 <b>${money(earlier.reduce((s,b)=>s+b.bal,0))}</b>　<button class="btn sm" data-act="billMonth" data-m="${earlier[0].mk}">看最早的月份</button></div>`:'';
   const trs=L.map(b=>{
     const cl=S.clients[b.clientCode];
     const sp=b.pending?'<span class="pill mute">金額待定</span>':b.bal<=0?'<span class="pill ok">已收</span>':(b.due&&b.due<t)?'<span class="pill bad">逾期</span>':'<span class="pill warn">未收</span>';
-    const inv=!needsInv(b.clientCode)?'<span class="muted">免開</span>':b.invoiceNo?`<span class="mono">${esc(b.invoiceNo)}</span>`:(!b.pending&&b.bal<=0)?'<span class="pill warn">待開立</span>':'<span class="muted">收款後開</span>';
+    const inv=!billInv(b)?'<span class="muted">免開</span>':b.invoiceNo?`<span class="mono">${esc(b.invoiceNo)}</span>`:(!b.pending&&b.bal<=0)?'<span class="pill warn">待開立</span>':'<span class="muted">收款後開</span>';
     return `<tr><td><span class="mono muted">${esc(b.clientCode)}</span> ${esc(cl?cl.brand||cl.fullName:'')}</td><td class="mono">${esc((b.due||'—').slice(5))}</td><td class="r num">${b.pending?'<span class="muted">—</span>':money(b.total)}</td><td class="r num">${money(b.received||0)}</td><td class="r num"><b>${b.pending?'':money(b.bal)}</b></td><td>${sp}</td><td>${inv}</td><td class="bnote" title="${esc(b.note||'')}">${esc(b.note||'')}</td>
-      <td><div class="acts">${canWrite?`${!b.pending&&b.bal>0?`<button class="btn sm primary" data-act="payBill" data-id="${esc(b.id)}">收款</button>`:''}${needsInv(b.clientCode)&&!b.pending&&b.bal<=0&&!b.invoiceNo?`<button class="btn sm primary" data-act="invBill" data-id="${esc(b.id)}">登記發票</button>`:''}<button class="btn sm" data-act="editBill" data-id="${esc(b.id)}">編輯</button>`:''}</div></td></tr>`}).join('');
+      <td><div class="acts">${canWrite?`${!b.pending&&b.bal>0?`<button class="btn sm primary" data-act="payBill" data-id="${esc(b.id)}">收款</button>`:''}${billInv(b)&&!b.pending&&b.bal<=0&&!b.invoiceNo?`<button class="btn sm primary" data-act="invBill" data-id="${esc(b.id)}">登記發票</button>`:''}<button class="btn sm" data-act="editBill" data-id="${esc(b.id)}">編輯</button>`:''}</div></td></tr>`}).join('');
   const extra=(st.invN?`<div class="sumline" style="margin-top:2px"><span><b>${st.invN}</b>筆已收款、待開發票</span></div>`:'');
   $('#main').innerHTML=head+`<h3 class="bh">${yr} 年 ${+billMonth.slice(5)} 月${billMonth===nowM?'（本月）':''}</h3>`+sumBox(st,extra)+early
    +`<div class="tools" style="margin-top:14px"><div class="tabs"><button data-act="billFilter" data-v="all" aria-pressed="${billFilter!=='open'}">全部</button><button data-act="billFilter" data-v="open" aria-pressed="${billFilter==='open'}">待處理</button></div></div>`
@@ -916,11 +918,13 @@ function billForm(id,preset){
     {k:'clientCode',label:'客戶',type:'select',opts:codes,req:true},
     {k:'period',label:'帳單期別 (YYYY-MM)',req:true,half:true,ph:'2026-12'},{k:'due',label:'繳款日',type:'date',half:true,hint:'決定歸在哪個月；空白則為期別當月 1 日'},
     {k:'amount',label:'應收金額（含稅）',type:'money',half:true,hint:'還沒確定可留空，只先記備註（不計入統計）'},{k:'received',label:'已收金額（含稅）',type:'money',half:true},
-    {k:'cinv',type:'info',html:'客戶：'+(x.clientCode&&needsInv(x.clientCode)?'<b>需要發票</b>（收款後到易發票人工開立，再回來「登記發票」）':'不需要發票')+'。金額一律填含稅，系統不做稅額換算。'},
-    x.clientCode&&needsInv(x.clientCode)?{k:'invoiceNo',label:'發票號碼'}:null,{k:'note',label:'備註',type:'textarea'}],values:x,
+    {k:'needInvoice',type:'check',label:'這筆帳款需要開立發票',hint:'選客戶時會依客戶資料自動帶入，可自行改。收款後才會出現「登記發票」；金額一律填含稅。'},
+    {k:'invoiceNo',label:'發票號碼',hint:'易發票人工開立後填入，也可在帳款列表按「登記發票」'},{k:'note',label:'備註',type:'textarea'}],values:Object.assign({},x,{needInvoice:id?billInv(x):(x.clientCode?needsInv(x.clientCode):false)}),
     dangerLabel:id?'刪除帳單':null,onDanger:()=>del('bills',id),
     validate:v=>!/^\d{4}-\d{2}$/.test(v.period||'')?'期別格式為 YYYY-MM':null,
     onSubmit:v=>{v.due=v.due||(v.period+'-01');v.received=v.received||0;return setDoc('bills',id||newId('bills'),Object.assign({},x,v,{incl:true}))}});
+  const sel=document.querySelector('#mf select[name="clientCode"]'),cb=document.querySelector('#mf input[name="needInvoice"]');
+  if(sel&&cb&&!id){if(!x.clientCode)cb.checked=needsInv(sel.value);sel.addEventListener('change',()=>{cb.checked=needsInv(sel.value)})}
 }
 
 /* ---------- renew / close / reopen ---------- */
@@ -1011,7 +1015,7 @@ function draftBills(){
       if(!drafts.length)return;
       for(const x of drafts){
         if(Object.values(S.bills).some(b=>b.clientCode===x.code&&b.period===v.period))continue;
-        await setDoc('bills',newId('bills'),{clientCode:x.code,period:v.period,amount:x.amount,received:0,due:v.period+'-01',note:'草稿',invoiceNo:null,incl:true});
+        await setDoc('bills',newId('bills'),{clientCode:x.code,period:v.period,amount:x.amount,received:0,due:v.period+'-01',note:'草稿',invoiceNo:null,needInvoice:needsInv(x.code),incl:true});
       }}});
 }
 
