@@ -204,6 +204,30 @@ const guard = op => (req, res, next) => {
 };
 const newId = () => crypto.randomBytes(10).toString('hex');
 
+/* ---- 異動紀錄：誰、何時、改了哪些欄位（舊值→新值）。只記錄金額與主檔類集合；失敗不影響正常儲存 ---- */
+const AUDIT = { fees: null, bills: null, expenses: null, clients: null, services: null, contracts: null, plans: null, settings: null,
+  tasks: ['state', 'assignee', 'due', 'target', 'done', 'rate', 'title'] };
+const short = v => { const t = typeof v === 'string' ? v : JSON.stringify(v); return t === undefined ? null : t.length > 160 ? t.slice(0, 160) + '…' : t; };
+function diffDoc(coll, before, after) {
+  const keys = AUDIT[coll] || [...new Set([...Object.keys(before || {}), ...Object.keys(after || {})])];
+  const out = {};
+  for (const k of keys) { const a = before ? before[k] : undefined, b = after ? after[k] : undefined; if (JSON.stringify(a) !== JSON.stringify(b)) out[k] = [short(a), short(b)]; }
+  return out;
+}
+async function logAudit(req, coll, id, action, before, after) {
+  if (!(coll in AUDIT)) return;
+  try {
+    const changes = action === 'update' ? diffDoc(coll, before, after) : action === 'create' ? diffDoc(coll, null, after) : diffDoc(coll, before, null);
+    if (action === 'update' && !Object.keys(changes).length) return;
+    const src = after || before || {}, ctx = {};
+    for (const k of ['clientCode', 'period', 'note', 'category', 'title', 'type', 'no']) if (src[k] != null && src[k] !== '') ctx[k] = short(src[k]);
+    changes._ = ctx;
+    await pool.query('INSERT INTO audit(user_name, coll, doc_id, action, changes) VALUES($1,$2,$3,$4,$5)', [req.user.name, coll, id, action, changes]);
+  } catch (e) { console.error('audit', e.message); }
+}
+const docBefore = async (coll, id) => (await pool.query('SELECT data FROM docs WHERE coll=$1 AND id=$2', [coll, id])).rows[0]?.data || null;
+
+
 app.get('/api/stream', needReady, (req, res) => {
   res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
   res.flushHeaders(); res.write('retry: 3000\n\n');
@@ -248,24 +272,43 @@ const ownership = async (req, res, next) => {
 app.post('/api/c/:coll', needReady, needJson, guard('write'), ownership, async (req, res) => {
   const id = newId();
   await pool.query('INSERT INTO docs(coll,id,data) VALUES($1,$2,$3)', [req.params.coll, id, req.body || {}]);
+  await logAudit(req, req.params.coll, id, 'create', null, req.body || {});
   broadcast(req.params.coll); res.json({ id });
 });
 app.put('/api/c/:coll/:id', needReady, needJson, guard('write'), ownership, async (req, res) => {
+  const before = req.params.coll in AUDIT ? await docBefore(req.params.coll, req.params.id) : null;
   await pool.query(`INSERT INTO docs(coll,id,data) VALUES($1,$2,$3)
     ON CONFLICT (coll,id) DO UPDATE SET data=EXCLUDED.data, version=docs.version+1, updated_at=now()`, [req.params.coll, req.params.id, req.body || {}]);
+  await logAudit(req, req.params.coll, req.params.id, before ? 'update' : 'create', before, req.body || {});
   broadcast(req.params.coll); res.json({ ok: true });
 });
 app.patch('/api/c/:coll/:id', needReady, needJson, guard('write'), ownership, async (req, res) => {
   const body = req.body || {}, del = Object.keys(body).filter(k => body[k] && body[k].__delete__ === true);
   const set = Object.fromEntries(Object.entries(body).filter(([k]) => !del.includes(k)));
+  const before = req.params.coll in AUDIT ? await docBefore(req.params.coll, req.params.id) : null;
   await pool.query(`INSERT INTO docs(coll,id,data) VALUES($1,$2,$3::jsonb)
     ON CONFLICT (coll,id) DO UPDATE SET data=(docs.data || $3::jsonb) - $4::text[], version=docs.version+1, updated_at=now()`,
     [req.params.coll, req.params.id, set, del]);
+  if (req.params.coll in AUDIT) { const after = { ...(before || {}), ...set }; del.forEach(k => delete after[k]); await logAudit(req, req.params.coll, req.params.id, before ? 'update' : 'create', before, after); }
   broadcast(req.params.coll); res.json({ ok: true });
 });
 app.delete('/api/c/:coll/:id', needReady, guard('write'), ownership, async (req, res) => {
+  const before = req.params.coll in AUDIT ? await docBefore(req.params.coll, req.params.id) : null;
   await pool.query('DELETE FROM docs WHERE coll=$1 AND id=$2', [req.params.coll, req.params.id]);
+  if (before) await logAudit(req, req.params.coll, req.params.id, 'delete', before, null);
   broadcast(req.params.coll); res.json({ ok: true });
+});
+
+// 管理者查看異動紀錄（新到舊；可用 coll／id 篩選，before 為上一頁最後一筆的 id）
+app.get('/api/audit', needReady, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'forbidden' });
+  const q = req.query, args = [], w = [];
+  if (q.coll && COLL_RE.test(q.coll)) { args.push(q.coll); w.push('coll=$' + args.length); }
+  if (q.id && ID_RE.test(q.id)) { args.push(q.id); w.push('doc_id=$' + args.length); }
+  if (q.before && /^\d+$/.test(q.before)) { args.push(q.before); w.push('id<$' + args.length); }
+  const lim = Math.min(Math.max(parseInt(q.limit) || 100, 1), 300);
+  const r = await pool.query(`SELECT id, at, user_name, coll, doc_id, action, changes FROM audit ${w.length ? 'WHERE ' + w.join(' AND ') : ''} ORDER BY id DESC LIMIT ${lim}`, args);
+  res.json(r.rows);
 });
 
 // 管理者備份：下載全部資料（JSON）
@@ -325,6 +368,8 @@ async function init() {
   await pool.query(`CREATE TABLE IF NOT EXISTS docs(
     coll text NOT NULL, id text NOT NULL, data jsonb NOT NULL DEFAULT '{}'::jsonb,
     version int NOT NULL DEFAULT 1, updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(coll,id))`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS audit(id BIGSERIAL PRIMARY KEY, at TIMESTAMPTZ NOT NULL DEFAULT now(), user_name TEXT NOT NULL, coll TEXT NOT NULL, doc_id TEXT NOT NULL, action TEXT NOT NULL, changes JSONB NOT NULL DEFAULT '{}')`);
+  await pool.query('CREATE INDEX IF NOT EXISTS audit_doc ON audit(coll, doc_id, id DESC)');
   await pool.query(`CREATE TABLE IF NOT EXISTS users(
     name text PRIMARY KEY, display text NOT NULL, pass_hash text NOT NULL, role text NOT NULL CHECK (role IN ('admin','staff','worker')),
     must_change boolean NOT NULL DEFAULT true, disabled boolean NOT NULL DEFAULT false, sv int NOT NULL DEFAULT 1,

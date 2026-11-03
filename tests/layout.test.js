@@ -21,7 +21,7 @@ if (!/^https?:\/\/(localhost|127\.0\.0\.1)/.test(BASE) && process.env.ALLOW_REMO
 const USERS = [['admin', process.env.ADMIN_USER, process.env.ADMIN_PASS], ['staff', process.env.STAFF_USER, process.env.STAFF_PASS]].filter(u => u[1] && u[2]);
 if (!USERS.length) { console.error('請設定 ADMIN_USER / ADMIN_PASS'); process.exit(2); }
 const VIEWPORTS = [['phone', 360, 740, true], ['tablet', 768, 1024, true], ['desktop', 1280, 800, false]];
-const VIEWS = { admin: ['dash', 'board', 'clients', 'bills', 'bills?v=income', 'bills?v=expense', 'todos', 'notify', 'sop'], staff: ['dash', 'board', 'clients', 'todos', 'notify', 'sop'] };
+const VIEWS = { admin: ['dash', 'board', 'clients', 'bills', 'bills?v=income', 'bills?v=expense', 'todos', 'notify', 'sop', 'audit'], staff: ['dash', 'board', 'clients', 'todos', 'notify', 'sop'] };
 const OUT = path.join(__dirname, '..', 'test-results'); fs.mkdirSync(OUT, { recursive: true });
 
 (async () => {
@@ -64,6 +64,13 @@ const OUT = path.join(__dirname, '..', 'test-results'); fs.mkdirSync(OUT, { recu
         await page.evaluate(axeSrc);
         const r = await page.evaluate(async () => (await axe.run(document, { runOnly: ['wcag2a', 'wcag2aa'], resultTypes: ['violations'] })).violations.map(x => ({ id: x.id, impact: x.impact, n: x.nodes.length, t: x.nodes[0].target[0] })));
         r.filter(x => ['serious', 'critical'].includes(x.impact)).forEach(x => fails.push(`${tag} axe:${x.id}(${x.n}) 例：${x.t}`));
+      }
+      if (v === 'dash') { // 全域搜尋：開啟、輸入、版面、axe
+        await page.keyboard.press('Control+k'); await page.keyboard.type('示範'); await page.waitForTimeout(250);
+        if (!(await page.evaluate(() => !!document.querySelector('#cmdk .ck-i')))) fails.push(`${tag} 全域搜尋沒有結果`);
+        if (axeSrc) { const r = await page.evaluate(async () => (await axe.run(document, { runOnly: ['wcag2a', 'wcag2aa'], resultTypes: ['violations'] })).violations.map(x => ({ id: x.id, impact: x.impact, t: x.nodes[0].target[0] }))); r.filter(x => ['serious', 'critical'].includes(x.impact)).forEach(x => fails.push(`${tag} 搜尋面板 axe:${x.id} 例：${x.t}`)); }
+        await page.screenshot({ path: path.join(OUT, tag.replace(/[/?=]/g, '_') + '_search.png') });
+        await page.keyboard.press('Escape');
       }
       await page.screenshot({ path: path.join(OUT, tag.replace(/[/?=]/g, '_') + '.png'), fullPage: true });
     }

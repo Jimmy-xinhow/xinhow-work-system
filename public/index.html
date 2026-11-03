@@ -607,16 +607,21 @@ h1,h2,h3{font-weight:600}
 .nowrow{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)!important}
 .nowc .item{align-items:center}.nowc .item .main{min-width:0}
 .allclear{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:36px 16px;color:var(--ok);flex:1;text-align:center}.allclear b{color:var(--ink);font-size:15px;margin-top:6px}
-.monc .kr{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--line);cursor:pointer;flex:1}.monc .kr:hover{background:var(--hover)}
+.monc .kr{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--line);cursor:pointer}.monc .kr:hover{background:var(--hover)}
 .monc .kr .k{font-size:12.5px;color:var(--muted)}.monc .kr .v{font-size:20px;font-weight:700;margin-top:2px}.monc .kr .v.ok{color:var(--ok)}.monc .kr .v.bad{color:var(--bad)}
 .monc .ks{font-size:12.5px;color:var(--muted);text-align:right}.monc .ks .up{color:var(--ok);font-weight:600}.monc .ks .dn{color:var(--bad);font-weight:600}
 .monc header+.kr{border-top:0}
 .tri{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px;align-items:stretch}.tri>.sec{margin:0;height:100%;display:flex;flex-direction:column;min-width:0}
-.stk{display:flex;flex-direction:column;gap:16px;min-width:0}.stk>.sec{margin:0;flex:1}
+.stk{display:flex;flex-direction:column;gap:16px;min-width:0}.stk>.sec{margin:0;flex:1}.stk>.monc{flex:none}
 @media (max-width:1100px){.tri{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:820px){.tri,.nowrow{grid-template-columns:minmax(0,1fr)!important}.hello h2{font-size:19px}}
 
 .monc .kr .v{white-space:nowrap}
+.a-day{padding:10px 16px 6px;font-size:12px;font-weight:600;color:var(--muted);background:var(--hover);border-top:1px solid var(--line)}.a-day:first-child{border-top:0}
+.a-row{display:flex;gap:14px;padding:12px 16px;border-top:1px solid var(--line)}.a-day+.a-row{border-top:0}
+.a-meta{flex:none;width:68px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}.a-t{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.a-main{min-width:0;flex:1}.a-title{margin-bottom:4px;overflow-wrap:anywhere}.a-ch{font-size:13.5px;line-height:1.7;overflow-wrap:anywhere}.a-k{color:var(--muted);margin-right:4px}.a-ar{color:var(--muted);margin:0 2px}
+@media (max-width:640px){.a-row{flex-direction:column;gap:6px}.a-meta{width:auto;flex-direction:row;align-items:center}}
 @media (max-width:640px){
   .monc .kr{flex-direction:column;align-items:flex-start;gap:4px;padding:12px 14px}.monc .ks{text-align:left}
   .dtools{display:grid!important;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center}.dtools .grow{display:none}.dtools .btn{padding-inline:8px;white-space:nowrap}
@@ -659,6 +664,27 @@ h1,h2,h3{font-weight:600}
 .cc2-link:focus-visible{outline:none}.cc2:has(.cc2-link:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
 .cc2-r{position:relative;z-index:1}
 
+/* ----- 全域搜尋 ----- */
+.cmdk-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:8px;padding:6px 10px;font:inherit;font-size:14px;cursor:pointer;min-height:36px;margin-bottom:8px}
+.cmdk-btn:hover{background:var(--hover);color:var(--ink)}.cmdk-btn kbd{margin-left:auto;font-family:var(--f-mono);font-size:12px;border:1px solid var(--line);border-radius:5px;padding:0 5px;background:var(--bg)}
+.ck-ov{position:fixed;inset:0;z-index:200;background:rgba(15,23,42,.45);display:flex;justify-content:center;align-items:flex-start;padding:12vh 16px 16px}
+.ck{width:100%;max-width:600px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden;display:flex;flex-direction:column;max-height:min(70vh,560px)}
+.ck-in{display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--line);color:var(--muted)}
+.ck-in input{flex:1;border:0;outline:0;background:none;color:var(--ink);font:inherit;font-size:16px;padding:16px 0;min-width:0}.ck-in kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+.ck-list{overflow-y:auto;padding:6px;flex:1}
+.ck-h{font-size:12px;font-weight:600;color:var(--muted);padding:10px 10px 4px}
+.ck-i{display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;cursor:pointer;min-height:44px;color:var(--ink)}.ck-i svg{flex:none;color:var(--muted)}
+.ck-i.on{background:var(--hover);box-shadow:inset 3px 0 0 var(--accent)}
+.ck-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ck-s{font-size:12.5px;color:var(--muted);white-space:nowrap;max-width:45%;overflow:hidden;text-overflow:ellipsis}
+.ck-e{padding:28px 16px;text-align:center;color:var(--muted);font-size:14px;line-height:1.6}
+.ck-f{display:flex;gap:16px;padding:8px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+@media (max-width:640px){.ck-ov{padding:8px}.ck{max-height:calc(100vh - 16px)}.ck-f{display:none}.ck-in kbd{display:none}
+  .cmdk-btn{order:2;margin:0 0 6px auto;padding:0;width:44px;min-height:44px;justify-content:center;border-color:transparent;background:none}.cmdk-btn .ck-lbl,.cmdk-btn kbd{display:none}.top .acct{order:3;margin:0 0 6px 0!important}}
+.pbar b{white-space:nowrap}
+@media (hover:none){.cmdk-btn kbd{display:none}}
+@media (min-width:1024px){.cmdk-btn{order:1;width:100%;margin:0}.top .nav{order:2}.top .acct{order:3}}
+@media (min-width:641px) and (max-width:1023px){.cmdk-btn{margin:0 0 10px auto}.top .acct{margin-left:0!important}}
+
 /* ===== 第四批：無障礙與一致性（WCAG 2.2 / Material 觸控 48dp 規範）===== */
 :root{--r-card:10px;--pad-card:16px}
 .skip{position:absolute;left:12px;top:-60px;z-index:100;background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:8px;font-weight:600;text-decoration:none}
@@ -682,6 +708,7 @@ h1,h2,h3{font-weight:600}
 <div class="top"><div class="wrap">
   <div class="brand">星昊科技<small>工作管理系統</small></div>
   <nav class="nav" id="nav" aria-label="主要導覽"></nav>
+  <button class="cmdk-btn" data-act="cmdk" aria-label="搜尋（Ctrl 加 K）" aria-keyshortcuts="Control+K Meta+K /"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span class="ck-lbl">搜尋</span><kbd>Ctrl K</kbd></button>
 </div></div>
 <main class="wrap" id="main" tabindex="-1"><div class="empty">載入中…</div></main>
 <div id="layer"></div>
@@ -799,7 +826,7 @@ function nextContractNo(code){
 /* ---------- rendering ---------- */
 function queue(){if(renderQueued)return;renderQueued=true;requestAnimationFrame(()=>{renderQueued=false;render()})}
 /* ---------- 路由：把畫面狀態放進網址（可重新整理、可用上一頁、可分享連結） ---------- */
-const ROUTE_VIEWS=['dash','board','mine','clients','bills','notify','sop','todos'];
+const ROUTE_VIEWS=['dash','board','mine','clients','bills','notify','sop','todos','audit'];
 function routeParts(){
   const q=new URLSearchParams();
   if(period!==curPeriod())q.set('p',period);
@@ -847,6 +874,7 @@ function render(){
 let _lastPanelKey='';
 function _render(){
   if(!isAdmin&&view==='mine')view='board';
+  if(!isAdmin&&view==='audit')view='dash';
   if(isWorker()&&!['dash','board','sop','todos'].includes(view)){view='dash';openCode=null}
   renderNav();
   if(view==='dash')(isAdmin?renderDash:renderMyDash)();
@@ -856,6 +884,7 @@ function _render(){
   else if(view==='bills')renderBills();
   else if(view==='sop')renderSop();
   else if(view==='notify')renderNotify();
+  else if(view==='audit')renderAudit();
   else renderTodos();
   renderPanel();
 }
@@ -869,14 +898,18 @@ const NAV_ICON={
   todos:'<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
   notify:'<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
   sop:'<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>',
+  audit:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
   more:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>'
 };
 const navIc=k=>`<svg class="ni" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${NAV_ICON[k]||''}</svg>`;
+function navItems(){
+  return isWorker()?[['dash','首頁'],['board','工作交付'],['todos','待辦'],['sop','SOP']]
+    :isAdmin?[['dash','首頁'],['board','工作交付'],['clients','客戶'],['bills','帳款'],['todos','待辦'],['notify','通知'],['sop','SOP'],['audit','異動紀錄']]
+    :[['dash','首頁'],['board','工作交付'],['clients','客戶'],['todos','待辦'],['notify','通知'],['sop','SOP']];
+}
 function renderNav(){
   /* 管理者：首頁、工作交付、客戶、帳款｜待辦、通知、SOP；員工：沒有帳款；僅交付：首頁、工作交付、待辦、SOP */
-  const items=isWorker()?[['dash','首頁'],['board','工作交付'],['todos','待辦'],['sop','SOP']]
-    :isAdmin?[['dash','首頁'],['board','工作交付'],['clients','客戶'],['bills','帳款'],['todos','待辦'],['notify','通知'],['sop','SOP']]
-    :[['dash','首頁'],['board','工作交付'],['clients','客戶'],['todos','待辦'],['notify','通知'],['sop','SOP']];
+  const items=navItems();
   const n=actionCount();
   const tl=taskList();
   const bn=isAdmin?tl.filter(t=>t.state==='待驗收').length:tl.filter(t=>t.state==='退回').length;
@@ -2023,7 +2056,7 @@ function homeOverview(){
   const inc6=m6.map(m=>bills.filter(b=>b.mk===m&&!b.pending).reduce((a,b)=>a+(b.received||0),0));
   const exp6=m6.map(m=>expStat(exps.filter(e=>e.mk===m)).paid);
   const byCl={};bills.forEach(b=>{if(b.mk.startsWith(yrS)&&!b.pending&&(b.received||0)>0)byCl[b.clientCode]=(byCl[b.clientCode]||0)+b.received});
-  const top5=Object.entries(byCl).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([c,v])=>({label:esc(clientName(c)),plain:c,v}));
+  const top5=Object.entries(byCl).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([c,v])=>({label:esc(clientName(c)),plain:c,v}));
   const hc=`<div class="two-col tc" style="margin-top:14px">${chartCard('近 6 個月收支',chartCols({w:cardW(true),tipLabels:m6.map(m=>m.slice(0,4)+' 年 '+(+m.slice(5))+' 月'),labels:m6.map(m=>(+m.slice(5))+'月'),series:[{name:'已收',color:'var(--cv1)',vals:inc6},{name:'已付',color:'var(--cv2)',vals:exp6}],aria:'近六個月收入與支出'}),'依繳款日／支出日歸月')}${chartCard(yrS+' 年收入來源 Top 5',rankBars(top5),'已收金額，含稅')}</div>`;
   const alRows=al.slice(0,8).map(x=>`<div class="item"><span class="pill ${x.sev}">${x.sev==='bad'?'緊急':'提醒'}</span><div class="main"><div class="title">${esc(x.title)}</div><div class="sub">${esc(x.detail)}</div></div>${alertBtn(x)}</div>`).join('');
   const alSec=`<section class="sec"><header><h3>需要你處理</h3><span class="pill ${al.length?(al.some(x=>x.sev==='bad')?'bad':'warn'):'mute'}">${al.length}</span>${al.length>8?'<button class="btn sm" data-act="goto" data-v="notify">看全部</button>':''}</header>${alRows||'<div class="in muted">目前沒有需要處理的事項。</div>'}</section>`;
@@ -2050,15 +2083,15 @@ function homeOverview(){
     +kr('本月淨額',money(net),'已收 − 已付（現金口徑）',net<0?'bad':'',gb('overview'))
     +kr('逾期未收',money(stAll.late),stAll.lateN?stAll.lateN+' 筆':'沒有逾期',stAll.late>0?'bad':'',gb('income',t.slice(0,7)))
     +`</section>`;
-  const rowA=`<div class="two-col nowrow">${nowCard}${monthCard}</div>`;
+  const recvCard=`<section class="sec"><header><h3>待收款</h3><span class="pill ${stAll.late>0?'bad':'mute'}">${recv.length}</span><button class="btn sm" data-act="goto" data-v="bills">帳款</button></header>${recvHTML}</section>`;
+  const rowA=`<div class="two-col nowrow">${nowCard}<div class="stk">${monthCard}${recvCard}</div></div>`;
   const rowB=ops;
   const dataMonths=dataMonths0;
-  const recvCard=`<section class="sec"><header><h3>待收款</h3><span class="pill ${stAll.late>0?'bad':'mute'}">${recv.length}</span><button class="btn sm" data-act="goto" data-v="bills">帳款</button></header>${recvHTML}</section>`;
   const trend=chartCard('近 6 個月收支',chartCols({w:cardW(true),tipLabels:m6.map(m=>m.slice(0,4)+' 年 '+(+m.slice(5))+' 月'),labels:m6.map(m=>(+m.slice(5))+'月'),series:[{name:'已收',color:'var(--cv1)',vals:inc6},{name:'已付',color:'var(--cv2)',vals:exp6}],aria:'近六個月收入與支出'}),'依繳款日／支出日歸月');
-  const rowC=`<div class="two-col tc" style="margin-top:14px">${rich?trend:recvCard}${chartCard(yrS+' 年收入來源 Top 5',rankBars(top5),'已收金額，含稅')}</div>`;
   const small=(title,pill,body,btn)=>`<section class="sec"><header><h3>${title}</h3><span class="pill ${pill[0]}">${pill[1]}</span>${btn||''}</header>${body}</section>`;
   const payCard=small('待付支出',[pay.length?'warn':'mute',pay.length],payHTML),expCard=small('合約即將到期',[exp.length?'warn':'mute',exp.length],expHTML),todoCard=small('待辦事項',[todos.length?'info':'mute',todos.length],todoHTML,'<button class="btn sm" data-act="goto" data-v="todos">待辦</button>');
-  const rowD=`<div class="tri">${rich?recvCard:payCard}${rich?payCard:expCard}${rich?expCard:todoCard}</div>`;
+  const rowD=`<div class="two-col tc" style="margin-top:14px">${payCard}${rich?expCard:todoCard}</div>`;
+  const rowC=`<div class="two-col tc" style="margin-top:14px">${rich?trend:chartCard(yrS+' 年收入來源',rankBars(top5),'已收金額，含稅')}${rich?chartCard(yrS+' 年收入來源',rankBars(top5),'已收金額，含稅'):expCard}</div>`;
   const hello=`<div class="hello"><div><h2>${greet}，${esc(((document.querySelector('.acct-toggle')||{}).textContent||'').replace(/\s*▾\s*$/,'')||meName())}</h2><div class="muted">${new Date().getMonth()+1} 月 ${new Date().getDate()} 日 週${wd}</div></div></div>`;
   return {hello,top:rowA+rowB+rowC+rowD,low:''};
 }
@@ -2292,6 +2325,58 @@ function alertBtn(al){
   if(a.a==='goGen')return `<button class="btn sm" data-act="goGen" data-p="${esc(a.p)}">前往</button>`;
   return `<button class="btn sm" data-act="goto" data-v="${esc(a.v)}">前往</button>`;
 }
+/* ---------- 異動紀錄（管理者）：誰、何時、把什麼從 A 改成 B。資料由伺服器寫入，前端只讀 ---------- */
+let auditRows=[],auditLoaded=false,auditLoading=false,auditColl='all',auditEnd=false,auditErr='';
+const AUDIT_GROUPS=[['all','全部',null],['money','款項',['bills','fees','expenses']],['client','客戶與合約',['clients','contracts','services','plans']],['task','任務',['tasks']],['sys','設定',['settings']]];
+const AUDIT_COLL={bills:'帳款',fees:'費用',expenses:'支出',clients:'客戶',contracts:'合約',services:'服務',plans:'方案',tasks:'任務',settings:'設定'};
+const AUDIT_FIELD={amount:'金額',received:'已收',receivedAt:'收款日',due:'繳款日',period:'月份',incl:'含稅',needInvoice:'需開發票',invoiceNo:'發票號碼',note:'備註',paid:'已付',date:'日期',category:'分類',payee:'對象',status:'狀態',state:'狀態',assignee:'負責人',target:'目標',done:'完成',rate:'單價',title:'標題',brand:'品牌',fullName:'公司全名',taxId:'統編',terms:'付款條件',start:'開始',end:'結束',autoRenew:'自動續約',type:'類型',cycle:'週期',mode:'模式',clientCode:'客戶',kind:'類別',industry:'產業',count:'數量',active:'啟用',preset:'方案',contractNo:'合約編號',articles:'文章數',reports:'報告數'};
+const AUDIT_MONEY=['amount','received','rate'];
+async function loadAudit(more){
+  if(auditLoading)return;auditLoading=true;auditErr='';
+  try{
+    const last=more&&auditRows.length?auditRows[auditRows.length-1].id:'';
+    const r=await fetch('/api/audit?limit=100'+(last?'&before='+last:''),{credentials:'same-origin'});
+    if(!r.ok)throw new Error(r.status===403?'沒有權限':'讀取失敗');
+    const rows=await r.json();auditRows=more?auditRows.concat(rows):rows;auditEnd=rows.length<100;auditLoaded=true;
+  }catch(e){auditErr=e.message||'讀取失敗';auditLoaded=true}
+  auditLoading=false;queue();
+}
+function auditVal(k,v){
+  if(v==null||v==='')return '<i class="muted">（空）</i>';
+  if(AUDIT_MONEY.includes(k)&&!isNaN(Number(v)))return esc(money(Number(v)));
+  if(v==='true')return '是';if(v==='false')return '否';
+  if(k==='clientCode')return esc(clientName(v));
+  if(k==='assignee'){const u=USERS().find(x=>x.name===v);return esc(u?u.display:v)}
+  return esc(v);
+}
+function auditLabel(r){
+  const doc=(S[r.coll]||{})[r.doc_id]||{},ch=r.changes||{},cx=ch._||{};
+  const pick=k=>doc[k]!=null?doc[k]:cx[k]!=null?cx[k]:null;
+  const code=r.coll==='clients'?r.doc_id:pick('clientCode');
+  const who=code?clientName(code):'';
+  const what=r.coll==='bills'?(pick('period')||''):r.coll==='expenses'?(pick('note')||pick('category')||''):r.coll==='tasks'?(pick('title')||''):r.coll==='fees'||r.coll==='services'?(pick('type')||''):r.coll==='contracts'?(pick('no')||r.doc_id):'';
+  return [who,what].filter(Boolean).join('・')||r.doc_id;
+}
+function renderAudit(){
+  if(!auditLoaded&&!auditLoading)loadAudit(false);
+  const g=AUDIT_GROUPS.find(x=>x[0]===auditColl)||AUDIT_GROUPS[0];
+  const rows=g[2]?auditRows.filter(r=>g[2].includes(r.coll)):auditRows;
+  const tabs=`<div class="tabs" role="group" aria-label="紀錄類別">${AUDIT_GROUPS.map(([k,t])=>`<button data-act="afilter" data-v="${k}" aria-pressed="${auditColl===k}">${t}</button>`).join('')}</div>`;
+  const pad2=n=>String(n).padStart(2,'0');
+  let lastDay='';
+  const body=rows.map(r=>{
+    const d=new Date(r.at),day=d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()),tm=pad2(d.getHours())+':'+pad2(d.getMinutes());
+    const head=day!==lastDay?`<div class="a-day">${day===todayStr()?'今天':day}</div>`:'';lastDay=day;
+    const u=USERS().find(x=>x.name===r.user_name),who=u?u.display:r.user_name;
+    const act=r.action==='create'?['新增','ok']:r.action==='delete'?['刪除','bad']:['修改','info'];
+    const ent=Object.entries(r.changes||{}).filter(([k])=>k!=='_');
+    const lines=r.action==='update'?ent.map(([k,[a,b]])=>`<div class="a-ch"><span class="a-k">${esc(AUDIT_FIELD[k]||k)}</span> ${auditVal(k,a)} <span class="a-ar" aria-label="改為">→</span> <b>${auditVal(k,b)}</b></div>`).join('')
+      :ent.filter(([k,[a,b]])=>(r.action==='create'?b:a)!=null&&(AUDIT_FIELD[k]||k==='state')).slice(0,4).map(([k,[a,b]])=>`<div class="a-ch"><span class="a-k">${esc(AUDIT_FIELD[k]||k)}</span> ${auditVal(k,r.action==='create'?b:a)}</div>`).join('');
+    return head+`<div class="a-row"><div class="a-meta"><span class="pill ${act[1]}">${act[0]}</span><span class="a-t">${tm}</span></div><div class="a-main"><div class="a-title"><b>${esc(AUDIT_COLL[r.coll]||r.coll)}</b>・${esc(auditLabel(r))}</div>${lines}<div class="sub muted">${esc(who)}</div></div></div>`;
+  }).join('');
+  $('#main').innerHTML=`<div class="hello"><div><h2>異動紀錄</h2><div class="muted">誰在什麼時候改了什麼。只有管理者看得到；款項、客戶、合約、任務狀態都會記錄。</div></div></div>${tabs}
+  <section class="sec"><div class="a-list">${auditErr?`<div class="in bad">${esc(auditErr)}</div>`:body||(auditLoading||!auditLoaded?'<div class="in muted">讀取中…</div>':'<div class="in muted">這個類別還沒有異動紀錄。從現在起的修改都會留下紀錄。</div>')}</div>${!auditEnd&&auditRows.length?'<div class="in"><button class="btn" data-act="amore">載入更早的紀錄</button></div>':''}</section>`;
+}
 function renderNotify(){
   const al=computeAlerts();
   const alHTML=al.length?al.map(x=>`<div class="item"><span class="pill ${x.sev}">${x.sev==='bad'?'緊急':'提醒'}</span><div class="main"><div class="title">${esc(x.title)}</div><div class="sub">${esc(x.detail)}</div></div>${alertBtn(x)}</div>`).join(''):'<div class="in muted">目前沒有需要通知的事項。</div>';
@@ -2330,12 +2415,74 @@ function channelForm(id){
     onSubmit:v=>setDoc('channels',id||newId('channels'),Object.assign({},x,v))});
 }
 
+/* ---------- 全域搜尋（命令面板）：Ctrl/⌘+K 或 / 開啟；同 Linear／Stripe／GitHub 的作法 ---------- */
+const CK={open:false,q:'',sel:0,items:[],prev:null};
+const CK_ICON='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+function ckMatch(q,hay){const h=String(hay||'').toLowerCase();return q.every(t=>h.includes(t))}
+function ckBuild(qs){
+  const q=qs.toLowerCase().split(/\s+/).filter(Boolean),out=[];
+  const grp=(title,list)=>{if(list.length)out.push({head:title},...list.slice(0,6))};
+  const pages=navItems().filter(([k,t])=>!q.length||ckMatch(q,t+' '+k)).map(([k,t])=>({ic:NAV_ICON[k]||'',t,sub:'',go:()=>{view=k;openCode=null;openTask=null;boardQuery='';if(k==='audit')auditLoaded=false;queue()}}));
+  if(!q.length){grp('前往',pages);return out}
+  if(!isWorker()){
+    const ctc={};Object.values(S.contacts||{}).forEach(c=>{if(c.clientCode)(ctc[c.clientCode]||(ctc[c.clientCode]=[])).push((c.name||'')+' '+(c.phone||''))});
+    grp('客戶',Object.keys(S.clients).filter(k=>{const c=S.clients[k];return ckMatch(q,[k,c.brand,c.fullName,c.taxId,(ctc[k]||[]).join(' ')].join(' '))}).sort().map(k=>({ic:NAV_ICON.clients,t:clientName(k),sub:k+(S.clients[k].status==='結案'?'・已結案':''),go:()=>{view='clients';openCode=k;openTask=null;queue()}})));
+  }
+  grp('任務',taskList().filter(t=>ckMatch(q,[t.title,clientName(t.clientCode),t.clientCode,t.period,t.kind,t.state].join(' '))).slice(0,30).map(t=>({ic:NAV_ICON.board,t:t.title||t.id,sub:clientName(t.clientCode)+'・'+t.state,go:()=>{view='board';openTask=t.id;openCode=null;queue()}})));
+  grp('待辦',Object.keys(S.todos).filter(k=>ckMatch(q,[S.todos[k].title,S.todos[k].detail].join(' '))).map(k=>({ic:NAV_ICON.todos,t:S.todos[k].title,sub:S.todos[k].done?'已完成':'待辦',go:()=>{view='todos';openCode=null;openTask=null;queue()}})));
+  if(isAdmin){
+    grp('帳款',Object.keys(S.bills).filter(k=>{const b=S.bills[k];return ckMatch(q,[clientName(b.clientCode),b.clientCode,b.period,b.invoiceNo,b.note].join(' '))}).sort((a,b)=>(S.bills[b].period||'').localeCompare(S.bills[a].period||'')).map(k=>{const b=S.bills[k];return {ic:NAV_ICON.bills,t:clientName(b.clientCode)+'・'+(b.period||''),sub:money(b.amount)+((b.received||0)>=(b.amount||0)&&b.amount?'・已收':'・未收完'),go:()=>{view='bills';billView='income';billMonth=b.period||billMonth;openCode=null;openTask=null;queue()}}}));
+  }
+  grp('頁面',pages);
+  return out;
+}
+function ckRender(){
+  const root=document.getElementById('cmdk');if(!root)return;
+  CK.items=ckBuild(CK.q);const sel=CK.items.filter(x=>!x.head);
+  if(CK.sel>=sel.length)CK.sel=Math.max(0,sel.length-1);
+  let n=-1;
+  root.querySelector('.ck-list').innerHTML=sel.length?CK.items.map(x=>{if(x.head)return `<div class="ck-h" role="presentation">${x.head}</div>`;n++;return `<div class="ck-i${n===CK.sel?' on':''}" role="option" id="ck${n}" aria-selected="${n===CK.sel}" data-i="${n}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${x.ic}</svg><span class="ck-t">${esc(x.t)}</span><span class="ck-s">${esc(x.sub||'')}</span></div>`}).join(''):`<div class="ck-e">找不到「${esc(CK.q)}」。可以搜客戶名稱、統編、聯絡人、任務標題、待辦或帳款月份。</div>`;
+  const inp=root.querySelector('input');inp.setAttribute('aria-activedescendant',sel.length?'ck'+CK.sel:'');
+  const on=root.querySelector('.ck-i.on');if(on)on.scrollIntoView({block:'nearest'});
+}
+function ckOpen(){
+  if(CK.open)return;CK.open=true;CK.q='';CK.sel=0;CK.prev=document.activeElement;
+  const r=document.createElement('div');r.id='cmdk';r.className='ck-ov';
+  r.innerHTML=`<div class="ck" role="dialog" aria-modal="true" aria-label="搜尋"><div class="ck-in">${CK_ICON}<input type="text" role="combobox" aria-expanded="true" aria-controls="cklist" aria-autocomplete="list" placeholder="搜尋客戶、任務、待辦、帳款…" autocomplete="off" spellcheck="false" enterkeyhint="go"><kbd>Esc</kbd></div><div class="ck-list" id="cklist" role="listbox" aria-label="搜尋結果"></div><div class="ck-f"><span>↑↓ 選擇</span><span>Enter 開啟</span><span>Esc 關閉</span></div></div>`;
+  document.body.appendChild(r);document.body.style.overflow='hidden';
+  const inp=r.querySelector('input');ckRender();inp.focus();
+  inp.addEventListener('input',()=>{CK.q=inp.value;CK.sel=0;ckRender()});
+  r.addEventListener('mousedown',e=>{if(e.target===r){e.preventDefault();ckClose()}});
+  r.addEventListener('click',e=>{const i=e.target.closest('.ck-i');if(i)ckGo(+i.dataset.i)});
+  r.addEventListener('mousemove',e=>{const i=e.target.closest('.ck-i');if(i&&+i.dataset.i!==CK.sel){CK.sel=+i.dataset.i;r.querySelectorAll('.ck-i').forEach((x,n)=>{x.classList.toggle('on',n===CK.sel);x.setAttribute('aria-selected',n===CK.sel)});inp.setAttribute('aria-activedescendant','ck'+CK.sel)}});
+}
+function ckClose(){
+  const r=document.getElementById('cmdk');if(r)r.remove();document.body.style.overflow='';CK.open=false;
+  if(CK.prev&&CK.prev.focus&&document.contains(CK.prev))try{CK.prev.focus()}catch(e){}
+}
+function ckGo(n){const it=CK.items.filter(x=>!x.head)[n];if(!it)return;ckClose();it.go()}
+document.addEventListener('keydown',e=>{
+  const typing=/^(INPUT|TEXTAREA|SELECT)$/.test((e.target||{}).tagName)||(e.target&&e.target.isContentEditable);
+  if((e.key==='k'||e.key==='K')&&(e.ctrlKey||e.metaKey)){e.preventDefault();CK.open?ckClose():ckOpen();return}
+  if(e.key==='/'&&!typing&&!CK.open&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!document.querySelector('#layer .panel,#modalroot .modal,#modalroot [role=dialog]')){e.preventDefault();ckOpen();return}
+  if(!CK.open)return;
+  const cnt=CK.items.filter(x=>!x.head).length;
+  if(e.key==='Escape'){e.preventDefault();ckClose()}
+  else if(e.key==='ArrowDown'){e.preventDefault();if(cnt){CK.sel=(CK.sel+1)%cnt;ckRender()}}
+  else if(e.key==='ArrowUp'){e.preventDefault();if(cnt){CK.sel=(CK.sel-1+cnt)%cnt;ckRender()}}
+  else if(e.key==='Enter'){e.preventDefault();ckGo(CK.sel)}
+  else if(e.key==='Tab'){e.preventDefault()}
+},true);
+
 /* ---------- events ---------- */
 document.addEventListener('click',async e=>{
   const el=e.target.closest('[data-act]');if(!el)return;
   const a=el.dataset.act,code=el.dataset.code,id=el.dataset.id;
   if(a==='more'){moreOpen=!moreOpen;queue();return}
-  if(a==='nav'){moreOpen=false;view=el.dataset.v;openCode=null;openTask=null;boardQuery='';queue();return}
+  if(a==='cmdk'){ckOpen();return}
+  if(a==='afilter'){auditColl=el.dataset.v;queue();return}
+  if(a==='amore'){loadAudit(true);return}
+  if(a==='nav'){if(el.dataset.v==='audit')auditLoaded=false;moreOpen=false;view=el.dataset.v;openCode=null;openTask=null;boardQuery='';queue();return}
   if(a==='tab'){tab=el.dataset.v;query='';queue();return}
   if(a==='open'){openCode=code;openTask=null;queue();return}
   if(a==='closePanel'){openCode=null;openTask=null;queue();return}
