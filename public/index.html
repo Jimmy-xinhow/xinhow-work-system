@@ -407,6 +407,27 @@ h1,h2,h3{font-weight:600}
 .trow{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) 72px minmax(0,.9fr) auto}
 .cd[disabled]{cursor:default}.cd[disabled]:hover{background:none}.cd.now[disabled]:hover{background:var(--accent-soft)}
 @media (max-width:820px){.trow{grid-template-columns:minmax(0,1fr) auto}}
+
+/* bills by month */
+.bstrip .cd.sel{background:var(--accent-soft)}.bstrip .cd.sel .cd-w{color:var(--accent);font-weight:600}
+.bstrip .cd-n.bad{color:var(--bad)}
+.bstrip .cd-n{font-size:13px}
+.bh{font-size:15px;font-weight:600;margin:20px 2px 8px}
+.bsum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 4px}
+.bsum>div{padding:12px 16px;border-right:1px solid var(--line);min-width:0}.bsum>div:last-child{border-right:0}
+.bsum .k{font-size:12.5px;color:var(--muted)}.bsum .v{font-size:20px;font-weight:600;margin-top:2px;white-space:nowrap}
+.bsum .v.ok{color:var(--ok)}.bsum .v.bad{color:var(--bad)}
+.pbar{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:7px}.pbar i{display:block;height:100%;background:var(--ok);border-radius:3px}
+.lhead.mrow,.lrow.mrow{display:grid;grid-template-columns:76px minmax(60px,1fr) 120px 120px 120px;align-items:center;gap:14px}
+.lrow.mrow .pbar{margin:0}.mrow .r{text-align:right}.lrow.mrow{cursor:pointer}.lrow.mrow.now{background:var(--accent-soft)}
+.lrow .bad,.num.bad{color:var(--bad)}.num.ok,.ok{color:var(--ok)}
+.btable{min-width:900px}.bnote{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+@media (max-width:640px){
+  .bstrip{grid-template-columns:repeat(6,minmax(0,1fr))!important}.bstrip .cd:nth-child(6){border-right:0}.bstrip .cd:nth-child(-n+6){border-bottom:1px solid var(--line)}
+  .bsum{grid-template-columns:repeat(2,minmax(0,1fr))}.bsum>div:nth-child(2){border-right:0}.bsum>div:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  .bsum .v{font-size:17px}
+  .lhead.mrow,.lrow.mrow{grid-template-columns:52px minmax(30px,1fr) 88px 88px;gap:8px}.hm{display:none}
+}
 </style>
 
 <div class="top"><div class="wrap">
@@ -438,7 +459,7 @@ const COLS=['clients','contacts','assets','contracts','services','fees','bills',
 const S={};COLS.forEach(c=>S[c]={});
 const loaded={};
 let db=null,isAdmin=false,canWrite=true;
-let view='dash',tab=null,query='',openCode=null,billFilter='open';
+let view='dash',tab=null,query='',openCode=null,billFilter='all',billMonth=null,billView='month';
 let renderQueued=false;
 
 const STATUS_PILL={'進行中':'ok','暫停':'warn','洽談中':'info','結案':'mute'};
@@ -676,21 +697,62 @@ function legacyMoney(){/* 尚未標記為「含稅」的舊資料（費用／帳
 function legacyBanner(){
   if(!isAdmin)return '';const L=legacyMoney();if(!L.n)return '';
   return `<div class="infobox warn" style="margin:0 0 12px"><b>有 ${L.n} 筆舊資料的金額是「未稅」</b>（費用 ${L.fees.length}、帳單 ${L.bills.length}）。系統現在一律以含稅記錄，不會自動換算。確認後可一次轉成含稅（金額 × 1.05，四捨五入），已收金額不變；若你想逐筆自己改，也可以略過。<div style="margin-top:8px"><button class="btn sm primary" data-act="migrateIncl">一次轉為含稅</button> <button class="btn sm" data-act="markIncl">不轉換，直接視為已是含稅</button></div></div>`}
+const bmk=b=>(b.due||(b.period?b.period+'-01':'')).slice(0,7);
+const bshort=n=>n>=10000?(Math.round(n/1000)/10)+'萬':String(Math.round(n));
+function billStat(list,t){
+  const r={n:0,due:0,got:0,bal:0,late:0,lateN:0,invN:0,pend:0};
+  list.forEach(b=>{
+    if(b.pending){r.pend++;return}
+    r.n++;r.due+=b.total;r.got+=Math.min(b.received||0,b.total)+Math.max(0,(b.received||0)-b.total);
+    if(b.bal>0){r.bal+=b.bal;if(b.due&&b.due<t){r.late+=b.bal;r.lateN++}}
+    if(b.bal<=0&&needsInv(b.clientCode)&&!b.invoiceNo)r.invN++;
+  });
+  r.pct=r.due>0?Math.min(100,Math.round(Math.min(r.got,r.due)/r.due*100)):0;
+  return r}
 function renderBills(){
-  const all=Object.entries(S.bills).map(([id,b])=>Object.assign({id},b,billCalc(b))).sort((a,b)=>(b.due||'').localeCompare(a.due||''));
-  const open=all.filter(b=>b.bal>0);
-  const pendInv=b=>b.bal<=0&&needsInv(b.clientCode)&&!b.invoiceNo;
-  const list=billFilter==='open'?all.filter(b=>b.bal>0||pendInv(b)):all;
-  const t=todayStr();
-  const owing=open.reduce((s,b)=>s+b.bal,0);
-  const trs=list.map(b=>{
+  const t=todayStr(),nowM=t.slice(0,7);
+  if(!billMonth)billMonth=nowM;
+  const yr=billMonth.slice(0,4);
+  const all=Object.entries(S.bills).map(([id,b])=>{const c=billCalc(b);return Object.assign({id},b,c,{pending:b.amount==null,mk:bmk(b)})})
+    .sort((a,b)=>(a.due||'').localeCompare(b.due||'')||(a.clientCode||'').localeCompare(b.clientCode||''));
+  const byM={};all.forEach(b=>{(byM[b.mk]=byM[b.mk]||[]).push(b)});
+  const months=Array.from({length:12},(_,k)=>yr+'-'+p2(k+1));
+  const strip=months.map(m=>{
+    const L=byM[m]||[],st=billStat(L,t);
+    const cls=[m===billMonth&&billView==='month'?'sel':'',m===nowM?'now':''].join(' ');
+    const amt=!L.length?'<span class="cd-n z">—</span>':st.late>0?`<span class="cd-n bad">${bshort(st.late)}</span>`:st.bal>0?`<span class="cd-n">${bshort(st.bal)}</span>`:st.n?`<span class="cd-n ok">✓</span>`:`<span class="cd-n z">${st.pend}備註</span>`;
+    return `<button class="cd bm ${cls}" data-act="billMonth" data-m="${m}" aria-label="${+m.slice(5)}月"><span class="cd-w">${+m.slice(5)}月</span><span class="cd-d">${L.length?L.length+'筆':''}</span>${amt}</button>`}).join('');
+  const head=`${legacyBanner()}<div class="ovhead" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px">
+    <div class="utabs"><button data-act="billView" data-v="month" aria-pressed="${billView==='month'}">月份</button><button data-act="billView" data-v="year" aria-pressed="${billView==='year'}">全年總覽</button></div><span class="grow" style="flex:1"></span>
+    <div class="stepper"><button class="btn" data-act="billYear" data-d="-1" aria-label="上一年">‹</button><b class="num" style="align-self:center;min-width:48px;text-align:center">${yr}</b><button class="btn" data-act="billYear" data-d="1" aria-label="下一年">›</button></div>
+    <button class="btn" data-act="billMonth" data-m="${nowM}">本月</button>
+    ${canWrite?`<button class="btn" data-act="draftBills">產生月帳單草稿</button><button class="btn primary" data-act="newBill">＋ 新增帳款</button>`:''}</div>
+    ${billView==='month'?`<div class="calstrip bstrip" style="--n:12">${strip}</div>`:''}`;
+  const sumBox=(st,extra)=>`<div class="bsum"><div><div class="k">應收（含稅）</div><div class="v num">${money(st.due)}</div></div><div><div class="k">已收</div><div class="v num ok">${money(st.got)}</div><div class="pbar"><i style="width:${st.pct}%"></i></div></div><div><div class="k">未收</div><div class="v num">${money(st.bal)}</div></div><div><div class="k">逾期</div><div class="v num ${st.late>0?'bad':''}">${money(st.late)}</div>${st.lateN?`<div class="k">${st.lateN} 筆</div>`:''}</div></div>${extra||''}`;
+  if(billView==='year'){
+    const yl=all.filter(b=>b.mk.startsWith(yr)),ys=billStat(yl,t);
+    const rows=months.map(m=>{const L=byM[m]||[],st=billStat(L,t);
+      return `<div class="lrow mrow ${m===nowM?'now':''}" data-act="billMonth" data-m="${m}" role="button" tabindex="0"><div><b>${+m.slice(5)}月</b> <span class="muted">${L.length?L.length+' 筆':''}</span></div><div>${st.n?`<div class="pbar"><i style="width:${st.pct}%"></i></div>`:''}</div><div class="num r">${st.n?money(st.due):'<span class="muted">—</span>'}</div><div class="num r hm">${st.n?money(st.got):''}</div><div class="num r ${st.late>0?'bad':''}">${st.bal>0?money(st.bal):st.n?'<span class="ok">已收齊</span>':''}</div></div>`}).join('');
+    const byC={};all.forEach(b=>{if(!b.pending&&b.bal>0){const o=byC[b.clientCode]=byC[b.clientCode]||{bal:0,n:0,late:0};o.bal+=b.bal;o.n++;if(b.due&&b.due<t)o.late+=b.bal}});
+    const owe=Object.entries(byC).sort((a,b)=>b[1].bal-a[1].bal);
+    const oweHTML=owe.length?`<div class="ledger">${owe.map(([c,o])=>`<div class="lrow" style="cursor:default"><div><span class="mono muted">${esc(c)}</span> ${esc(clientName(c))}　<span class="muted">${o.n} 筆</span></div><div class="num r ${o.late>0?'bad':''}">${money(o.bal)}${o.late>0?'　<span class="pill bad">逾期</span>':''}</div></div>`).join('')}</div>`:'<div class="list"><div class="empty">目前沒有任何未收款。</div></div>';
+    $('#main').innerHTML=head+`<h3 class="bh">${yr} 年統計</h3>`+sumBox(ys)+`<div class="ledger"><div class="lhead mrow"><span>月份</span><span>收款進度</span><span class="r">應收</span><span class="r hm">已收</span><span class="r">未收</span></div>${rows}</div><h3 class="bh">各客戶未收餘額（全部年度）</h3>`+oweHTML;
+    return}
+  const L=(byM[billMonth]||[]).filter(b=>billFilter!=='open'||b.bal>0||(b.bal<=0&&!b.pending&&needsInv(b.clientCode)&&!b.invoiceNo)||b.pending);
+  const st=billStat(byM[billMonth]||[],t);
+  const earlier=all.filter(b=>!b.pending&&b.bal>0&&b.due&&b.due<t&&b.mk<billMonth);
+  const early=earlier.length?`<div class="infobox warn" style="margin:12px 0 0">之前月份還有 <b>${earlier.length}</b> 筆逾期，共 <b>${money(earlier.reduce((s,b)=>s+b.bal,0))}</b>　<button class="btn sm" data-act="billMonth" data-m="${earlier[0].mk}">看最早的月份</button></div>`:'';
+  const trs=L.map(b=>{
     const cl=S.clients[b.clientCode];
-    const st=b.bal<=0?'<span class="pill ok">已收</span>':(b.due&&b.due<t)?'<span class="pill bad">逾期</span>':'<span class="pill warn">未收</span>';
-    return `<tr><td><span class="mono muted">${esc(b.clientCode)}</span> ${esc(cl?cl.brand||cl.fullName:'')}</td><td class="mono">${esc(b.period||'')}</td><td class="r num">${money(b.total)}</td><td class="mono">${esc(b.due||'—')}</td><td class="r num">${money(b.received||0)}</td><td class="r num"><b>${money(b.bal)}</b></td><td>${st}</td><td>${!needsInv(b.clientCode)?'<span class="muted">免開</span>':b.invoiceNo?`<span class="mono">${esc(b.invoiceNo)}</span>`:b.bal<=0?'<span class="pill warn">待開立</span>':'<span class="muted">收款後開</span>'}</td>
-      <td><div class="acts">${canWrite?`${b.bal>0?`<button class="btn sm primary" data-act="payBill" data-id="${esc(b.id)}">收款</button>`:''}${needsInv(b.clientCode)&&b.bal<=0&&!b.invoiceNo?`<button class="btn sm primary" data-act="invBill" data-id="${esc(b.id)}">登記發票</button>`:''}<button class="btn sm" data-act="editBill" data-id="${esc(b.id)}">編輯</button>`:''}</div></td></tr>`}).join('');
-  $('#main').innerHTML=`${legacyBanner()}<div class="sumline"><span><b class="num">${money(owing)}</b>未收餘額（含稅）</span><span><b>${open.length}</b>筆未結清</span></div>
-  <div class="tools"><div class="tabs"><button data-act="billFilter" data-v="open" aria-pressed="${billFilter==='open'}">待處理</button><button data-act="billFilter" data-v="all" aria-pressed="${billFilter==='all'}">全部</button></div><span class="grow"></span>${canWrite?`<button class="btn" data-act="draftBills">產生月帳單草稿</button><button class="btn primary" data-act="newBill">＋ 新增帳單</button>`:''}</div>
-  ${list.length?`<div class="tablewrap"><table><thead><tr><th>客戶</th><th>期別</th><th class="r">金額（含稅）</th><th>繳款日</th><th class="r">已收</th><th class="r">未收餘額</th><th>狀態</th><th>發票</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`:`<div class="list"><div class="empty">${all.length?'目前沒有待收款或待開發票的帳單。':'還沒有帳單。按「新增帳單」記錄一筆，或用「產生月帳單草稿」依進行中的月繳服務建立。'}</div></div>`}`;
+    const sp=b.pending?'<span class="pill mute">金額待定</span>':b.bal<=0?'<span class="pill ok">已收</span>':(b.due&&b.due<t)?'<span class="pill bad">逾期</span>':'<span class="pill warn">未收</span>';
+    const inv=!needsInv(b.clientCode)?'<span class="muted">免開</span>':b.invoiceNo?`<span class="mono">${esc(b.invoiceNo)}</span>`:(!b.pending&&b.bal<=0)?'<span class="pill warn">待開立</span>':'<span class="muted">收款後開</span>';
+    return `<tr><td><span class="mono muted">${esc(b.clientCode)}</span> ${esc(cl?cl.brand||cl.fullName:'')}</td><td class="mono">${esc((b.due||'—').slice(5))}</td><td class="r num">${b.pending?'<span class="muted">—</span>':money(b.total)}</td><td class="r num">${money(b.received||0)}</td><td class="r num"><b>${b.pending?'':money(b.bal)}</b></td><td>${sp}</td><td>${inv}</td><td class="bnote" title="${esc(b.note||'')}">${esc(b.note||'')}</td>
+      <td><div class="acts">${canWrite?`${!b.pending&&b.bal>0?`<button class="btn sm primary" data-act="payBill" data-id="${esc(b.id)}">收款</button>`:''}${needsInv(b.clientCode)&&!b.pending&&b.bal<=0&&!b.invoiceNo?`<button class="btn sm primary" data-act="invBill" data-id="${esc(b.id)}">登記發票</button>`:''}<button class="btn sm" data-act="editBill" data-id="${esc(b.id)}">編輯</button>`:''}</div></td></tr>`}).join('');
+  const extra=(st.invN?`<div class="sumline" style="margin-top:2px"><span><b>${st.invN}</b>筆已收款、待開發票</span></div>`:'');
+  $('#main').innerHTML=head+`<h3 class="bh">${yr} 年 ${+billMonth.slice(5)} 月${billMonth===nowM?'（本月）':''}</h3>`+sumBox(st,extra)+early
+   +`<div class="tools" style="margin-top:14px"><div class="tabs"><button data-act="billFilter" data-v="all" aria-pressed="${billFilter!=='open'}">全部</button><button data-act="billFilter" data-v="open" aria-pressed="${billFilter==='open'}">待處理</button></div></div>`
+   +(L.length?`<div class="tablewrap"><table class="btable"><thead><tr><th>客戶</th><th>繳款日</th><th class="r">金額（含稅）</th><th class="r">已收</th><th class="r">未收餘額</th><th>狀態</th><th>發票</th><th>備註</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`
+     :`<div class="list"><div class="empty">${(byM[billMonth]||[]).length?'這個月沒有待處理的帳款。':'這個月還沒有帳款。可以按「新增帳款」先記下預計要收的款項與備註，金額還沒確定也可以留空。'}</div></div>`);
 }
 /* todos */
 function renderTodos(){
@@ -852,8 +914,8 @@ function billForm(id,preset){
   const codes=Object.keys(S.clients).sort().map(k=>[k,k+'　'+clientFull(k)]);
   openForm({title:id?'編輯帳單':'新增帳單',fields:[
     {k:'clientCode',label:'客戶',type:'select',opts:codes,req:true},
-    {k:'period',label:'帳單期別 (YYYY-MM)',req:true,half:true,ph:'2026-12'},{k:'due',label:'繳款日',type:'date',half:true,hint:'空白則為期別當月 1 日'},
-    {k:'amount',label:'應收金額（含稅）',type:'money',req:true,half:true},{k:'received',label:'已收金額（含稅）',type:'money',half:true},
+    {k:'period',label:'帳單期別 (YYYY-MM)',req:true,half:true,ph:'2026-12'},{k:'due',label:'繳款日',type:'date',half:true,hint:'決定歸在哪個月；空白則為期別當月 1 日'},
+    {k:'amount',label:'應收金額（含稅）',type:'money',half:true,hint:'還沒確定可留空，只先記備註（不計入統計）'},{k:'received',label:'已收金額（含稅）',type:'money',half:true},
     {k:'cinv',type:'info',html:'客戶：'+(x.clientCode&&needsInv(x.clientCode)?'<b>需要發票</b>（收款後到易發票人工開立，再回來「登記發票」）':'不需要發票')+'。金額一律填含稅，系統不做稅額換算。'},
     x.clientCode&&needsInv(x.clientCode)?{k:'invoiceNo',label:'發票號碼'}:null,{k:'note',label:'備註',type:'textarea'}],values:x,
     dangerLabel:id?'刪除帳單':null,onDanger:()=>del('bills',id),
@@ -1586,6 +1648,9 @@ document.addEventListener('click',async e=>{
   if(a==='openBoardClient'){view='board';boardAll=false;boardFilter='all';boardQuery=el.dataset.code||'';ownerFilter='all';queue();return}
   if(a==='dismissPw'){ls.set('pwBannerOff','1');queue();return}
   if(a==='billFilter'){billFilter=el.dataset.v;queue();return}
+  if(a==='billMonth'){billMonth=el.dataset.m;billView='month';queue();return}
+  if(a==='billView'){billView=el.dataset.v;queue();return}
+  if(a==='billYear'){const m=billMonth||todayStr().slice(0,7);billMonth=(+m.slice(0,4)+ +el.dataset.d)+m.slice(4);queue();return}
   if(!canWrite)return;
   if(a==='newClient')newClient();
   else if(a==='editClient')editClient(code);
@@ -1631,7 +1696,7 @@ document.addEventListener('click',async e=>{
   else if(a==='newChannel')channelForm();
   else if(a==='editChannel')channelForm(id);
   else if(a==='newTodo')todoForm();else if(a==='editTodo')todoForm(id);
-  else if(a==='newBill')billForm();else if(a==='editBill')billForm(id);
+  else if(a==='newBill')billForm(null,{period:billMonth||todayStr().slice(0,7)});else if(a==='editBill')billForm(id);
   else if(a==='draftBills')draftBills();
   else if(a==='migrateIncl'){const L=legacyMoney();
     openForm({title:'一次轉為含稅',submit:`轉換 ${L.n} 筆`,fields:[{k:'i',type:'info',warn:true,html:`費用 ${L.fees.length} 筆、帳單 ${L.bills.length} 筆的金額將 × 1.05 並四捨五入，標記為含稅。已收金額不變。這個動作只做一次，請確認這些金額原本確實是未稅。`}],okMsg:'已轉為含稅',
