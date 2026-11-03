@@ -317,7 +317,7 @@ h1,h2,h3{font-weight:600}
 .btn{border-color:#D0D5DD;border-radius:6px;font-weight:500;background:var(--surface)}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn{border-color:var(--line)}}
 :root[data-theme="dark"] .btn{border-color:var(--line)}
-.btn:hover{border-color:#D0D5DD;background:var(--hover)}
+.btn:hover{border-color:var(--muted);background:var(--hover)}
 .btn.primary{background:var(--accent);border-color:var(--accent)}.btn.primary:hover{background:var(--accent);filter:brightness(1.12)}
 .pill{border-radius:4px;padding:1px 7px;font-weight:500}
 .pill.done{background:var(--ok-soft);color:var(--ok)}
@@ -554,6 +554,13 @@ h1,h2,h3{font-weight:600}
 .split2>div{display:flex;flex-direction:column;min-width:0}.split2>div>.xlist,.split2>div>.list{flex:1}
 .cstack .two-col{grid-template-columns:minmax(0,1fr);grid-auto-rows:1fr;flex:1;margin:0}
 @media (max-width:900px){.split2{grid-template-columns:minmax(0,1fr)}}
+
+#ctip{position:fixed;z-index:300;display:none;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 11px;box-shadow:0 8px 24px rgba(0,0,0,.22);font-size:13px;line-height:1.45;min-width:120px;max-width:260px}
+#ctip .th{display:block;font-weight:600;margin-bottom:4px}
+#ctip .tr{display:flex;align-items:center;gap:7px;white-space:nowrap}#ctip .tr i{width:8px;height:8px;border-radius:2px;flex:none}#ctip .tr span{color:var(--muted)}#ctip .tr b{margin-left:auto;padding-left:14px;font-variant-numeric:tabular-nums}
+.chart .hp{opacity:0;pointer-events:none}.chart .ch:hover+.hp{opacity:1}
+.chart .ch:hover{fill:var(--accent-soft)}
+.rk[data-tip]:hover .rb i{filter:brightness(1.12)}.sgb i[data-tip]:hover{filter:brightness(1.15)}
 </style>
 
 <div class="top"><div class="wrap">
@@ -841,6 +848,8 @@ function niceScale(mn,mx){
   for(let v=lo;v<=hi+step/2;v+=step)ticks.push(Math.round(v*100)/100);
   return {lo,hi,ticks}}
 function chartCard(title,body,sub){return `<section class="cc"><h4>${title}</h4>${sub?`<div class="csub">${sub}</div>`:''}${body}</section>`}
+function tipHead(o,i){if(o.tipLabels)return o.tipLabels[i];const lb=o.labels[i];return /^\d+$/.test(lb)&&o.unit?(o.pre||'')+lb+o.unit:(o.pre||'')+lb}
+function tipHTML(head,rows){return `<b class="th">${esc(head)}</b>`+rows.map(r=>`<div class="tr"><i style="background:${r.c||'var(--muted)'}"></i><span>${esc(r.n)}</span><b>${esc(r.v)}</b></div>`).join('')}
 function chartCols(o){
   const W=o.w,H=o.h||180,ml=42,mr=4,mt=8,mb=22,pw=W-ml-mr,ph=H-mt-mb,n=o.labels.length;
   if(!o.series.some(s=>s.vals.some(v=>v>0)))return `<div class="chart-empty">${o.empty||'還沒有資料'}</div>`;
@@ -855,8 +864,8 @@ function chartCols(o){
     o.series.forEach((s,k)=>{const v=s.vals[i]||0;if(v<=0)return;const x=cx-tot/2+k*(bw+gap),h=Math.max(2,v/mx*ph),yy=mt+ph-h,r=Math.min(4,bw/2,h);
       bars+=`<path d="M${x},${mt+ph}V${yy+r}Q${x},${yy} ${x+r},${yy}H${x+bw-r}Q${x+bw},${yy} ${x+bw},${yy+r}V${mt+ph}Z" fill="${s.color}"/>`});
     if(i%step===0)lab+=`<text x="${cx}" y="${H-6}" text-anchor="middle" class="ca">${esc(lb)}</text>`;
-    const tip=(o.tipPrefix||'')+lb+(o.tipPrefix?'':'')+'：'+o.series.map(s=>s.name+' '+money(s.vals[i]||0)).join('　');
-    hit+=`<rect x="${ml+gw*i}" y="${mt}" width="${gw}" height="${ph+mb}" class="ch"><title>${esc(tip)}</title></rect>`;
+    const tip=tipHTML(tipHead(o,i),o.series.map(s=>({c:s.color,n:s.name,v:money(s.vals[i]||0)})));
+    hit+=`<rect x="${ml+gw*i}" y="${mt}" width="${gw}" height="${ph+mb}" class="ch" data-tip="${esc(tip)}"/>`;
   });
   const leg=o.series.length>1?`<div class="clg">${o.series.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('')}</div>`:'';
   return leg+`<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(o.aria||'長條圖')}">${g}<line x1="${ml}" x2="${W-mr}" y1="${mt+ph}" y2="${mt+ph}" class="cb"/>${bars}${lab}${hit}</svg>`;
@@ -872,7 +881,7 @@ function chartLine(o){
   const gw=pw/n,x=i=>ml+gw*i+gw/2,step=gw<20?Math.ceil(20/gw):1;
   let d='',lab='',hit='',last=-1;
   o.vals.forEach((v,i)=>{if(v==null)return;d+=(d?'L':'M')+x(i)+','+y(v);last=i;
-    hit+=`<rect x="${ml+gw*i}" y="${mt}" width="${gw}" height="${ph+mb}" class="ch"><title>${esc(o.labels[i]+'：'+money(v))}</title></rect>`});
+    hit+=`<rect x="${ml+gw*i}" y="${mt}" width="${gw}" height="${ph+mb}" class="ch" data-tip="${esc(tipHTML(tipHead(o,i),[{c:o.color,n:o.name||'金額',v:money(v)}]))}"/><circle cx="${x(i)}" cy="${y(v)}" r="4.5" class="hp" fill="${o.color}" stroke="var(--surface)" stroke-width="2"/>`});
   o.labels.forEach((lb,i)=>{if(i%step===0)lab+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle" class="ca">${esc(lb)}</text>`});
   const mk=last>=0?`<circle cx="${x(last)}" cy="${y(o.vals[last])}" r="5" fill="${o.color}" stroke="var(--surface)" stroke-width="2"/>`:'';
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(o.aria||'折線圖')}">${g}<line x1="${ml}" x2="${W-mr}" y1="${y(0)}" y2="${y(0)}" class="cb"/><path d="${d}" fill="none" stroke="${o.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${mk}${lab}${hit}</svg>`;
@@ -880,18 +889,28 @@ function chartLine(o){
 function segParts(parts){
   const tot=parts.reduce((a,x)=>a+x.v,0);
   if(tot<=0)return '<div class="chart-empty">還沒有資料</div>';
-  return `<div class="sgb">${parts.filter(x=>x.v>0).map(x=>`<i style="flex:${x.v};background:${x.color}" title="${esc(x.label)} ${x.fmt?x.fmt(x.v):money(x.v)}"></i>`).join('')}</div>
+  return `<div class="sgb">${parts.filter(x=>x.v>0).map(x=>`<i style="flex:${x.v};background:${x.color}" data-tip="${esc(tipHTML(x.label,[{c:x.color,n:Math.round(x.v/tot*100)+'%',v:x.fmt?x.fmt(x.v):money(x.v)}]))}"></i>`).join('')}</div>
   <div class="sgl">${parts.map(x=>`<div><span class="sl"><i style="background:${x.color}"></i>${esc(x.label)}</span><b class="num">${x.fmt?x.fmt(x.v):money(x.v)}</b><span class="muted pc">${Math.round(x.v/tot*100)}%</span></div>`).join('')}</div>`;
 }
 function rankBars(items,fmt,color){
   items=items.filter(x=>x.v>0);
   if(!items.length)return '<div class="chart-empty">還沒有資料</div>';
   const mx=Math.max(...items.map(x=>x.v));
-  return `<div class="rks">${items.map(x=>`<div class="rk"><div class="rl" title="${esc(x.plain||'')}">${x.label}</div><div class="rb"><i style="width:${Math.max(2,Math.round(x.v/mx*100))}%;background:${color||'var(--cv1)'}"></i></div><div class="num rv">${fmt?fmt(x.v):money(x.v)}</div></div>`).join('')}</div>`;
+  return `<div class="rks">${items.map(x=>`<div class="rk" data-tip="${esc(tipHTML(x.label.replace(/<[^>]*>/g,'')+(x.plain&&x.plain!==x.label.replace(/<[^>]*>/g,'')?'（'+x.plain+'）':''),[{c:color||'var(--cv1)',n:'金額',v:fmt?fmt(x.v):money(x.v)}]))}"><div class="rl">${x.label}</div><div class="rb"><i style="width:${Math.max(2,Math.round(x.v/mx*100))}%;background:${color||'var(--cv1)'}"></i></div><div class="num rv">${fmt?fmt(x.v):money(x.v)}</div></div>`).join('')}</div>`;
 }
+/* chart tooltip (themed, replaces native title tips) */
+(function(){let tip=null,hideT=null;
+ const el=()=>tip||(tip=Object.assign(document.createElement('div'),{id:'ctip'}),tip.setAttribute('role','tooltip'),document.body.appendChild(tip),tip);
+ const place=(x,y)=>{const t=el(),w=t.offsetWidth,h=t.offsetHeight,vw=innerWidth,vh=innerHeight;let l=x+14,tp=y-h-12;if(l+w>vw-8)l=x-w-14;if(l<8)l=8;if(tp<8)tp=y+18;if(tp+h>vh-8)tp=Math.max(8,vh-h-8);t.style.left=l+'px';t.style.top=tp+'px'};
+ const show=(n,x,y)=>{const t=el();if(t._n!==n){t.innerHTML=n.dataset.tip;t._n=n}t.style.display='block';place(x,y)};
+ const hide=()=>{if(tip){tip.style.display='none';tip._n=null}};
+ document.addEventListener('pointermove',e=>{if(e.pointerType==='touch')return;const n=e.target.closest&&e.target.closest('[data-tip]');n?show(n,e.clientX,e.clientY):hide()});
+ document.addEventListener('pointerdown',e=>{const n=e.target.closest&&e.target.closest('[data-tip]');if(e.pointerType==='touch'&&n){show(n,e.clientX,e.clientY);clearTimeout(hideT);hideT=setTimeout(hide,2600)}else if(!n)hide()});
+ document.addEventListener('scroll',hide,true);window.addEventListener('blur',hide);document.documentElement.addEventListener('mouseleave',hide);
+})();
 let _rz=null;window.addEventListener('resize',()=>{clearTimeout(_rz);_rz=setTimeout(()=>{if(['dash','bills','clients'].includes(view)&&!document.querySelector('#modalroot .modal'))queue()},200)});
 const bmk=b=>(b.due||(b.period?b.period+'-01':'')).slice(0,7);
-const bshort=n=>n>=10000?(Math.round(n/1000)/10)+'萬':String(Math.round(n));
+const bshort=n=>Math.abs(n)>=10000?(n<0?'-':'')+(Math.round(Math.abs(n)/1000)/10)+'萬':String(Math.round(n));
 const num0=n=>Math.round(n||0).toLocaleString('en-US');
 const EXP_CATS=['外包／稿費','薪資','勞健保','廣告費','軟體／工具','主機／網域','租金／水電','會計／稅費','設備','餐費／交通','雜支'];
 const DEFAULT_PRESETS=[{n:'辦公室租金',c:'租金／水電'},{n:'水電瓦斯',c:'租金／水電'},{n:'網路／電話費',c:'租金／水電'},{n:'員工薪資',c:'薪資'},{n:'勞保／健保',c:'勞健保'},{n:'記帳／會計師',c:'會計／稅費'},{n:'營業稅',c:'會計／稅費'},{n:'Google Ads',c:'廣告費'},{n:'Meta 廣告',c:'廣告費'},{n:'AI／軟體訂閱',c:'軟體／工具'},{n:'主機／網域',c:'主機／網域'},{n:'外包稿費',c:'外包／稿費'},{n:'餐費',c:'餐費／交通'},{n:'交通／油資',c:'餐費／交通'},{n:'設備採購',c:'設備'}];
@@ -961,8 +980,8 @@ function renderBills(){
       <div class="bsum">${box('已收收入',money(ys.got),'ok')}${box('已付支出',money(yx.paid))}${box('淨額（收入 − 支出）',money(net),net<0?'bad':'',margin==null?'':'淨利率 '+margin+'%')}${box('逾期未收',money(ys.late),ys.late>0?'bad':'',ys.lateN?ys.lateN+' 筆':'')}</div>
       <div class="bsum" style="margin-top:10px">${box('應收總額',money(ys.due))}${box('未收餘額',money(ys.bal))}${box('待付支出（全部）',money(unpaidAll))}${box('待開發票',ys.invN+' 筆')}</div>
       <div class="muted" style="font-size:12.5px;margin:6px 2px 0">收入依帳款的繳款日歸月，支出依支出日期歸月；金額一律含稅，單位 NT$。</div>
-      <div class="two-col tc" style="margin-top:16px">${chartCard('逐月收支',chartCols({w:cardW(true),labels:months.map(m=>String(+m.slice(5))),series:[{name:'已收',color:'var(--cv1)',vals:rowsD.map(r=>r.inc)},{name:'已付',color:'var(--cv2)',vals:rowsD.map(r=>r.exp)}],aria:yr+' 年逐月收入與支出'}),yr+' 年，依繳款日／支出日歸月')}
-      ${chartCard('累計淨額',chartLine({w:cardW(true),labels:months.map(m=>String(+m.slice(5))),vals:cum,color:'var(--cv1)',aria:yr+' 年累計淨額'}),'已收 − 已付，逐月累加')}</div>
+      <div class="two-col tc" style="margin-top:16px">${chartCard('逐月收支',chartCols({w:cardW(true),unit:' 月',pre:yr+' 年 ',labels:months.map(m=>String(+m.slice(5))),series:[{name:'已收',color:'var(--cv1)',vals:rowsD.map(r=>r.inc)},{name:'已付',color:'var(--cv2)',vals:rowsD.map(r=>r.exp)}],aria:yr+' 年逐月收入與支出'}),yr+' 年，依繳款日／支出日歸月')}
+      ${chartCard('累計淨額',chartLine({w:cardW(true),name:'累計淨額',unit:' 月',pre:yr+' 年 ',labels:months.map(m=>String(+m.slice(5))),vals:cum,color:'var(--cv1)',aria:yr+' 年累計淨額'}),'已收 − 已付，逐月累加')}</div>
       <div class="split"><div><h3 class="bh">逐月明細</h3><div class="ledger"><div class="lhead orow"><span>月份</span><span><i class="lg in" style="margin-left:0"></i>收入<i class="lg out"></i>支出</span><span class="r">已收</span><span class="r">支出</span><span class="r">淨額</span></div>${mrows}${tot}</div></div>
       <div><h3 class="bh">支出分類</h3>${catHTML}
       <h3 class="bh">各客戶收入與歸屬成本</h3>${clHTML}
@@ -975,7 +994,7 @@ function renderBills(){
     const byCat={};L.forEach(e=>{const k=e.category||'其他';byCat[k]=(byCat[k]||0)+(e.amount||0)});
     const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
     const dn=new Date(+yr,+billMonth.slice(5),0).getDate();const dv=Array.from({length:dn},()=>0);L.forEach(e=>{const d=+(e.date||'').slice(8,10);if(d>=1&&d<=dn)dv[d-1]+=e.amount||0});
-    const expCharts=L.length?`<div class="two-col tc" style="margin-top:14px">${chartCard('每日支出',chartCols({w:cardW(true),labels:dv.map((_,i)=>String(i+1)),series:[{name:'支出',color:'var(--cv2)',vals:dv}],aria:'每日支出'}),'含待付')}${chartCard('類別占比',rankBars(cats.map(([k,v])=>({label:esc(k),plain:k,v})),v=>num0(v)+'　'+Math.round(v/st.all*100)+'%','var(--cv2)'),'本月支出')}</div>`:'';
+    const expCharts=L.length?`<div class="two-col tc" style="margin-top:14px">${chartCard('每日支出',chartCols({w:cardW(true),unit:' 日',pre:+billMonth.slice(5)+' 月 ',labels:dv.map((_,i)=>String(i+1)),series:[{name:'支出',color:'var(--cv2)',vals:dv}],aria:'每日支出'}),'含待付')}${chartCard('類別占比',rankBars(cats.map(([k,v])=>({label:esc(k),plain:k,v})),v=>num0(v)+'　'+Math.round(v/st.all*100)+'%','var(--cv2)'),'本月支出')}</div>`:'';
     const catLine_unused=cats.length?`<div class="sumline" style="margin:10px 2px 0">${cats.map(([k,v])=>`<span><b class="num">${num0(v)}</b>${esc(k)}</span>`).join('')}</div>`:'';
     const byD={};L.forEach(e=>{(byD[e.date||'']=byD[e.date||'']||[]).push(e)});
     const wk=['日','一','二','三','四','五','六'];
@@ -1000,7 +1019,7 @@ function renderBills(){
     const inv=!billInv(b)?'<span class="muted">免開</span>':b.invoiceNo?`<span class="mono">${esc(b.invoiceNo)}</span>`:(!b.pending&&b.bal<=0)?'<span class="pill warn">待開立</span>':'<span class="muted">收款後開</span>';
     const actH=`<div class="acts">${canWrite?`${!b.pending&&b.bal>0?`<button class="btn sm primary" data-act="payBill" data-id="${esc(b.id)}">收款</button>`:''}${billInv(b)&&!b.pending&&b.bal<=0&&!b.invoiceNo?`<button class="btn sm primary" data-act="invBill" data-id="${esc(b.id)}">登記發票</button>`:''}<button class="btn sm" data-act="editBill" data-id="${esc(b.id)}">編輯</button>`:''}</div>`;
     cardL.push(`<div class="bcard"><div class="bc-h"><div class="bc-n"><span class="mono muted">${esc(b.clientCode)}</span> <b>${esc(cl?cl.brand||cl.fullName:'')}</b></div>${sp}</div><div class="bc-m"><span><i>繳款日</i><b class="mono">${esc((b.due||'—').slice(5))}</b></span><span><i>金額</i><b class="num">${b.pending?'待定':money(b.total)}</b></span><span><i>未收</i><b class="num ${!b.pending&&b.bal>0?'bad':''}">${b.pending?'—':money(b.bal)}</b></span></div>${(billInv(b)||b.note)?`<div class="bc-f">${billInv(b)?`<span>發票：${inv}</span>`:''}${b.note?`<span class="bc-note">${esc(b.note)}</span>`:''}</div>`:''}${canWrite?actH:''}</div>`);
-    return `<tr><td><span class="mono muted">${esc(b.clientCode)}</span> ${esc(cl?cl.brand||cl.fullName:'')}</td><td class="mono">${esc((b.due||'—').slice(5))}</td><td class="r num">${b.pending?'<span class="muted">—</span>':money(b.total)}</td><td class="r num">${money(b.received||0)}</td><td class="r num"><b>${b.pending?'':money(b.bal)}</b></td><td>${sp}</td><td>${inv}</td><td class="bnote" title="${esc(b.note||'')}">${esc(b.note||'')}</td>
+    return `<tr><td><span class="mono muted">${esc(b.clientCode)}</span> ${esc(cl?cl.brand||cl.fullName:'')}</td><td class="mono">${esc((b.due||'—').slice(5))}</td><td class="r num">${b.pending?'<span class="muted">—</span>':money(b.total)}</td><td class="r num">${money(b.received||0)}</td><td class="r num"><b>${b.pending?'':money(b.bal)}</b></td><td>${sp}</td><td>${inv}</td><td class="bnote"${b.note?` data-tip="${esc(tipHTML('備註',[{n:b.note,v:''}]))}"`:''}>${esc(b.note||'')}</td>
       <td>${actH}</td></tr>`}).join('');
   const extra=(st.invN?`<div class="sumline" style="margin-top:2px"><span><b>${st.invN}</b>筆已收款、待開發票</span></div>`:'');
   const mBills=(byM[billMonth]||[]).filter(b=>!b.pending);
@@ -1659,7 +1678,7 @@ function periodBar(){
 }
 function segBar(counts,total){
   if(!total)return '<div class="seg"></div>';
-  return `<div class="seg" role="img" aria-label="進度分佈">${STATES.map(s=>counts[s]?`<i style="flex:${counts[s]};background:${STATE_COLOR[s]}" title="${s} ${counts[s]}"></i>`:'').join('')}</div>`;
+  return `<div class="seg" role="img" aria-label="進度分佈">${STATES.map(s=>counts[s]?`<i style="flex:${counts[s]};background:${STATE_COLOR[s]}" data-tip="${esc(tipHTML(s,[{c:STATE_COLOR[s],n:'項目數',v:counts[s]+' 項'}]))}"></i>`:'').join('')}</div>`;
 }
 let ovMode='week',ovWeek=null,ovMonth=null;
 const mondayOf=d=>addDays(d,-((new Date(toUTC(d)).getUTCDay()||7)-1));
@@ -1729,7 +1748,7 @@ function homeOverview(){
   const exp6=m6.map(m=>expStat(exps.filter(e=>e.mk===m)).paid);
   const byCl={};bills.forEach(b=>{if(b.mk.startsWith(yrS)&&!b.pending&&(b.received||0)>0)byCl[b.clientCode]=(byCl[b.clientCode]||0)+b.received});
   const top5=Object.entries(byCl).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([c,v])=>({label:esc(clientName(c)),plain:c,v}));
-  const hc=`<div class="two-col tc" style="margin-top:14px">${chartCard('近 6 個月收支',chartCols({w:cardW(true),labels:m6.map(m=>(+m.slice(5))+'月'),series:[{name:'已收',color:'var(--cv1)',vals:inc6},{name:'已付',color:'var(--cv2)',vals:exp6}],aria:'近六個月收入與支出'}),'依繳款日／支出日歸月')}${chartCard(yrS+' 年收入來源 Top 5',rankBars(top5),'已收金額，含稅')}</div>`;
+  const hc=`<div class="two-col tc" style="margin-top:14px">${chartCard('近 6 個月收支',chartCols({w:cardW(true),tipLabels:m6.map(m=>m.slice(0,4)+' 年 '+(+m.slice(5))+' 月'),labels:m6.map(m=>(+m.slice(5))+'月'),series:[{name:'已收',color:'var(--cv1)',vals:inc6},{name:'已付',color:'var(--cv2)',vals:exp6}],aria:'近六個月收入與支出'}),'依繳款日／支出日歸月')}${chartCard(yrS+' 年收入來源 Top 5',rankBars(top5),'已收金額，含稅')}</div>`;
   const alRows=al.slice(0,8).map(x=>`<div class="item"><span class="pill ${x.sev}">${x.sev==='bad'?'緊急':'提醒'}</span><div class="main"><div class="title">${esc(x.title)}</div><div class="sub">${esc(x.detail)}</div></div>${alertBtn(x)}</div>`).join('');
   const alSec=`<section class="sec"><header><h3>需要你處理</h3><span class="pill ${al.length?(al.some(x=>x.sev==='bad')?'bad':'warn'):'mute'}">${al.length}</span>${al.length>8?'<button class="btn sm" data-act="goto" data-v="notify">看全部</button>':''}</header>${alRows||'<div class="in muted">目前沒有需要處理的事項。</div>'}</section>`;
   const recv=bills.filter(b=>!b.pending&&b.bal>0).sort((a,b)=>((b.due<t)-(a.due<t))||(a.due||'').localeCompare(b.due||'')).slice(0,6);
