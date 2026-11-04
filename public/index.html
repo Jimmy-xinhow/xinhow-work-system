@@ -1960,6 +1960,17 @@ function openReject(id){
   openForm({title:'退回　'+clientName(t.clientCode)+'・'+t.title,submit:'退回給員工',fields:[{k:'reason',label:'退回原因（員工會看到）',type:'textarea',req:true}],okMsg:'已退回',
     onSubmit:v=>setDoc('accept',id,{result:'reject',reason:v.reason,forSub:t.subN,at:new Date().toISOString()})});
 }
+/* 驗收＝連同交付給客戶、告知客戶一次完成（非部落文）：員工送交 → 你驗收並交付 → 完成 */
+function openAcceptDeliver(id){
+  const t=S.tasks[id];
+  openForm({title:'驗收並交付客戶　'+clientName(t.clientCode)+'・'+t.title,submit:'驗收通過，已交付並告知客戶',fields:[
+    {k:'deliveredAt',label:'交付日',type:'date',req:true,half:true},{k:'deliveredVia',label:'告知客戶的方式',type:'select',opts:VIA,req:true,half:true},
+    {k:'deliveredNote',label:'備註（選填）',type:'textarea',hint:'例如：已傳到客戶 LINE 群。確認已交付並告知客戶，這個任務就算完成。'}],
+    values:{deliveredAt:todayStr(),deliveredVia:ls.get('lastVia')||'LINE'},okMsg:'已驗收並交付客戶，任務完成',
+    onSubmit:async v=>{ls.set('lastVia',v.deliveredVia);
+      await setDoc('accept',id,{result:'pass',forSub:t.subN,at:new Date().toISOString()});
+      await tUpd(id,{deliveredAt:v.deliveredAt,deliveredVia:v.deliveredVia,deliveredNote:v.deliveredNote},`驗收通過，已交付並告知客戶（${v.deliveredVia}）${v.deliveredNote?'　'+v.deliveredNote:''}`)}});
+}
 function openDeliver(id){
   const t=S.tasks[id];
   openForm({title:'標示已交付客戶　'+clientName(t.clientCode),submit:'確認已交付',fields:[
@@ -2130,7 +2141,7 @@ function renderBoard(mine){
       <div style="min-width:0">${who}</div>
       <div><div class="num">${t.done||0}／${t.target||0} ${unit(t.kind)}</div><div class="mini"><i style="width:${prog}%"></i></div></div>
       <div class="num muted">SOP ${sopDone}／${sopN}</div>
-      <div class="stack">${pillState(t.state)}${(t.kind==='月部落文'&&t.state==='已驗收')?'<span class="pill info">'+subStage(t)+'</span>':''}${(t.state==='已交付'&&t.kind!=='月部落文'&&!t.confirmedAt)?'<span class="pill warn">等客戶確認</span>':''}${t.late?'<span class="pill bad">逾期 '+diffDays(todayStr(),t.due)+' 天</span>':`<span class="muted mono" style="font-size:12px">截止 ${esc((t.due||'').slice(5))}</span>`}${qbtn}</div>
+      <div class="stack">${pillState(t.state)}${(t.kind==='月部落文'&&t.state==='已驗收')?'<span class="pill info">'+subStage(t)+'</span>':''}${t.late?'<span class="pill bad">逾期 '+diffDays(todayStr(),t.due)+' 天</span>':`<span class="muted mono" style="font-size:12px">截止 ${esc((t.due||'').slice(5))}</span>`}${qbtn}</div>
       ${t.state==='已交付'?`<div class="sub muted">${esc(t.deliveredAt||'')}<br>${esc(t.deliveredVia||'')}</div>`:'<div></div>'}</div>${qr.id===t.id?qrPanel(t):''}`};
   /* 同一個客戶（品牌）的任務收成一筆，點開才展開；只有一項任務的直接顯示 */
   const grp=new Map();list.forEach(t=>{if(!grp.has(t.clientCode))grp.set(t.clientCode,[]);grp.get(t.clientCode).push(t)});
@@ -2141,7 +2152,7 @@ function renderBoard(mine){
     const open=boardExpandAll||!!bqn||boardOpen.has(code);
     const cnt=f=>ts.filter(f).length;
     const doneN=cnt(t=>t.state==='已驗收'||t.state==='已交付'),late=cnt(t=>t.late),ret=cnt(t=>t.state==='退回'),wait=cnt(t=>t.state==='待驗收'),todoN=cnt(t=>['待處理','進行中'].includes(t.state));
-    const owners=[...new Set(ts.map(ownerOf))];const cfm=cnt(t=>t.state==='已交付'&&t.kind!=='月部落文'&&!t.confirmedAt);
+    const owners=[...new Set(ts.map(ownerOf))];
     const due=ts.map(t=>t.due).filter(Boolean).sort()[0]||'';
     const pr=Math.round(doneN/ts.length*100);
     const dom=ret?'back':late?'back':wait?'wait':todoN?'doing':'done';
@@ -2149,7 +2160,7 @@ function renderBoard(mine){
       <div style="min-width:0"><div><span class="chev">${open?'▾':'▸'}</span><span class="code mono">${esc(code)}</span><b>${esc(clientName(code))}</b>${clientAka(code)?`<span class="muted" style="margin-left:6px">${esc(clientAka(code))}</span>`:''}${mine?'':owners.map(o=>`<span class="pill own ${o===meName()?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(o))}</span>`).join('')}</div><div class="sub muted">${ts.length} 項任務${boardAll?'・跨期別':''}</div></div>
       <div><div class="num">${doneN}／${ts.length} 項完成</div><div class="mini"><i style="width:${pr}%"></i></div></div>
       <div class="num muted"></div>
-      <div class="stack">${todoN?`<span class="pill mute">需處理 ${todoN}</span>`:''}${ret?`<span class="pill bad">退回 ${ret}</span>`:''}${wait?`<span class="pill info">待驗收 ${wait}</span>`:''}${cfm?`<span class="pill warn">等客戶確認 ${cfm}</span>`:''}${late?`<span class="pill bad">逾期 ${late}</span>`:`<span class="muted mono" style="font-size:12px">最早截止 ${esc(due.slice(5))}</span>`}</div><div></div></div>`;
+      <div class="stack">${todoN?`<span class="pill mute">需處理 ${todoN}</span>`:''}${ret?`<span class="pill bad">退回 ${ret}</span>`:''}${wait?`<span class="pill info">待驗收 ${wait}</span>`:''}${late?`<span class="pill bad">逾期 ${late}</span>`:`<span class="muted mono" style="font-size:12px">最早截止 ${esc(due.slice(5))}</span>`}</div><div></div></div>`;
     return `<div class="grp">${head}${open?`<div class="grp-body">${ts.map(t=>taskRow(t,true)).join('')}</div>`:''}</div>`;
   }).join('');
   $('#main').innerHTML=`<div class="tools">${boardAll?'<b>所有期別未交付</b><button class="btn sm ghost" data-act="bperiod" data-v="cur">回到期別檢視</button>':periodBar()}<span class="grow"></span>${boardAll?'':'<button class="btn sm" data-act="bperiod" data-v="all">看所有往期未交付</button>'}${canWrite&&isAdmin?'<button class="btn ghost" data-act="taskNames">任務名稱</button><button class="btn" data-act="newTask">＋ 新增任務</button><button class="btn primary" data-act="genTasks">產生月任務</button>':''}</div>
@@ -2229,8 +2240,8 @@ function renderTaskPanel(){
   if((t.done||0)<(t.target||0))miss.push('數量還沒達到目標');
   if(!links.length)miss.push('還沒貼交付內容連結');
   const isBlog=t.kind==='月部落文';
-  const stepCur=isBlog?(st==='待驗收'?1:st==='已驗收'?(!t.sentAt?2:!t.confirmedAt?3:4):st==='已交付'?5:0):(st==='待驗收'?1:st==='已驗收'?2:st==='已交付'?(t.confirmedAt?4:3):0);
-  const stepNames=isBlog?['撰寫','驗收','送客戶確認','客戶確認','發佈']:['撰寫','驗收','已交付客戶','客戶確認'];
+  const stepCur=isBlog?(st==='待驗收'?1:st==='已驗收'?(!t.sentAt?2:!t.confirmedAt?3:4):st==='已交付'?5:0):(st==='待驗收'?1:st==='已驗收'?1:st==='已交付'?2:0);
+  const stepNames=isBlog?['撰寫','驗收','送客戶確認','客戶確認','發佈']:['撰寫','驗收並交付客戶'];
   const pubL=(t.pubLinks||[]).map(u=>link(u)).join('<br>')||'—';
   let action='';
   if(st==='待驗收'){
@@ -2240,16 +2251,16 @@ function renderTaskPanel(){
     const btn=!t.sentAt?'<button class="btn primary" data-act="tsend">已送客戶確認</button>':!t.confirmedAt?'<button class="btn primary" data-act="tconfirm">客戶已確認</button><button class="btn" data-act="trevise">客戶要求修改</button>':'<button class="btn primary" data-act="tpublish">已發佈（貼連結）</button>';
     action=`<div class="in"><div class="muted" style="margin-bottom:8px">${hint}</div>${t.sentAt||t.confirmedAt?`<dl class="kv" style="margin-bottom:10px">${t.sentAt?`<dt>送客戶確認</dt><dd>${esc(t.sentAt)}　${esc(t.sentVia||'')}${t.sentNote?'　'+esc(t.sentNote):''}</dd>`:''}${t.confirmedAt?`<dt>客戶確認</dt><dd>${esc(t.confirmedAt)}${t.confirmNote?'　'+esc(t.confirmNote):''}</dd>`:''}</dl>`:''}<div class="acts" style="justify-content:flex-start">${canWrite?btn:''}${isAdmin&&canWrite?'<button class="btn" data-act="trevoke">撤銷驗收</button>':''}</div></div>`;
   }else if(st==='已驗收'){
-    action=`<div class="in"><div class="muted" style="margin-bottom:8px">已驗收通過。交給客戶後按下面的按鈕，系統會開始等客戶確認。</div><div class="acts" style="justify-content:flex-start">${canWrite?'<button class="btn primary" data-act="tdeliver">已交付給客戶，等待確認</button>':''}${isAdmin&&canWrite?'<button class="btn" data-act="trevoke">撤銷驗收</button>':''}</div></div>`;
+    action=`<div class="in"><div class="muted" style="margin-bottom:8px">已驗收通過，但還沒記錄交付。交付給客戶並告知客戶後，按下面的按鈕才算完成。</div><div class="acts" style="justify-content:flex-start">${canWrite?'<button class="btn primary" data-act="tdeliver">已交付並告知客戶（完成）</button>':''}${isAdmin&&canWrite?'<button class="btn" data-act="trevoke">撤銷驗收</button>':''}</div></div>`;
   }else if(st==='已交付'){
-    action=`<div class="in"><dl class="kv">${isBlog?`<dt>送客戶確認</dt><dd>${esc(t.sentAt||'—')}　${esc(t.sentVia||'')}</dd><dt>客戶確認</dt><dd>${esc(t.confirmedAt||'—')}${t.confirmNote?'　'+esc(t.confirmNote):''}</dd><dt>發佈日</dt><dd>${esc(t.deliveredAt||'')}</dd><dt>發佈連結</dt><dd>${pubL}</dd>`:`<dt>交付日</dt><dd>${esc(t.deliveredAt||'')}　${esc(t.deliveredVia||'')}</dd><dt>客戶確認</dt><dd>${t.confirmedAt?esc(t.confirmedAt)+(t.confirmNote?'　'+esc(t.confirmNote):''):'<span class="pill warn">等待客戶確認</span>'}</dd>`}${t.deliveredNote?`<dt>備註</dt><dd>${esc(t.deliveredNote)}</dd>`:''}</dl>${(!isBlog&&!t.confirmedAt&&canWrite)?'<div class="acts" style="justify-content:flex-start;margin-top:10px"><button class="btn primary" data-act="tconfirm">客戶已確認</button><button class="btn" data-act="trevise">客戶要求修改</button></div>':''}${isAdmin&&canWrite?'<div style="margin-top:10px"><button class="btn" data-act="trevoke">撤銷驗收與交付</button></div>':''}</div>`;
+    action=`<div class="in"><dl class="kv">${isBlog?`<dt>送客戶確認</dt><dd>${esc(t.sentAt||'—')}　${esc(t.sentVia||'')}</dd><dt>客戶確認</dt><dd>${esc(t.confirmedAt||'—')}${t.confirmNote?'　'+esc(t.confirmNote):''}</dd><dt>發佈日</dt><dd>${esc(t.deliveredAt||'')}</dd><dt>發佈連結</dt><dd>${pubL}</dd>`:`<dt>交付並告知客戶</dt><dd>${esc(t.deliveredAt||'')}　${esc(t.deliveredVia||'')}</dd>`}${t.deliveredNote?`<dt>備註</dt><dd>${esc(t.deliveredNote)}</dd>`:''}</dl>${(!isBlog&&canWrite)?'<div class="acts" style="justify-content:flex-start;margin-top:10px"><button class="btn" data-act="trevise">客戶要求修改</button></div>':''}${isAdmin&&canWrite?'<div style="margin-top:10px"><button class="btn" data-act="trevoke">撤銷驗收與交付</button></div>':''}</div>`;
   }else{
     action='';
   }
   const waits=taskList().filter(x=>x.state==='待驗收'&&x.id!==t.id).sort((x,y)=>(x.due||'').localeCompare(y.due||''));
   const missShort=[];if(sop.filter((_,i)=>!chk[i]).length)missShort.push('SOP 沒勾完');if((t.done||0)<(t.target||0))missShort.push('數量');if(!links.length)missShort.push('連結');
   const submitBar=(!action&&canWrite)?`<div class="stickybar submit"><div class="barmsg${miss.length?'':' ok'}">${miss.length?'還差：'+missShort.join('、'):'都完成了，可以送交'}</div><button class="btn primary" data-act="tsubmit">送交驗收</button></div>`:'';
-  const bar=submitBar||((st==='待驗收'&&isAdmin&&canWrite)?`<div class="stickybar"><button class="btn primary" data-act="taccept">驗收通過</button><button class="btn bad" data-act="treject">退回</button><span class="grow"></span>${waits.length?`<button class="btn" data-act="tnext" data-id="${esc(waits[0].id)}">下一筆待驗收（${waits.length}）</button>`:'<span class="muted">沒有其他待驗收</span>'}</div>`:'');
+  const bar=submitBar||((st==='待驗收'&&isAdmin&&canWrite)?`<div class="stickybar">${isBlog?'<button class="btn primary" data-act="taccept">驗收通過</button>':'<button class="btn primary" data-act="taccdel">驗收通過・已交付並告知客戶</button><button class="btn" data-act="taccept">只驗收，晚點交付</button>'}<button class="btn bad" data-act="treject">退回</button><span class="grow"></span>${waits.length?`<button class="btn" data-act="tnext" data-id="${esc(waits[0].id)}">下一筆待驗收（${waits.length}）</button>`:'<span class="muted">沒有其他待驗收</span>'}</div>`:'');
   const hist=(t.history||[]).map(h=>({at:h.at,text:h.text}));
   if(a)hist.push({at:a.at,text:(a.result==='pass'?'驗收通過':'退回：'+(a.reason||''))});
   hist.sort((x,y)=>y.at.localeCompare(x.at));
@@ -2276,7 +2287,6 @@ const NOTIFY_RULES=[
  {id:'taskDue',label:'任務快到截止日',desc:'還沒送交驗收的任務，截止日在 N 天內',days:2,unit:'天內',admin:false,ch:['app','push']},
  {id:'taskLate',label:'任務逾期',desc:'超過截止日仍沒交付客戶',days:null,admin:false,ch:['app','push']},
  {id:'wait',label:'待驗收積壓',desc:'員工送交驗收後，超過 N 天你還沒處理',days:1,unit:'天',admin:true,ch:['app','push']},
- {id:'confirm',label:'交付後客戶沒確認',desc:'已交付客戶，超過 N 天客戶還沒確認',days:3,unit:'天',admin:false,ch:['app','push']},
  {id:'rejected',label:'退回後沒重送',desc:'任務被退回超過 N 天，員工還沒重新送交',days:2,unit:'天',admin:false,ch:['app']},
  {id:'blog',label:'部落文流程卡關',desc:'驗收後 N 天還沒送客戶、送出後 N 天客戶沒回覆、或客戶確認後 N 天還沒發佈',days:3,unit:'天',admin:false,ch:['app','push']},
  {id:'bill',label:'帳款逾期',desc:'超過繳款日仍有未收餘額',days:null,admin:true,ch:['app','push']},
@@ -2312,7 +2322,6 @@ function computeAlerts(){
       else if(t.confirmedAt&&!t.publishedAt&&since(t.confirmedAt)>=N)msg='客戶已確認但還沒發佈（確認 '+t.confirmedAt+'）';
       if(msg)out.push({sev:'warn',title:nm+'・流程卡關',detail:msg,act:base});
     }
-    if(t.state==='已交付'&&t.kind!=='月部落文'&&!t.confirmedAt&&t.deliveredAt&&on('confirm')&&(Date.now()-new Date(t.deliveredAt).getTime())>=R.confirm.days*864e5)out.push({sev:'warn',title:nm+'・客戶還沒確認',detail:'已於 '+t.deliveredAt+' 交付，等客戶確認',act:base});
     if(t.state==='退回'&&on('rejected')){
       const a=S.accept[t.id];const at=t.revise?t.reviseAt:(a&&a.at);
       if(at&&(Date.now()-new Date(at).getTime())>=R.rejected.days*864e5)out.push({sev:'warn',title:nm+(t.revise?'・客戶要求修改後沒重送':'・退回後沒重送'),detail:(t.revise?'客戶要求：'+(t.reviseNote||''):'退回：'+((a&&a.reason)||''))+'（'+at.slice(0,10)+'）',act:base});
@@ -2553,6 +2562,7 @@ document.addEventListener('click',async e=>{
   }
   else if(a==='tdellink'){const t=S.tasks[openTask];await run(()=>tUpd(openTask,{links:(t.links||[]).filter((_,n)=>n!==Number(el.dataset.i))}))}
   else if(a==='tsubmit')trySubmit(openTask);
+  else if(a==='taccdel'){if(isAdmin)openAcceptDeliver(openTask)}
   else if(a==='taccept'){if(!isAdmin)return;const t=S.tasks[openTask];await run(()=>setDoc('accept',openTask,{result:'pass',forSub:t.subN,at:new Date().toISOString()}),'已驗收通過')}
   else if(a==='treject'){if(isAdmin)openReject(openTask)}
   else if(a==='tnext'){openTask=el.dataset.id;queue()}
