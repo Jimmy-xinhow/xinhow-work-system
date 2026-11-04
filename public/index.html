@@ -674,6 +674,18 @@ h1,h2,h3{font-weight:600}
 @media (max-width:640px){.ck-ov{padding:8px}.ck{max-height:calc(100vh - 16px)}.ck-f{display:none}.ck-in kbd{display:none}
   .cmdk-btn{order:2;margin:0 0 6px auto;padding:0;width:44px;min-height:44px;justify-content:center;border-color:transparent;background:none}.cmdk-btn .ck-lbl,.cmdk-btn kbd{display:none}.top .acct{order:3;margin:0 0 6px 0!important}}
 .pbar b{white-space:nowrap}
+/* 列表內快速回報 */
+.trow{position:relative}.rowlink{background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}.rowlink::after{content:"";position:absolute;inset:0}
+.trow:has(.rowlink:focus-visible){outline:2px solid var(--accent);outline-offset:-2px}.rowlink:focus-visible{outline:none}
+.qrb{position:relative;z-index:1;margin-left:auto}.trow.qr-on{background:var(--hover)}
+.qr{padding:14px 16px 16px;background:var(--hover);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.grp-body .qr{padding-left:22px}
+.qr-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.qr-h .muted{font-size:13px}
+.qr-bad{background:var(--bad-soft);color:var(--bad);border-radius:8px;padding:8px 12px;font-size:13.5px}
+.qr-ta{width:100%;min-height:84px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14.5px;resize:vertical}
+.qr-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.qr-n input{width:64px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;text-align:center;margin:0 4px;min-height:36px}
+.qr-sop{padding:0}.qr-d summary{cursor:pointer;color:var(--muted);font-size:13px}.qr-d ol{margin:6px 0 0;padding-left:20px;font-size:13.5px;line-height:1.7}
+@media (pointer:coarse){.rowlink{min-height:28px;display:inline-flex;align-items:center}.qr-n input{min-height:44px}.qr-d summary{min-height:32px;display:flex;align-items:center}}
 /* 首頁重點卡（同 Stripe Home：標籤、大數字、一行補充；整張可點） */
 .kpg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
 .kp{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:16px 18px;display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -1088,7 +1100,7 @@ function renderPanel(){
   const plans=rows('plans',c.code).sort((a,b)=>pidx(a)-pidx(b)||String(a.label||'').localeCompare(String(b.label||''),'zh-Hant'));
   const plansHTML=plans.length?plans.map(q=>{
     const sp=planSpec(q),wk=isWeekly(sp.freq);
-    return `<div class="item"><div class="main"><div class="title">${esc(sp.label)}${sp.custom?'<span class="pill info">自訂</span>':''}${q.active===false?'<span class="pill mute">暫停</span>':''}</div><div class="sub">${esc(FREQ_NAME[sp.freq])} ${esc(q.count)} ${esc(unit(sp.kind))}・負責 ${esc(ownerLabel(q.assignee||defaultAssignee()))}・${wk?esc(WD_NAME[q.weekday||5])+'截止':(q.dueDay?'每期 '+esc(q.dueDay)+' 號截止':'月底前最後一個週五截止')}${q.rewrite?'・批量改寫 '+esc(q.rewrite)+' 篇（我）':''}${q.start||q.end?'・'+esc(q.start||'—')+' ～ '+esc(q.end||'—'):''}</div>${q.note?`<div class="sub">${esc(q.note)}</div>`:''}</div>${edit('editPlan',q.id)}</div>`}).join(''):'<div class="in muted">還沒有設定。按「＋ 預設任務」選常用的（每週 SEO／GEO 文章、每月 SEO／GEO 報告、每月部落格文章），或按「＋ 自訂任務」自己命名、選頻率（每週、每兩週、每月、每季…）與截止日；沒有設定，就不會替這個客戶產生任務。</div>';
+    return `<div class="item"><div class="main"><div class="title">${esc(sp.label)}${sp.custom?'<span class="pill info">自訂</span>':''}${q.active===false?'<span class="pill mute">暫停</span>':''}</div><div class="sub">${esc(FREQ_NAME[sp.freq])} ${esc(q.count)} ${esc(unit(sp.kind))}${wk&&Number(q.firstCount)>0?'（每月第一週 '+esc(q.firstCount)+' '+esc(unit(sp.kind))+'）':''}・負責 ${esc(ownerLabel(q.assignee||defaultAssignee()))}・${wk?esc(WD_NAME[q.weekday||5])+'截止':(q.dueDay?'每期 '+esc(q.dueDay)+' 號截止':'月底前最後一個週五截止')}${q.rewrite?'・批量改寫 '+esc(q.rewrite)+' 篇（我）':''}${q.start||q.end?'・'+esc(q.start||'—')+' ～ '+esc(q.end||'—'):''}</div>${q.note?`<div class="sub">${esc(q.note)}</div>`:''}</div>${edit('editPlan',q.id)}</div>`}).join(''):'<div class="in muted">還沒有設定。按「＋ 預設任務」選常用的（每週 SEO／GEO 文章、每月 SEO／GEO 報告、每月部落格文章），或按「＋ 自訂任務」自己命名、選頻率（每週、每兩週、每月、每季…）與截止日；沒有設定，就不會替這個客戶產生任務。</div>';
   const contactsHTML=contacts.length?contacts.map(x=>`<div class="item"><div class="main"><div class="title">${esc(x.name)}${x.primary?'<span class="pill info">主要窗口</span>':''}</div><div class="sub">${[x.phone,x.email,x.line?'LINE '+x.line:''].filter(Boolean).map(esc).join('・')||'未填聯絡方式'}</div></div>${edit('editContact',x.id)}</div>`).join(''):'<div class="in muted">尚無窗口</div>';
   const assetsHTML=assets.length?assets.map(x=>`<div class="item"><div class="main"><div class="title">${esc(x.type)}<span class="pill ${x.status==='已授權'?'ok':x.status==='待授權'?'warn':'mute'}">${esc(x.status||'未設定')}</span></div><div class="sub">${[x.owner&&'擁有者 '+x.owner,x.level&&'我方權限 '+x.level,x.grantedAt&&'授權 '+x.grantedAt].filter(Boolean).map(esc).join('・')}</div>${x.note?`<div class="sub">${esc(x.note)}</div>`:''}</div>${edit('editAsset',x.id)}</div>`).join(''):'<div class="in muted">尚無資產權限紀錄</div>';
   const logHTML=logs.length?`<ul class="tl">${logs.map(l=>`<li><time>${esc(String(l.at||'').slice(0,10))}</time><span><b>${esc(l.action)}</b>${l.note?'　'+esc(l.note):''}</span></li>`).join('')}</ul>`:'<div class="in muted">尚無紀錄。續約、結案與重新開啟都會記在這裡。</div>';
@@ -1789,11 +1801,11 @@ function genPlan(p){
       const cand=[];   // 這個設定這個月該建的任務；有才檢查合約是否涵蓋
       if(isWeekly(sp.freq)){
         const wd=Number(pl.weekday)||5,f5=s=>s.slice(5).replace('-','/');
-        weekdayDates(p,wd).forEach(dt=>{
+        weekdayDates(p,wd).forEach((dt,wi)=>{
           if(sp.freq==='雙週'&&!biweekOK(dt,pl.start))return;
           const mon=addDays(dt,-(wd-1));
           if((pl.start&&pl.start>dt)||(pl.end&&pl.end<mon))return;
-          cand.push([`${pl.id}_w${dt}`,fin({title:sp.custom?`${sp.label} ${f5(mon)}～${f5(dt)}`:`${sp.svc}・週文章 ${f5(mon)}～${f5(dt)}`,target:pl.count,due:dt,weekStart:mon})]);
+          cand.push([`${pl.id}_w${dt}`,fin({title:sp.custom?`${sp.label} ${f5(mon)}～${f5(dt)}`:`${sp.svc}・週文章 ${f5(mon)}～${f5(dt)}`,due:dt,weekStart:mon,target:(wi===0&&Number(pl.firstCount)>0)?Number(pl.firstCount):pl.count})]);
         });
       }else{
         const step=MSTEP[sp.freq]||1;
@@ -1820,6 +1832,7 @@ function planForm(code,id){
   openForm({title:id?`編輯任務設定：${pr?pr.label:''}`:`新增任務設定　${clientName(code)}`,fields:[
     id?{k:'i',type:'info',html:`<b>${esc(pr?pr.label:x.preset)}</b>（不能改類型；要換請刪除再新增）`}:{k:'preset',label:'任務類型',type:'select',opts:avail.map(q=>[q.id,q.label]),req:true},
     {k:'count',label:'數量',type:'number',req:true,half:true,hint:'每週文章＝每週篇數；報告、部落文＝每月的量'},
+    {k:'firstCount',label:'每月第一週篇數',type:'number',half:true,hint:'只有每週的任務用。空白＝每週都一樣；例如每週 3 篇、每月第一週要 4 篇，就在這裡填 4'},
     {k:'assignee',label:'負責人',type:'select',opts:assigneeOpts(x&&x.assignee),half:true},
     {k:'dueDay',label:'每月截止日（幾號）',type:'number',half:true,hint:'每月的任務用；空白＝客戶設定或當月最後一個週五'},
     {k:'weekday',label:'每週截止日',type:'select',opts:WDAYS,half:true,hint:'每週的任務用，預設週五'},
@@ -1831,7 +1844,7 @@ function planForm(code,id){
     dangerLabel:id?'刪除設定':null,onDanger:()=>del('plans',id),
     onSubmit:async v=>{
       const pid=id||(code+'-'+v.preset);const d=Object.assign({},x,v,{clientCode:code,preset:id?x.preset:v.preset,active:v.state!=='off',weekday:Number(v.weekday)||5});
-      delete d.state;delete d.i;
+      delete d.state;delete d.i;if(!(Number(d.firstCount)>0))delete d.firstCount;else d.firstCount=Number(d.firstCount);
       await setDoc('plans',pid,d);
       await addLog(code,id?'修改任務設定':'新增任務設定',PRESET[d.preset].label+' × '+d.count);
     }});
@@ -1843,6 +1856,7 @@ function planFormCustom(code,id){
     {k:'freq',label:'頻率',type:'select',opts:FREQS,half:true},
     {k:'kind',label:'任務類型',type:'select',opts:CUSTOM_KINDS,half:true,hint:'決定單位、預設單價與驗收流程：週文章／月部落文＝文章單價；月報告＝報告單價；其他＝不計成本（除非填單價）。月部落文會多出「送客戶確認→發佈」。'},
     {k:'count',label:'每次的數量',type:'number',req:true,half:true,hint:'每週／每兩週＝每一期要做幾件；每月以上＝每次產生要做幾件'},
+    {k:'firstCount',label:'每月第一週的數量',type:'number',half:true,hint:'只有每週／每兩週用。空白＝每期一樣；例如平常每週 3 篇、每月第一週要 4 篇，就填 4'},
     {k:'assignee',label:'負責人',type:'select',opts:assigneeOpts(x&&x.assignee),half:true},
     {k:'weekday',label:'每週截止日',type:'select',opts:WDAYS,half:true,hint:'頻率是每週／每兩週才用'},
     {k:'dueDay',label:'每月截止日（幾號）',type:'number',half:true,hint:'頻率是每月以上才用；空白＝客戶設定或當月最後一個週五'},
@@ -1856,7 +1870,7 @@ function planFormCustom(code,id){
     onSubmit:async v=>{
       const pid=id||(code+'-c_'+Date.now().toString(36));
       const d=Object.assign({},x,v,{clientCode:code,preset:'custom',active:v.state!=='off',weekday:Number(v.weekday)||5});
-      delete d.state;delete d.i;
+      delete d.state;delete d.i;if(!(Number(d.firstCount)>0))delete d.firstCount;else d.firstCount=Number(d.firstCount);
       await setDoc('plans',pid,d);
       await addLog(code,id?'修改自訂任務設定':'新增自訂任務設定',d.label+'（'+FREQ_NAME[d.freq]+'）× '+d.count);
     }});
@@ -2109,14 +2123,15 @@ function renderBoard(mine){
   const taskRow=(t,inGrp)=>{
     const sopDone=(t.checked||[]).filter(Boolean).length,sopN=(t.sop||[]).length;
     const prog=Math.min(100,Math.round((t.done||0)/Math.max(1,t.target||1)*100));
-    const who=inGrp?`<div><b>${esc(t.title)}</b>${boardAll?`<span class="muted" style="margin-left:6px">${esc(t.period)}</span>`:''}${mine?'':`<span class="pill own ${isMine(t)?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(ownerOf(t)))}</span>`}</div>`
-      :`<div><span class="code mono">${esc(t.clientCode)}</span><b>${esc(clientName(t.clientCode))}</b>${clientAka(t.clientCode)?`<span class="muted" style="margin-left:6px">${esc(clientAka(t.clientCode))}</span>`:''}${mine?'':`<span class="pill own ${isMine(t)?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(ownerOf(t)))}</span>`}</div><div class="sub muted">${esc(t.title)}${boardAll?'・'+esc(t.period):''}</div>`;
-    return `<div class="trow s-${STK[t.state]}${inGrp?' in-grp':''}" data-act="openTask" data-id="${esc(t.id)}" role="button" tabindex="0">
+    const who=inGrp?`<div><button type="button" class="rowlink" data-act="openTask" data-id="${esc(t.id)}"><b>${esc(t.title)}</b></button>${boardAll?`<span class="muted" style="margin-left:6px">${esc(t.period)}</span>`:''}${mine?'':`<span class="pill own ${isMine(t)?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(ownerOf(t)))}</span>`}</div>`
+      :`<div><span class="code mono">${esc(t.clientCode)}</span><button type="button" class="rowlink" data-act="openTask" data-id="${esc(t.id)}"><b>${esc(clientName(t.clientCode))}</b></button>${clientAka(t.clientCode)?`<span class="muted" style="margin-left:6px">${esc(clientAka(t.clientCode))}</span>`:''}${mine?'':`<span class="pill own ${isMine(t)?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(ownerOf(t)))}</span>`}</div><div class="sub muted">${esc(t.title)}${boardAll?'・'+esc(t.period):''}</div>`;
+    const qbtn=qrOK(t)?`<span class="qrb"><button type="button" class="btn sm ${qr.id===t.id?'':'primary'}" data-act="qopen" data-id="${esc(t.id)}" aria-expanded="${qr.id===t.id}">${qr.id===t.id?'收合':'回報'}</button></span>`:'';
+    return `<div class="trow s-${STK[t.state]}${inGrp?' in-grp':''}${qr.id===t.id?' qr-on':''}" data-act="openTask" data-id="${esc(t.id)}">
       <div style="min-width:0">${who}</div>
       <div><div class="num">${t.done||0}／${t.target||0} ${unit(t.kind)}</div><div class="mini"><i style="width:${prog}%"></i></div></div>
       <div class="num muted">SOP ${sopDone}／${sopN}</div>
-      <div class="stack">${pillState(t.state)}${(t.kind==='月部落文'&&t.state==='已驗收')?'<span class="pill info">'+subStage(t)+'</span>':''}${(t.state==='已交付'&&t.kind!=='月部落文'&&!t.confirmedAt)?'<span class="pill warn">等客戶確認</span>':''}${t.late?'<span class="pill bad">逾期 '+diffDays(todayStr(),t.due)+' 天</span>':`<span class="muted mono" style="font-size:12px">截止 ${esc((t.due||'').slice(5))}</span>`}</div>
-      ${t.state==='已交付'?`<div class="sub muted">${esc(t.deliveredAt||'')}<br>${esc(t.deliveredVia||'')}</div>`:'<div></div>'}</div>`};
+      <div class="stack">${pillState(t.state)}${(t.kind==='月部落文'&&t.state==='已驗收')?'<span class="pill info">'+subStage(t)+'</span>':''}${(t.state==='已交付'&&t.kind!=='月部落文'&&!t.confirmedAt)?'<span class="pill warn">等客戶確認</span>':''}${t.late?'<span class="pill bad">逾期 '+diffDays(todayStr(),t.due)+' 天</span>':`<span class="muted mono" style="font-size:12px">截止 ${esc((t.due||'').slice(5))}</span>`}${qbtn}</div>
+      ${t.state==='已交付'?`<div class="sub muted">${esc(t.deliveredAt||'')}<br>${esc(t.deliveredVia||'')}</div>`:'<div></div>'}</div>${qr.id===t.id?qrPanel(t):''}`};
   /* 同一個客戶（品牌）的任務收成一筆，點開才展開；只有一項任務的直接顯示 */
   const grp=new Map();list.forEach(t=>{if(!grp.has(t.clientCode))grp.set(t.clientCode,[]);grp.get(t.clientCode).push(t)});
   const groups=[...grp.entries()].sort((x,y)=>(x[1][0].due||'').localeCompare(y[1][0].due||'')||x[0].localeCompare(y[0]));
@@ -2150,6 +2165,46 @@ function renderSop(){
     return `<section class="sec"><header><h3>${type==='default'?'通用':esc(type)}・${esc(kind)}</h3>${mine?'':'<span class="pill mute">預設範本，尚未修改</span>'}${isAdmin&&canWrite?`<button class="btn sm" data-act="editSop" data-id="${esc(k)}">編輯</button>`:''}</header><div class="in"><ol class="olist">${items.map(i=>`<li>${esc(i)}</li>`).join('')}</ol></div></section>`}).join('');
   const r=rates();
   $('#main').innerHTML=`<div class="tools"><div><b>SOP 核對清單</b><div class="muted">員工送交驗收前逐項勾完。每個流程各有一份；也可以為某項服務（例如 GEO 月報告）另設專屬清單。產生任務時會把當時的清單複製進任務。</div></div><span class="grow"></span>${isAdmin&&canWrite?'<button class="btn" data-act="newSop">＋ 新增 SOP</button>':''}</div>${isAdmin?`<div class="note"><div>員工單價：每篇文章 <b class="num">${money(r['文章'])}</b>，每份報告 <b class="num">${money(r['報告'])}</b>。只有管理者看得到。</div>${canWrite?'<button class="btn sm" data-act="editRates">調整</button>':''}</div>`:''}<div class="two-col">${cards}</div>`;
+}
+
+/* ---------- 列表內快速回報：貼連結、勾一次 SOP、送出，一個畫面做完（不用開側邊面板） ---------- */
+const qr={id:null,url:'',done:0,sop:false,manual:false};
+const qrOK=t=>canWrite&&['待處理','進行中','退回'].includes(t.state)&&(isAdmin||isMine(t));
+function qrToggle(id){
+  if(qr.id===id){qr.id=null}
+  else{const t=S.tasks[id]||{},sp=t.sop||[];qr.id=id;qr.url='';qr.done=t.done||0;qr.sop=sp.length>0&&sp.every((_,i)=>(t.checked||[])[i]);qr.manual=false}
+  queue();setTimeout(()=>{const e=$('#qr_url');if(e)e.focus()},80);
+}
+function qrPanel(t){
+  const sp=t.sop||[],nl=(t.links||[]).length,a=S.accept[t.id];
+  return `<div class="qr" role="group" aria-label="回報：${esc(t.title)}">
+    <div class="qr-h"><b>${esc(t.title)}</b><span class="muted">目標 ${esc(t.target||0)} ${esc(unit(t.kind))}・已有 ${nl} 條連結</span></div>
+    ${t.state==='退回'?`<div class="qr-bad"><b>${t.revise?'客戶要求修改':'被退回'}</b>　${esc(t.revise?(t.reviseNote||''):(a&&a.reason||''))}</div>`:''}
+    <textarea id="qr_url" class="qr-ta" rows="3" placeholder="直接貼上連結，一行一條，可一次貼多條（Ctrl＋Enter 直接送交驗收）" aria-label="交付內容連結">${esc(qr.url)}</textarea>
+    <div class="qr-row">
+      <label class="qr-n">完成 <input type="number" id="qr_done" min="0" inputmode="numeric" value="${esc(qr.done)}"> ／ ${esc(t.target||0)} ${esc(unit(t.kind))}</label>
+      ${sp.length?`<label class="chk qr-sop"><input type="checkbox" id="qr_sop" ${qr.sop?'checked':''}><span>已依 SOP 全部檢查完成（${sp.length} 項）</span></label>`:''}
+    </div>
+    ${sp.length?`<details class="qr-d"><summary>看 SOP 檢查項目</summary><ol>${sp.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></details>`:''}
+    <div class="qr-row"><button type="button" class="btn primary" data-act="qsubmit" data-id="${esc(t.id)}">送交驗收</button><button type="button" class="btn" data-act="qsave" data-id="${esc(t.id)}">只存連結</button><span class="grow"></span><button type="button" class="btn ghost" data-act="openTask" data-id="${esc(t.id)}">開啟詳情</button></div>
+  </div>`;
+}
+async function qrSave(id,submit){
+  const raw=S.tasks[id];if(!raw)return;const t=Object.assign({id},raw);
+  const us=qr.url.split(/\s+/).map(x=>x.trim()).filter(Boolean);
+  if(us.some(u=>!safeUrl(u))){toast('每條連結都要是 http 或 https 開頭的完整網址');return}
+  const old=t.links||[],nl=old.concat(us.map((url,i)=>({title:'連結 '+(old.length+i+1),url})));
+  let done=Number(qr.done);if(!(done>=0))done=t.done||0;
+  const patch={links:nl,done};
+  if(submit){
+    const miss=[];
+    if(!nl.length)miss.push('還沒貼連結');
+    if(done<(t.target||0))miss.push(`完成數量 ${done}／${t.target}`);
+    if((t.sop||[]).length&&!qr.sop)miss.push('請勾「已依 SOP 全部檢查完成」');
+    if(miss.length){toast('不能送交驗收：'+miss.join('；'));return}
+    Object.assign(patch,{checked:(t.sop||[]).map(()=>true),submitted:true,subN:(t.subN||0)+1,revise:false,sentAt:null,confirmedAt:null,publishedAt:null,deliveredAt:null});
+  }else if(!us.length&&done===(t.done||0)){toast('沒有要儲存的內容');return}
+  await run(async()=>{await tUpd(id,patch,submit?'送交驗收（列表快速回報）':(us.length?'新增 '+us.length+' 條連結':null));qr.id=null},submit?'已送交驗收，等待管理者確認':'已儲存');
 }
 
 /* ---------- task panel ---------- */
@@ -2454,6 +2509,9 @@ document.addEventListener('click',async e=>{
   if(a==='ofilter'){ownerFilter=el.dataset.v;queue();return}
   if(a==='bperiod'){boardAll=el.dataset.v==='all';queue();return}
   if(a==='jumpBoard'){const m={'待處理':'todo','進行中':'todo','退回':'todo','待驗收':'wait','已驗收':'acc','已交付':'done'};view='board';boardAll=false;boardFilter=m[el.dataset.v];queue();return}
+  if(a==='qopen'){qrToggle(el.dataset.id);return}
+  if(a==='qsave'){qrSave(el.dataset.id,false);return}
+  if(a==='qsubmit'){qrSave(el.dataset.id,true);return}
   if(a==='boardLate'){view='board';boardAll=true;boardFilter='late';openCode=null;openTask=null;queue();return}
   if(a==='jumpOld'){view='board';boardAll=true;boardFilter='all';queue();return}
   if(a==='openBoardClient'){view='board';boardAll=false;boardFilter='all';boardQuery=el.dataset.code||'';ownerFilter='all';queue();return}
@@ -2533,6 +2591,7 @@ function bulkPayForm(){
     onSubmit:async v=>{for(const id of ids){const bc=billCalc(S.bills[id]);await upd('bills',id,{received:bc.total,receivedAt:v.receivedAt})}billSel.clear()}});
 }
 document.addEventListener('change',async e=>{
+  if(e.target.id==='qr_sop'){qr.sop=e.target.checked;return}
   const bs=e.target.closest&&e.target.closest('[data-act="bsel"]');if(bs){if(bs.checked)billSel.add(bs.dataset.id);else billSel.delete(bs.dataset.id);queue();return}
   const ba=e.target.closest&&e.target.closest('[data-act="bselAll"]');if(ba){document.querySelectorAll('.bck').forEach(c=>{if(ba.checked)billSel.add(c.dataset.id);else billSel.delete(c.dataset.id)});queue();return}
   const el=e.target.closest('[data-act="toggleTodo"]');
@@ -2543,9 +2602,14 @@ document.addEventListener('change',async e=>{
   if(e.target.id==='t_note'&&canWrite&&openTask){await run(()=>tUpd(openTask,{note:e.target.value.trim()||null}))}
 });
 document.addEventListener('focusout',e=>{if(e.target.closest&&e.target.closest('#layer .panel'))setTimeout(queue,300)});
-document.addEventListener('input',e=>{if(e.target.id==='q'){query=e.target.value;renderClients()}
+document.addEventListener('input',e=>{
+  if(e.target.id==='qr_url'){qr.url=e.target.value;const t=S.tasks[qr.id];if(t&&!qr.manual){const n=(t.links||[]).length+qr.url.split(/\s+/).filter(x=>/^https?:\/\//i.test(x)).length;qr.done=Math.max(t.done||0,Math.min(n,t.target||n));const d=$('#qr_done');if(d)d.value=qr.done}return}
+  if(e.target.id==='qr_done'){qr.done=e.target.value;qr.manual=true;return}
+  if(e.target.id==='q'){query=e.target.value;renderClients()}
   if(e.target.id==='bq'){boardQuery=e.target.value;renderBoard(view==='mine');const el=$('#bq');if(el){el.focus();el.setSelectionRange(boardQuery.length,boardQuery.length)}}});
 document.addEventListener('keydown',e=>{
+  if(e.target.id==='qr_url'&&e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();qrSave(qr.id,true);return}
+  if(e.key==='Escape'&&qr.id&&!$('#modalroot').firstChild&&!openTask&&!openCode&&!document.getElementById('cmdk')){qr.id=null;queue();return}
   if(e.key==='Escape'){if($('#modalroot').firstChild)closeModal();else if(openCode||openTask){openCode=null;openTask=null;queue()}}
   if((e.key==='Enter'||e.key===' ')&&e.target.classList&&e.target.classList.contains('crow')){e.preventDefault();openCode=e.target.dataset.code;queue()}
   if((e.key==='Enter'||e.key===' ')&&e.target.dataset&&e.target.dataset.act==='openTask'&&e.target.getAttribute('role')==='button'){e.preventDefault();openTask=e.target.dataset.id;openCode=null;queue()}
