@@ -683,6 +683,10 @@ h1,h2,h3{font-weight:600}
 .qr-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.qr-h .muted{font-size:13px}
 .qr-bad{background:var(--bad-soft);color:var(--bad);border-radius:8px;padding:8px 12px;font-size:13.5px}
 .qr-ta{width:100%;min-height:84px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14.5px;resize:vertical}
+.qr-nl{display:flex;gap:6px 18px;flex-wrap:wrap;align-items:center}.qr-nn{flex:1 1 220px;min-width:0;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
+.paycard .pay-big{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}.paycard .pay-big b{font-size:26px}
+.pay-rows{display:flex;flex-direction:column;margin-top:8px}.pay-r{display:grid;grid-template-columns:minmax(0,1fr) 72px 96px;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}.pay-r .num{text-align:right}.pay-r i{font-style:normal;font-size:12.5px}
+.pay-n{margin-top:10px;font-size:13.5px;line-height:1.6}.pay-f{margin-top:10px}
 .qr-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.qr-n input{width:64px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;text-align:center;margin:0 4px;min-height:36px}
 .qr-sop{padding:0}.qr-d summary{cursor:pointer;color:var(--muted);font-size:13px}.qr-d ol{margin:6px 0 0;padding-left:20px;font-size:13.5px;line-height:1.7}
 @media (pointer:coarse){.rowlink{min-height:28px;display:inline-flex;align-items:center}.qr-n input{min-height:44px}.qr-d summary{min-height:32px;display:flex;align-items:center}}
@@ -1304,8 +1308,15 @@ function renderBills(){
       const wd=d?wk[new Date(d+'T00:00:00').getDay()]:'';
       return `<div class="xday"><span>${esc(d.slice(5).replace('-','/'))}（${wd}）${d===t?' <b>今天</b>':''}</span><span class="num">${money(tot)}</span></div>`
        +arr.map(e=>`<div class="xrow" data-act="${canWrite?'editExpense':''}" data-id="${esc(e.id)}" role="button" tabindex="0"><div class="xtag">${esc(e.category||'其他')}</div><div class="xmain"><div class="xt">${esc(e.note||e.payee||e.category||'支出')}</div>${e.clientCode?`<div class="xs">${esc(clientName(e.clientCode))}</div>`:''}</div><div class="xr"><div class="num xamt2">${money(e.amount)}</div>${e.paid===false?`<span class="pill warn">待付</span>${canWrite?`<button class="btn sm" data-act="payExp" data-id="${esc(e.id)}">已付</button>`:''}`:''}</div></div>`).join('')}).join('');
+    const ps=payStats(billMonth),rt=rates();
+    const payCardH=`<section class="sec paycard" aria-label="員工稿費預估"><header><h3>員工稿費預估・${+billMonth.slice(5)} 月</h3><span class="muted">只有管理者看得到</span></header><div class="in">
+      <div class="pay-big"><b class="num">${money(ps.done)}</b><span class="muted">已驗收／已交付 ${ps.doneQty} 篇＋份</span></div>
+      <div class="pay-rows">${PAY_LINES.filter(([k])=>k!=='geo'||ps.lines.geo.qty>0).map(([k,l,u])=>`<div class="pay-r"><span>${l}<i class="muted">　${money(k==='report'?rt['報告']:rt['文章'])}／${u}</i></span><span class="num">${ps.lines[k].qty} ${u}</span><span class="num">${money(ps.lines[k].amt)}</span></div>`).join('')}</div>
+      <div class="muted pay-n">${ps.pend.qty?`另有 <b>${ps.pend.qty}</b> 篇＋份待驗收（約 ${money(ps.pend.amt)}），驗收後計入。`:'目前沒有待驗收的項目。'}　本月任務全部完成預計 <b>${money(ps.plan.amt)}</b>。</div>
+      <div class="pay-f"><button class="btn sm" data-act="editRates">調整單價</button></div></div></section>`;
     $('#main').innerHTML=head+`<h3 class="bh">${yr} 年 ${+billMonth.slice(5)} 月支出${billMonth===nowM?'（本月）':''}</h3>
       <div class="bsum">${box('支出合計',money(st.all))}${box('已付',money(st.paid))}${box('待付',money(st.unpaid),st.unpaid>0?'warnt':'')}${box('本月淨額（已收 − 已付）',money(inc-st.paid),inc-st.paid<0?'bad':'','已收 '+money(inc))}</div>
+      ${isAdmin?`<div style="margin-top:14px">${payCardH}</div>`:''}
       <div class="split2" style="margin-top:14px"><div>${L.length?`<div class="xlist">${dayHTML}</div>`:`<div class="list"><div class="empty">這個月還沒有支出。按右下角「記一筆」，金額、類別、完成。</div></div>`}</div><div class="cstack">${expCharts}</div></div>`;
     return}
   /* ---------- 收入 ---------- */
@@ -1741,6 +1752,28 @@ const dueFor=(code,p)=>{const c=S.clients[code];const dd=c&&c.deadlineDay;return
 function rates(){const r=S.settings.rates||{};return {'文章':r.article!=null?r.article:170,'報告':r.report!=null?r.report:700}}
 const fridaysOf=p=>{const [y,m]=p.split('-').map(Number);const o=[];for(let d=1;d<=lastDayOf(p);d++){if(new Date(Date.UTC(y,m-1,d)).getUTCDay()===5)o.push(p+'-'+p2(d))}return o};
 const rateFor=k=>{const r=rates();return (k==='週文章'||k==='月部落文')?r['文章']:k==='月報告'?r['報告']:null};
+/* 員工稿費預估（只給管理者）：負責人不是管理者的任務，按已驗收／已交付的篇數與份數計價；待驗收另列，驗收後才計入 */
+const PAY_LINES=[['seo','SEO 文章','篇'],['geo','GEO 文章','篇'],['blog','原創文／測試文','篇'],['report','月報告','份']];
+function payBucket(t){
+  if(t.kind==='月部落文')return 'blog';
+  if(t.kind==='月報告')return 'report';
+  if(t.kind==='週文章')return /^GEO/.test(t.title||'')?'geo':'seo';
+  return null;
+}
+function payStats(period){
+  const admins=new Set(USERS().filter(u=>u.role==='admin').map(u=>u.name));
+  const out={lines:{},pend:{qty:0,amt:0},plan:{qty:0,amt:0},done:0,doneQty:0};
+  PAY_LINES.forEach(([k])=>{out.lines[k]={qty:0,amt:0}});
+  taskList().filter(t=>t.period===period&&!admins.has(ownerOf(t))).forEach(t=>{
+    const b=payBucket(t);if(!b)return;
+    const r=t.rate!=null&&t.rate!==''?Number(t.rate):rateFor(t.kind);if(!(r>0))return;
+    const q=Number(t.target)||0;if(!q)return;
+    out.plan.qty+=q;out.plan.amt+=q*r;
+    if(t.state==='已驗收'||t.state==='已交付'){out.lines[b].qty+=q;out.lines[b].amt+=q*r;out.done+=q*r;out.doneQty+=q}
+    else if(t.state==='待驗收'){out.pend.qty+=q;out.pend.amt+=q*r}
+  });
+  return out;
+}
 const subStage=t=>!t.sentAt?'待送客戶確認':!t.confirmedAt?'等客戶確認':'待發佈';
 function sopFor(type,kind){const s=S.sops[type+'-'+kind]||S.sops['default-'+kind];return (s&&s.items&&s.items.length)?s.items:(DEFAULT_SOP[kind]||DEFAULT_SOP['其他'])}
 function tstate(t){
@@ -1950,10 +1983,9 @@ function trySubmit(id){
   const miss=[];
   const unchecked=(t.sop||[]).filter((_,i)=>!(t.checked||[])[i]).length;
   if(unchecked)miss.push(`還有 ${unchecked} 項 SOP 沒勾`);
-  if((t.done||0)<(t.target||0))miss.push(`完成數量 ${t.done||0}／${t.target}，還沒達到目標`);
-  if(!(t.links||[]).length)miss.push('還沒貼任何交付內容連結');
+  if(!(t.links||[]).length&&!t.noLink)miss.push('還沒貼連結（沒有連結請勾「本件不須連結／本件用其它方式交付」）');
   if(miss.length){toast('不能送交驗收：'+miss.join('；'));return}
-  run(()=>tUpd(id,{submitted:true,subN:(t.subN||0)+1,revise:false,sentAt:null,confirmedAt:null,publishedAt:null,deliveredAt:null},'送交驗收'),'已送交驗收，等待管理者確認');
+  run(()=>tUpd(id,{done:t.target||t.done||0,submitted:true,subN:(t.subN||0)+1,revise:false,sentAt:null,confirmedAt:null,publishedAt:null,deliveredAt:null},'送交驗收'),'已送交驗收，等待管理者確認');
 }
 function openReject(id){
   const t=S.tasks[id];
@@ -2136,7 +2168,7 @@ function renderBoard(mine){
     const prog=Math.min(100,Math.round((t.done||0)/Math.max(1,t.target||1)*100));
     const who=inGrp?`<div><button type="button" class="rowlink" data-act="openTask" data-id="${esc(t.id)}"><b>${esc(t.title)}</b></button>${boardAll?`<span class="muted" style="margin-left:6px">${esc(t.period)}</span>`:''}${mine?'':`<span class="pill own ${isMine(t)?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(ownerOf(t)))}</span>`}</div>`
       :`<div><span class="code mono">${esc(t.clientCode)}</span><button type="button" class="rowlink" data-act="openTask" data-id="${esc(t.id)}"><b>${esc(clientName(t.clientCode))}</b></button>${clientAka(t.clientCode)?`<span class="muted" style="margin-left:6px">${esc(clientAka(t.clientCode))}</span>`:''}${mine?'':`<span class="pill own ${isMine(t)?'info':'mute'}" style="margin-left:8px">${esc(ownerLabel(ownerOf(t)))}</span>`}</div><div class="sub muted">${esc(t.title)}${boardAll?'・'+esc(t.period):''}</div>`;
-    const qbtn=qrOK(t)?`<span class="qrb"><button type="button" class="btn sm ${qr.id===t.id?'':'primary'}" data-act="qopen" data-id="${esc(t.id)}" aria-expanded="${qr.id===t.id}">${qr.id===t.id?'收合':'回報'}</button></span>`:'';
+    const qbtn=qrOK(t)?`<span class="qrb"><button type="button" class="btn sm ${qr.id===t.id?'':'primary'}" data-act="qopen" data-id="${esc(t.id)}" aria-expanded="${qr.id===t.id}">${qr.id===t.id?'收合':'回報'}</button></span>`:qeOK(t)?`<span class="qrb"><button type="button" class="btn sm" data-act="qopen" data-id="${esc(t.id)}" aria-expanded="${qr.id===t.id}">${qr.id===t.id?'收合':'改連結'}</button></span>`:'';
     return `<div class="trow s-${STK[t.state]}${inGrp?' in-grp':''}${qr.id===t.id?' qr-on':''}" data-act="openTask" data-id="${esc(t.id)}">
       <div style="min-width:0">${who}</div>
       <div><div class="num">${t.done||0}／${t.target||0} ${unit(t.kind)}</div><div class="mini"><i style="width:${prog}%"></i></div></div>
@@ -2179,43 +2211,65 @@ function renderSop(){
 }
 
 /* ---------- 列表內快速回報：貼連結、勾一次 SOP、送出，一個畫面做完（不用開側邊面板） ---------- */
-const qr={id:null,url:'',done:0,sop:false,manual:false};
+const qr={id:null,url:'',sop:false,nl:null,note:'',edit:false};
 const qrOK=t=>canWrite&&['待處理','進行中','退回'].includes(t.state)&&(isAdmin||isMine(t));
+/* 送交後仍可改連結（員工與管理者皆可），不會重新驗收，只留紀錄 */
+const qeOK=t=>canWrite&&['待驗收','已驗收','已交付'].includes(t.state)&&(isAdmin||isMine(t));
+const NOLINK={none:'本件不須連結',other:'本件用其它方式交付'};
+const linkLines=t=>(t.links||[]).map(l=>l.url).join('\n');
+const parseUrls=v=>String(v||'').split(/\s+/).map(x=>x.trim()).filter(Boolean);
 function qrToggle(id){
   if(qr.id===id){qr.id=null}
-  else{const t=S.tasks[id]||{},sp=t.sop||[];qr.id=id;qr.url='';qr.done=t.done||0;qr.sop=sp.length>0&&sp.every((_,i)=>(t.checked||[])[i]);qr.manual=false}
+  else{const t=S.tasks[id]||{},sp=t.sop||[],sub=['待驗收','已驗收','已交付'].includes(tstate(Object.assign({id},t)));
+    qr.id=id;qr.edit=sub;qr.url=sub?linkLines(t):'';qr.sop=sp.length>0&&sp.every((_,i)=>(t.checked||[])[i]);qr.nl=t.noLink||null;qr.note=t.noLinkNote||''}
   queue();setTimeout(()=>{const e=$('#qr_url');if(e)e.focus()},80);
 }
+const nlBox=(pre,cur,note,dis)=>`<div class="qr-nl" role="group" aria-label="沒有連結時">${Object.entries(NOLINK).map(([k,l])=>`<label class="chk"><input type="checkbox" id="${pre}_${k}" data-nl="${k}" ${cur===k?'checked':''} ${dis?'disabled':''}><span>${l}</span></label>`).join('')}${cur?`<input type="text" id="${pre}_note" class="qr-nn" value="${esc(note||'')}" placeholder="${cur==='other'?'用什麼方式？例如：LINE 直接傳給客戶':'補充說明（選填）'}" aria-label="說明" ${dis?'disabled':''}>`:''}</div>`;
 function qrPanel(t){
   const sp=t.sop||[],nl=(t.links||[]).length,a=S.accept[t.id];
+  if(qr.edit)return `<div class="qr" role="group" aria-label="修改連結：${esc(t.title)}">
+    <div class="qr-h"><b>${esc(t.title)}</b><span class="muted">已提交・可隨時更新連結（${esc(t.state)}）</span></div>
+    <textarea id="qr_url" class="qr-ta" rows="${Math.min(8,Math.max(3,nl+1))}" placeholder="一行一條連結。直接改、刪、加都可以" aria-label="交付內容連結">${esc(qr.url)}</textarea>
+    ${nlBox('qr',qr.nl,qr.note)}
+    <div class="qr-row"><button type="button" class="btn primary" data-act="qeditsave" data-id="${esc(t.id)}">儲存修改</button><span class="grow"></span><button type="button" class="btn ghost" data-act="openTask" data-id="${esc(t.id)}">開啟詳情</button></div>
+  </div>`;
   return `<div class="qr" role="group" aria-label="回報：${esc(t.title)}">
     <div class="qr-h"><b>${esc(t.title)}</b><span class="muted">目標 ${esc(t.target||0)} ${esc(unit(t.kind))}・已有 ${nl} 條連結</span></div>
     ${t.state==='退回'?`<div class="qr-bad"><b>${t.revise?'客戶要求修改':'被退回'}</b>　${esc(t.revise?(t.reviseNote||''):(a&&a.reason||''))}</div>`:''}
-    <textarea id="qr_url" class="qr-ta" rows="3" placeholder="直接貼上連結，一行一條，可一次貼多條（Ctrl＋Enter 直接送交驗收）" aria-label="交付內容連結">${esc(qr.url)}</textarea>
-    <div class="qr-row">
-      <label class="qr-n">完成 <input type="number" id="qr_done" min="0" inputmode="numeric" value="${esc(qr.done)}"> ／ ${esc(t.target||0)} ${esc(unit(t.kind))}</label>
-      ${sp.length?`<label class="chk qr-sop"><input type="checkbox" id="qr_sop" ${qr.sop?'checked':''}><span>已依 SOP 全部檢查完成（${sp.length} 項）</span></label>`:''}
-    </div>
+    <textarea id="qr_url" class="qr-ta" rows="3" placeholder="直接貼上連結（同一個連結涵蓋多篇也只要貼一條；多條就一行一條）。Ctrl＋Enter 直接送交驗收" aria-label="交付內容連結">${esc(qr.url)}</textarea>
+    ${nl?'':nlBox('qr',qr.nl,qr.note)}
+    ${sp.length?`<div class="qr-row"><label class="chk qr-sop"><input type="checkbox" id="qr_sop" ${qr.sop?'checked':''}><span>已依 SOP 全部檢查完成（${sp.length} 項）</span></label></div>`:''}
     ${sp.length?`<details class="qr-d"><summary>看 SOP 檢查項目</summary><ol>${sp.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></details>`:''}
     <div class="qr-row"><button type="button" class="btn primary" data-act="qsubmit" data-id="${esc(t.id)}">送交驗收</button><button type="button" class="btn" data-act="qsave" data-id="${esc(t.id)}">只存連結</button><span class="grow"></span><button type="button" class="btn ghost" data-act="openTask" data-id="${esc(t.id)}">開啟詳情</button></div>
   </div>`;
 }
+/* 完成數量不再看連結條數：有放連結（或勾「不須連結／其它方式」）即可送交，送交時視為全部完成 */
 async function qrSave(id,submit){
   const raw=S.tasks[id];if(!raw)return;const t=Object.assign({id},raw);
-  const us=qr.url.split(/\s+/).map(x=>x.trim()).filter(Boolean);
+  const us=parseUrls(qr.url);
   if(us.some(u=>!safeUrl(u))){toast('每條連結都要是 http 或 https 開頭的完整網址');return}
   const old=t.links||[],nl=old.concat(us.map((url,i)=>({title:'連結 '+(old.length+i+1),url})));
-  let done=Number(qr.done);if(!(done>=0))done=t.done||0;
-  const patch={links:nl,done};
+  const noLink=nl.length?null:qr.nl;
+  const patch={links:nl,noLink,noLinkNote:noLink?(qr.note.trim()||null):null};
   if(submit){
     const miss=[];
-    if(!nl.length)miss.push('還沒貼連結');
-    if(done<(t.target||0))miss.push(`完成數量 ${done}／${t.target}`);
+    if(!nl.length&&!noLink)miss.push('請貼連結，或勾「本件不須連結／本件用其它方式交付」');
     if((t.sop||[]).length&&!qr.sop)miss.push('請勾「已依 SOP 全部檢查完成」');
     if(miss.length){toast('不能送交驗收：'+miss.join('；'));return}
-    Object.assign(patch,{checked:(t.sop||[]).map(()=>true),submitted:true,subN:(t.subN||0)+1,revise:false,sentAt:null,confirmedAt:null,publishedAt:null,deliveredAt:null});
-  }else if(!us.length&&done===(t.done||0)){toast('沒有要儲存的內容');return}
-  await run(async()=>{await tUpd(id,patch,submit?'送交驗收（列表快速回報）':(us.length?'新增 '+us.length+' 條連結':null));qr.id=null},submit?'已送交驗收，等待管理者確認':'已儲存');
+    Object.assign(patch,{done:t.target||t.done||0,checked:(t.sop||[]).map(()=>true),submitted:true,subN:(t.subN||0)+1,revise:false,sentAt:null,confirmedAt:null,publishedAt:null,deliveredAt:null});
+  }else if(!us.length&&!noLink&&!t.noLink){toast('沒有要儲存的內容');return}
+  await run(async()=>{await tUpd(id,patch,submit?'送交驗收（列表快速回報）':(us.length?'新增 '+us.length+' 條連結':(noLink?NOLINK[noLink]:null)));qr.id=null},submit?'已送交驗收，等待管理者確認':'已儲存');
+}
+async function qrEditSave(id){
+  const raw=S.tasks[id];if(!raw)return;const t=Object.assign({id},raw);
+  const us=parseUrls(qr.url);
+  if(us.some(u=>!safeUrl(u))){toast('每條連結都要是 http 或 https 開頭的完整網址');return}
+  const nl=us.map((url,i)=>{const o=(t.links||[]).find(l=>l.url===url);return {title:o&&o.title?o.title:'連結 '+(i+1),url}});
+  const noLink=nl.length?null:qr.nl;
+  if(!nl.length&&!noLink){toast('至少留一條連結，或勾「本件不須連結／本件用其它方式交付」');return}
+  const same=JSON.stringify((t.links||[]).map(l=>l.url))===JSON.stringify(us)&&(t.noLink||null)===noLink&&(t.noLinkNote||null)===(noLink?(qr.note.trim()||null):null);
+  if(same){toast('沒有變更');qr.id=null;queue();return}
+  await run(async()=>{await tUpd(id,{links:nl,noLink,noLinkNote:noLink?(qr.note.trim()||null):null},'修改交付連結（'+(nl.length?nl.length+' 條':NOLINK[noLink])+'）');qr.id=null},'已更新連結');
 }
 
 /* ---------- task panel ---------- */
@@ -2233,12 +2287,13 @@ function renderTaskPanel(){
   const scroll=layer.querySelector('.panel')?layer.querySelector('.panel').scrollTop:0;
   const dis=can?'':'disabled';
   const sopHTML=sop.map((x,i)=>`<label class="chk"><input type="checkbox" data-act="tcheck" data-i="${i}" ${chk[i]?'checked':''} ${dis}><span>${esc(x)}</span></label>`).join('');
-  const linksHTML=links.length?links.map((l,i)=>`<div class="item"><div class="main"><div class="title">${link(l.url,l.title||l.url)}</div><div class="sub">${esc(l.url)}</div></div>${can?`<button class="btn sm ghost" data-act="tdellink" data-i="${i}">移除</button>`:''}</div>`).join(''):'<div class="in muted">還沒有。每篇文章或每份報告貼一條連結（Drive、發布網址都可以）。</div>';
-  const addLink=can?`<div class="in addlink"><input type="text" id="tl_url" placeholder="貼上連結（可一次貼多條）" aria-label="連結網址"><button class="btn" data-act="taddlink">加入</button></div>`:'';
+  const canLinks=canWrite&&(isAdmin||isMine(t));
+  const linksHTML=links.length?links.map((l,i)=>`<div class="item"><div class="main"><div class="title">${link(l.url,l.title||l.url)}</div><div class="sub">${esc(l.url)}</div></div>${canLinks?`<button class="btn sm ghost" data-act="teditlink" data-i="${i}">修改</button><button class="btn sm ghost" data-act="tdellink" data-i="${i}">移除</button>`:''}</div>`).join(''):(t.noLink?'':'<div class="in muted">還沒有。同一個連結涵蓋多篇也只要貼一條（Drive、發布網址都可以）。</div>');
+  const nlHTML=(canLinks&&!links.length)||t.noLink?`<div class="in">${t.noLink&&!canLinks?`<b>${esc(NOLINK[t.noLink])}</b>${t.noLinkNote?'：'+esc(t.noLinkNote):''}`:`<div class="qr-nl">${Object.entries(NOLINK).map(([k,l])=>`<label class="chk"><input type="checkbox" data-tnl="${k}" ${t.noLink===k?'checked':''} ${canLinks?'':'disabled'}><span>${l}</span></label>`).join('')}${t.noLink?`<input type="text" id="t_nlnote" class="qr-nn" value="${esc(t.noLinkNote||'')}" placeholder="${t.noLink==='other'?'用什麼方式？例如：LINE 直接傳給客戶':'補充說明（選填）'}" aria-label="說明" ${canLinks?'':'disabled'}>`:''}</div>`}</div>`:'';
+  const addLink=canLinks?`<div class="in addlink"><input type="text" id="tl_url" placeholder="貼上連結（可一次貼多條）" aria-label="連結網址"><button class="btn" data-act="taddlink">加入</button></div>`:'';
   const miss=[];
   if(sop.filter((_,i)=>!chk[i]).length)miss.push('SOP 還沒全部勾完');
-  if((t.done||0)<(t.target||0))miss.push('數量還沒達到目標');
-  if(!links.length)miss.push('還沒貼交付內容連結');
+  if(!links.length&&!t.noLink)miss.push('還沒貼交付內容連結');
   const isBlog=t.kind==='月部落文';
   const stepCur=isBlog?(st==='待驗收'?1:st==='已驗收'?(!t.sentAt?2:!t.confirmedAt?3:4):st==='已交付'?5:0):(st==='待驗收'?1:st==='已驗收'?1:st==='已交付'?2:0);
   const stepNames=isBlog?['撰寫','驗收','送客戶確認','客戶確認','發佈']:['撰寫','驗收並交付客戶'];
@@ -2258,7 +2313,7 @@ function renderTaskPanel(){
     action='';
   }
   const waits=taskList().filter(x=>x.state==='待驗收'&&x.id!==t.id).sort((x,y)=>(x.due||'').localeCompare(y.due||''));
-  const missShort=[];if(sop.filter((_,i)=>!chk[i]).length)missShort.push('SOP 沒勾完');if((t.done||0)<(t.target||0))missShort.push('數量');if(!links.length)missShort.push('連結');
+  const missShort=[];if(sop.filter((_,i)=>!chk[i]).length)missShort.push('SOP 沒勾完');if(!links.length&&!t.noLink)missShort.push('連結');
   const submitBar=(!action&&canWrite)?`<div class="stickybar submit"><div class="barmsg${miss.length?'':' ok'}">${miss.length?'還差：'+missShort.join('、'):'都完成了，可以送交'}</div><button class="btn primary" data-act="tsubmit">送交驗收</button></div>`:'';
   const bar=submitBar||((st==='待驗收'&&isAdmin&&canWrite)?`<div class="stickybar">${isBlog?'<button class="btn primary" data-act="taccept">驗收通過</button>':'<button class="btn primary" data-act="taccdel">驗收通過・已交付並告知客戶</button><button class="btn" data-act="taccept">只驗收，晚點交付</button>'}<button class="btn bad" data-act="treject">退回</button><span class="grow"></span>${waits.length?`<button class="btn" data-act="tnext" data-id="${esc(waits[0].id)}">下一筆待驗收（${waits.length}）</button>`:'<span class="muted">沒有其他待驗收</span>'}</div>`:'');
   const hist=(t.history||[]).map(h=>({at:h.at,text:h.text}));
@@ -2273,7 +2328,7 @@ function renderTaskPanel(){
     ${late?`<div class="note warn"><div><b>已逾期 ${diffDays(todayStr(),t.due)} 天</b>　截止日 ${esc(t.due)}</div></div>`:''}
     <section class="sec"><header><h3>數量</h3><span class="muted">期別 ${esc(t.period)}・截止 ${esc(t.due||'—')}</span></header><div class="in counter"><button class="btn" data-act="tcount" data-d="-1" ${dis} aria-label="減一">−</button><input type="number" id="t_done" value="${t.done||0}" min="0" ${dis} aria-label="已完成數量"><button class="btn" data-act="tcount" data-d="1" ${dis} aria-label="加一">＋</button><span class="muted">／ 目標 <b class="num">${t.target||0}</b> ${unit(t.kind)}</span></div></section>
     <section class="sec"><header><h3>SOP 核對</h3><span class="muted">${chk.filter(Boolean).length}／${sop.length}</span></header><div class="in chks">${sopHTML||'<span class="muted">這個任務沒有 SOP 項目。</span>'}</div></section>
-    <section class="sec"><header><h3>交付內容連結</h3><span class="muted">${links.length} 條</span></header>${linksHTML}${addLink}</section>
+    <section class="sec"><header><h3>交付內容連結</h3><span class="muted">${links.length} 條${locked&&canLinks?'・已提交，可隨時更新':''}</span></header>${linksHTML}${links.length?'':nlHTML}${addLink}</section>
     <details class="sec fold" ${t.note?'open':''}><summary>備註${t.note?'':'（沒有可不填）'}</summary><div class="in"><textarea id="t_note" ${dis} placeholder="給管理者的說明，例如只能完成部分的原因">${esc(t.note||'')}</textarea></div></details>
     ${action?`<section class="sec act"><header><h3>驗收與交付</h3></header>${action}</section>`:''}
     <details class="sec fold"><summary>紀錄（${hist.length}）</summary>${histHTML}</details>
@@ -2521,6 +2576,7 @@ document.addEventListener('click',async e=>{
   if(a==='qopen'){qrToggle(el.dataset.id);return}
   if(a==='qsave'){qrSave(el.dataset.id,false);return}
   if(a==='qsubmit'){qrSave(el.dataset.id,true);return}
+  if(a==='qeditsave'){qrEditSave(el.dataset.id);return}
   if(a==='boardLate'){view='board';boardAll=true;boardFilter='late';openCode=null;openTask=null;queue();return}
   if(a==='jumpOld'){view='board';boardAll=true;boardFilter='all';queue();return}
   if(a==='openBoardClient'){view='board';boardAll=false;boardFilter='all';boardQuery=el.dataset.code||'';ownerFilter='all';queue();return}
@@ -2557,10 +2613,12 @@ document.addEventListener('click',async e=>{
     if(!us.length||us.some(u=>!safeUrl(u))){toast('請貼上 http 或 https 開頭的完整網址');return}
     const t=S.tasks[openTask],old=t.links||[];
     const nl=old.concat(us.map((url,i)=>({title:'連結 '+(old.length+i+1),url})));
-    const patch={links:nl};if(['週文章','月報告','月部落文'].includes(t.kind)&&t.target>0)patch.done=Math.max(t.done||0,Math.min(nl.length,t.target));
-    await run(()=>tUpd(openTask,patch));
+    await run(()=>tUpd(openTask,{links:nl,noLink:null,noLinkNote:null},'新增 '+us.length+' 條連結'));
   }
-  else if(a==='tdellink'){const t=S.tasks[openTask];await run(()=>tUpd(openTask,{links:(t.links||[]).filter((_,n)=>n!==Number(el.dataset.i))}))}
+  else if(a==='tdellink'){const t=S.tasks[openTask];const nl=(t.links||[]).filter((_,n)=>n!==Number(el.dataset.i));if(!nl.length&&tstate(Object.assign({id:openTask},t))!=='進行中'&&tstate(Object.assign({id:openTask},t))!=='待處理'&&!t.noLink){toast('已提交的任務至少要留一條連結，或勾「不須連結／其它方式交付」');return}await run(()=>tUpd(openTask,{links:nl},'移除 1 條連結'))}
+  else if(a==='teditlink'){const t=S.tasks[openTask],i=Number(el.dataset.i),l=(t.links||[])[i];if(!l)return;
+    openForm({title:'修改連結',fields:[{k:'url',label:'連結網址',type:'text',req:true}],values:{url:l.url},validate:v=>safeUrl((v.url||'').trim())?null:'請貼 http 或 https 開頭的完整網址',okMsg:'已更新連結',
+      onSubmit:v=>{const nl=(t.links||[]).map((x,n)=>n===i?Object.assign({},x,{url:v.url.trim()}):x);return tUpd(openTask,{links:nl},'修改連結 '+(i+1))}})}
   else if(a==='tsubmit')trySubmit(openTask);
   else if(a==='taccdel'){if(isAdmin)openAcceptDeliver(openTask)}
   else if(a==='taccept'){if(!isAdmin)return;const t=S.tasks[openTask];await run(()=>setDoc('accept',openTask,{result:'pass',forSub:t.subN,at:new Date().toISOString()}),'已驗收通過')}
@@ -2602,6 +2660,9 @@ function bulkPayForm(){
 }
 document.addEventListener('change',async e=>{
   if(e.target.id==='qr_sop'){qr.sop=e.target.checked;return}
+  if(e.target.dataset&&e.target.dataset.nl&&e.target.id.startsWith('qr_')){const k=e.target.dataset.nl;qr.nl=e.target.checked?k:null;if(!qr.nl)qr.note='';queue();setTimeout(()=>{const n=$('#qr_note');if(n&&qr.nl)n.focus()},60);return}
+  if(e.target.dataset&&e.target.dataset.tnl&&canWrite&&openTask){const k=e.target.dataset.tnl,v=e.target.checked?k:null;await run(()=>tUpd(openTask,{noLink:v,noLinkNote:v?(S.tasks[openTask].noLinkNote||null):null},v?NOLINK[v]:'取消「'+NOLINK[k]+'」'));return}
+  if(e.target.id==='t_nlnote'&&canWrite&&openTask){await run(()=>tUpd(openTask,{noLinkNote:e.target.value.trim()||null}));return}
   const bs=e.target.closest&&e.target.closest('[data-act="bsel"]');if(bs){if(bs.checked)billSel.add(bs.dataset.id);else billSel.delete(bs.dataset.id);queue();return}
   const ba=e.target.closest&&e.target.closest('[data-act="bselAll"]');if(ba){document.querySelectorAll('.bck').forEach(c=>{if(ba.checked)billSel.add(c.dataset.id);else billSel.delete(c.dataset.id)});queue();return}
   const el=e.target.closest('[data-act="toggleTodo"]');
@@ -2613,8 +2674,8 @@ document.addEventListener('change',async e=>{
 });
 document.addEventListener('focusout',e=>{if(e.target.closest&&e.target.closest('#layer .panel'))setTimeout(queue,300)});
 document.addEventListener('input',e=>{
-  if(e.target.id==='qr_url'){qr.url=e.target.value;const t=S.tasks[qr.id];if(t&&!qr.manual){const n=(t.links||[]).length+qr.url.split(/\s+/).filter(x=>/^https?:\/\//i.test(x)).length;qr.done=Math.max(t.done||0,Math.min(n,t.target||n));const d=$('#qr_done');if(d)d.value=qr.done}return}
-  if(e.target.id==='qr_done'){qr.done=e.target.value;qr.manual=true;return}
+  if(e.target.id==='qr_url'){qr.url=e.target.value;return}
+  if(e.target.id==='qr_note'){qr.note=e.target.value;return}
   if(e.target.id==='q'){query=e.target.value;renderClients()}
   if(e.target.id==='bq'){boardQuery=e.target.value;renderBoard(view==='mine');const el=$('#bq');if(el){el.focus();el.setSelectionRange(boardQuery.length,boardQuery.length)}}});
 document.addEventListener('keydown',e=>{
