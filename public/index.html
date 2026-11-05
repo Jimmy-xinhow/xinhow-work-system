@@ -1822,7 +1822,7 @@ const coverOK=(code,ps,pe)=>{const cs=rows('contracts',code);return !cs.length||
 function genPlan(p,opts){
   const force=(opts&&opts.force)||new Set();
   const ps=p+'-01',pe=p+'-'+p2(lastDayOf(p));
-  const create=[],skipped=new Set(),why=[],reassign=[];
+  const create=[],skipped=new Set(),why=[],reassign=[],rep=[];
   const mk=(id,data)=>{if(!S.tasks[id])create.push({id,data})};
   Object.keys(S.clients).sort().forEach(code=>{
     const cst=S.clients[code].status;
@@ -1865,12 +1865,14 @@ function genPlan(p,opts){
       if(!cand.length)return;
       if(!pl.start&&!pl.end&&!cov){skipped.add(code);why.push({code,plan:nm,why:'合約期間沒涵蓋 '+p+'（已續約請到客戶頁按「續約」）'});return}
       const before=create.length;cand.forEach(([id,d])=>mk(id,d));
+      {const tx=[];const one=(lab,arr)=>{const ex=arr.filter(([id])=>S.tasks[id]),nw=arr.length-ex.length;tx.push(lab+'：'+[ex.length?'已有 '+ex.length+' 項'+(arr.length===1?'（'+dispName(S.tasks[ex[0][0]].assignee)+'・'+tstate(Object.assign({id:ex[0][0]},S.tasks[ex[0][0]]))+'）':''):'',nw?'將建立 '+nw+' 項→'+dispName(arr.find(([id])=>!S.tasks[id])[1].assignee):''].filter(Boolean).join('、'))};
+        one(nm,cand.filter(([id])=>!/_rewrite$/.test(id)));const rw=cand.filter(([id])=>/_rewrite$/.test(id));if(rw.length)one('批量改寫',rw);rep.push({code,text:tx.join('；')});}
       /* 任務早就建立過，但負責人跟設定不一樣（例如當初被指派給管理者），員工的清單就看不到 */
       cand.forEach(([id,d])=>{const ex=S.tasks[id];if(ex&&lc(ex.assignee)!==lc(d.assignee)&&tstate(Object.assign({id},ex))!=='已交付')reassign.push({id,code,plan:nm,title:ex.title||d.title,from:lc(ex.assignee),to:lc(d.assignee)})});
       if(create.length===before)why.push({code,plan:nm,why:'已建立過（'+cand.length+' 項都已在任務清單）',info:true});
     });
   });
-  return {create,skipped:[...skipped],why,reassign};
+  return {create,skipped:[...skipped],why,reassign,rep};
 }
 function planForm(code,id){
   const x=id?Object.assign({},S.plans[id],{assignee:lc(S.plans[id].assignee)||defaultAssignee()}):{assignee:defaultAssignee(),active:true};
@@ -1932,6 +1934,8 @@ function openGenerate(){
   const forced=fixCodes.length?genPlan(period,{force:new Set(fixCodes)}):null;
   const extra=forced?forced.create.filter(x=>!plan.create.some(y=>y.id===x.id)):[];
   const probs=plan.why.filter(w=>!w.info);
+  {const L=[...plan.rep.map(r=>`${esc(r.code)} ${esc(clientName(r.code))}・${esc(r.text)}`),...probs.map(w=>`${esc(w.code)} ${esc(clientName(w.code))}・${esc(w.plan)}：${esc(w.why)}`)].sort();
+   fields.push({k:'d',type:'info',html:`<details><summary>全部設定的檢查結果（${L.length} 筆，要追查時點開）</summary><div style="margin-top:6px;font-size:13px;line-height:1.7">${L.join('<br>')}</div></details>`})}
   if(probs.length)fields.push({k:'w',type:'info',warn:true,html:`<b>這些設定這個月沒有產生任務：</b><br>${probs.map(w=>`${esc(w.code)} ${esc(clientName(w.code))}・${esc(w.plan)}：${esc(w.why)}`).join('<br>')}`});
   if(plan.reassign.length)fields.push({k:'r',type:'info',warn:true,html:`<b>這些任務早就建立過，但負責人跟設定不同：</b><br>${plan.reassign.map(r=>`${esc(r.code)} ${esc(clientName(r.code))}・${esc(r.title)}：目前是 ${esc(ownerLabel(r.from))}，設定的負責人是 ${esc(ownerLabel(r.to))}`).join('<br>')}`},{k:'re',type:'check',label:`把這 ${plan.reassign.length} 項任務改派給設定的負責人`});
   if(fixCodes.length)fields.push({k:'act',type:'check',label:`把 ${fixCodes.map(c=>clientName(c)).join('、')} 設為「進行中」，並一起建立他們的任務（共 ${extra.length} 項）`});
