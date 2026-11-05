@@ -1742,6 +1742,7 @@ const isMine=t=>ownerOf(t)===meName();
 const ownerLabel=o=>{o=lc(o);if(o===meName())return '我';const u=USERS().find(x=>x.name===o);return u?u.display:o};
 const activeUsers=()=>USERS().filter(u=>!u.disabled);
 const defaultAssignee=()=>{const u=activeUsers().find(x=>x.role==='staff');return u?u.name:meName()};
+const dispName=o=>{o=lc(o);const u=USERS().find(x=>x.name===o);return u?u.display:o};
 const rewriteAssignee=()=>{const u=activeUsers().find(x=>x.role==='admin');return u?u.name:meName()};
 const isAdminUser=o=>{const u=USERS().find(x=>x.name===lc(o));return !!u&&u.role==='admin'};
 const assigneeOpts=cur=>{const o=activeUsers().map(u=>[u.name,u.name===meName()?u.display+'（我）':u.display]);const c=lc(cur);if(c&&!o.some(x=>x[0]===c))o.push([c,ownerLabel(c)+'（已停用）']);return o};
@@ -1821,7 +1822,7 @@ const coverOK=(code,ps,pe)=>{const cs=rows('contracts',code);return !cs.length||
 function genPlan(p,opts){
   const force=(opts&&opts.force)||new Set();
   const ps=p+'-01',pe=p+'-'+p2(lastDayOf(p));
-  const create=[],skipped=new Set(),why=[];
+  const create=[],skipped=new Set(),why=[],reassign=[];
   const mk=(id,data)=>{if(!S.tasks[id])create.push({id,data})};
   Object.keys(S.clients).sort().forEach(code=>{
     const cst=S.clients[code].status;
@@ -1864,10 +1865,12 @@ function genPlan(p,opts){
       if(!cand.length)return;
       if(!pl.start&&!pl.end&&!cov){skipped.add(code);why.push({code,plan:nm,why:'合約期間沒涵蓋 '+p+'（已續約請到客戶頁按「續約」）'});return}
       const before=create.length;cand.forEach(([id,d])=>mk(id,d));
+      /* 任務早就建立過，但負責人跟設定不一樣（例如當初被指派給管理者），員工的清單就看不到 */
+      cand.forEach(([id,d])=>{const ex=S.tasks[id];if(ex&&lc(ex.assignee)!==lc(d.assignee)&&tstate(Object.assign({id},ex))!=='已交付')reassign.push({id,code,plan:nm,title:ex.title||d.title,from:lc(ex.assignee),to:lc(d.assignee)})});
       if(create.length===before)why.push({code,plan:nm,why:'已建立過（'+cand.length+' 項都已在任務清單）',info:true});
     });
   });
-  return {create,skipped:[...skipped],why};
+  return {create,skipped:[...skipped],why,reassign};
 }
 function planForm(code,id){
   const x=id?Object.assign({},S.plans[id],{assignee:lc(S.plans[id].assignee)||defaultAssignee()}):{assignee:defaultAssignee(),active:true};
@@ -1923,19 +1926,21 @@ function planFormCustom(code,id){
 }
 function openGenerate(){
   const plan=genPlan(period);
-  const lines=plan.create.map(x=>`${esc(x.data.clientCode)} ${esc(clientName(x.data.clientCode))}　${esc(x.data.title)} ×${x.data.target}　截止 ${esc(x.data.due)}`).join('<br>');
+  const lines=plan.create.map(x=>`${esc(x.data.clientCode)} ${esc(clientName(x.data.clientCode))}　${esc(x.data.title)} ×${x.data.target}　截止 ${esc(x.data.due)}　→ ${esc(ownerLabel(x.data.assignee))}`).join('<br>');
   const fields=[{k:'p',type:'info',html:plan.create.length?`${esc(period)} 將建立 <b>${plan.create.length}</b> 項任務（已存在的不重複建立）：<br>${lines}`:(Object.keys(S.plans).length?`${esc(period)} 沒有新的任務可建立。原因看下面。`:'還沒有任何客戶設定週期任務。請到客戶詳情的「週期任務設定」新增，再回來產生。')}];
   const fixCodes=[...new Set(plan.why.filter(w=>w.fix==='activate').map(w=>w.code))];
   const forced=fixCodes.length?genPlan(period,{force:new Set(fixCodes)}):null;
   const extra=forced?forced.create.filter(x=>!plan.create.some(y=>y.id===x.id)):[];
   const probs=plan.why.filter(w=>!w.info);
   if(probs.length)fields.push({k:'w',type:'info',warn:true,html:`<b>這些設定這個月沒有產生任務：</b><br>${probs.map(w=>`${esc(w.code)} ${esc(clientName(w.code))}・${esc(w.plan)}：${esc(w.why)}`).join('<br>')}`});
+  if(plan.reassign.length)fields.push({k:'r',type:'info',warn:true,html:`<b>這些任務早就建立過，但負責人跟設定不同：</b><br>${plan.reassign.map(r=>`${esc(r.code)} ${esc(clientName(r.code))}・${esc(r.title)}：目前是 ${esc(ownerLabel(r.from))}，設定的負責人是 ${esc(ownerLabel(r.to))}`).join('<br>')}`},{k:'re',type:'check',label:`把這 ${plan.reassign.length} 項任務改派給設定的負責人`});
   if(fixCodes.length)fields.push({k:'act',type:'check',label:`把 ${fixCodes.map(c=>clientName(c)).join('、')} 設為「進行中」，並一起建立他們的任務（共 ${extra.length} 項）`});
-  openForm({title:`產生 ${period} 月任務`,submit:(plan.create.length||fixCodes.length)?'建立任務':'關閉',fields,values:{act:true},okMsg:'已建立任務',
+  openForm({title:`產生 ${period} 月任務`,submit:(plan.create.length||fixCodes.length||plan.reassign.length)?'確定':'關閉',fields,values:{act:true,re:true},okMsg:'已建立任務',
     onSubmit:async v=>{
       let list=plan.create;
       if(v.act&&fixCodes.length){for(const c of fixCodes)await upd('clients',c,{status:'進行中'});list=genPlan(period,{force:new Set(fixCodes)}).create}
-      for(const x of list)await setDoc('tasks',x.id,x.data)}});
+      for(const x of list)await setDoc('tasks',x.id,x.data);
+      if(v.re)for(const r of plan.reassign)await tUpd(r.id,{assignee:r.to},'改派：'+dispName(r.from)+' → '+dispName(r.to))}});
 }
 const taskNames=()=>((S.settings.taskNames&&S.settings.taskNames.list)||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant'));
 async function saveTaskName(v){
