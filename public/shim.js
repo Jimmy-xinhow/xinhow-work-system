@@ -1,5 +1,10 @@
 /* 讓原本為 claude.ai 寫的頁面，改用自己的伺服器資料庫與登入。實作頁面用到的 db / user 介面。 */
 (function () {
+  /* 外觀：跟隨系統（預設）／明亮／暗色，存在這台瀏覽器；在頁面畫出來之前就套用，避免閃一下 */
+  const THEMES = [[null, '跟隨系統'], ['light', '明亮'], ['dark', '暗色']];
+  const getTheme = () => { try { const v = localStorage.getItem('xh-theme'); return v === 'light' || v === 'dark' ? v : null; } catch (e) { return null; } };
+  const applyTheme = v => { const r = document.documentElement; if (v) r.setAttribute('data-theme', v); else r.removeAttribute('data-theme'); };
+  applyTheme(getTheme());
   const toLogin = () => { location.href = '/login'; return new Promise(() => {}); };
   // 先取得登入者與帳號清單，頁面啟動前 window.__me / window.__users 就已就緒
   const meP = fetch('/api/me', { credentials: 'same-origin' }).then(async r => {
@@ -74,6 +79,10 @@
     document.addEventListener('click', () => box.classList.remove('open'));
     box.appendChild(tg); box.appendChild(menu);
     const add = (t, fn) => { const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = t; b.onclick = fn; menu.appendChild(b); };
+    const th = document.createElement('button'); th.className = 'btn sm'; th.type = 'button';
+    const label = () => { const c = getTheme(); th.textContent = '外觀：' + THEMES.find(x => x[0] === c)[1]; th.setAttribute('aria-label', '切換外觀，目前' + THEMES.find(x => x[0] === c)[1]); };
+    th.onclick = e => { e.stopPropagation(); const i = THEMES.findIndex(x => x[0] === getTheme()); const n = THEMES[(i + 1) % THEMES.length][0]; try { if (n) localStorage.setItem('xh-theme', n); else localStorage.removeItem('xh-theme'); } catch (er) {} applyTheme(n); label(); };
+    label(); menu.appendChild(th);
     if (me.role === 'admin') add('帳號管理', () => { location.href = '/admin'; });
     add('改密碼', () => { location.href = '/change-password'; });
     add('登出（' + me.display + '）', () => window.__logout());
