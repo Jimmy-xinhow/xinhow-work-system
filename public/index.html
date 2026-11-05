@@ -683,6 +683,7 @@ h1,h2,h3{font-weight:600}
 .qr-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.qr-h .muted{font-size:13px}
 .qr-bad{background:var(--bad-soft);color:var(--bad);border-radius:8px;padding:8px 12px;font-size:13.5px}
 .qr-ta{width:100%;min-height:84px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14.5px;resize:vertical}
+.qr-cs{display:flex;gap:8px 14px;align-items:center;flex-wrap:wrap}.qr-cs select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
 .qr-nl{display:flex;gap:6px 18px;flex-wrap:wrap;align-items:center}.qr-nn{flex:1 1 220px;min-width:0;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
 .paycard .pay-big{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}.paycard .pay-big b{font-size:26px}
 .pay-rows{display:flex;flex-direction:column;margin-top:8px}.pay-r{display:grid;grid-template-columns:minmax(0,1fr) 72px 96px;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}.pay-r .num{text-align:right}.pay-r i{font-style:normal;font-size:12.5px}
@@ -1984,6 +1985,7 @@ function trySubmit(id){
   const unchecked=(t.sop||[]).filter((_,i)=>!(t.checked||[])[i]).length;
   if(unchecked)miss.push(`還有 ${unchecked} 項 SOP 沒勾`);
   if(!(t.links||[]).length&&!t.noLink)miss.push('還沒貼連結（沒有連結請勾「本件不須連結／本件用其它方式交付」）');
+  if(needSent(t)&&!t.clientSent)miss.push('還沒勾「已交付給客戶」（沒交付就只算部分完成）');
   if(miss.length){toast('不能送交驗收：'+miss.join('；'));return}
   run(()=>tUpd(id,{done:t.target||t.done||0,submitted:true,subN:(t.subN||0)+1,revise:false,sentAt:null,confirmedAt:null,publishedAt:null,deliveredAt:null},'送交驗收'),'已送交驗收，等待管理者確認');
 }
@@ -1998,7 +2000,7 @@ function openAcceptDeliver(id){
   openForm({title:'驗收並交付客戶　'+clientName(t.clientCode)+'・'+t.title,submit:'驗收通過，已交付並告知客戶',fields:[
     {k:'deliveredAt',label:'交付日',type:'date',req:true,half:true},{k:'deliveredVia',label:'告知客戶的方式',type:'select',opts:VIA,req:true,half:true},
     {k:'deliveredNote',label:'備註（選填）',type:'textarea',hint:'例如：已傳到客戶 LINE 群。確認已交付並告知客戶，這個任務就算完成。'}],
-    values:{deliveredAt:todayStr(),deliveredVia:ls.get('lastVia')||'LINE'},okMsg:'已驗收並交付客戶，任務完成',
+    values:{deliveredAt:(t.clientSent&&t.clientSent.at)||todayStr(),deliveredVia:(t.clientSent&&t.clientSent.via)||ls.get('lastVia')||'LINE'},okMsg:'已驗收並交付客戶，任務完成',
     onSubmit:async v=>{ls.set('lastVia',v.deliveredVia);
       await setDoc('accept',id,{result:'pass',forSub:t.subN,at:new Date().toISOString()});
       await tUpd(id,{deliveredAt:v.deliveredAt,deliveredVia:v.deliveredVia,deliveredNote:v.deliveredNote},`驗收通過，已交付並告知客戶（${v.deliveredVia}）${v.deliveredNote?'　'+v.deliveredNote:''}`)}});
@@ -2018,7 +2020,7 @@ function openSend(id){
 }
 function openConfirm(id){
   openForm({title:'客戶要求修改',submit:'記錄並退回給員工',fields:[{k:'note',label:'客戶的修改要求',type:'textarea',req:true,hint:'員工會看到，任務會回到「退回」。'}],values:{},okMsg:'已退回給員工',
-    onSubmit:v=>tUpd(id,{revise:true,reviseNote:v.note,reviseAt:new Date().toISOString(),sentAt:null,confirmedAt:null,deliveredAt:null,deliveredVia:null},'客戶要求修改：'+v.note)});
+    onSubmit:v=>tUpd(id,{revise:true,reviseNote:v.note,reviseAt:new Date().toISOString(),sentAt:null,confirmedAt:null,deliveredAt:null,deliveredVia:null,clientSent:null},'客戶要求修改：'+v.note)});
 }
 function openPublish(id){
   openForm({title:'記錄：已發佈',submit:'記錄',fields:[{k:'links',label:'發佈連結（一行一條）',type:'textarea',req:true}],values:{},
@@ -2173,7 +2175,7 @@ function renderBoard(mine){
       <div style="min-width:0">${who}</div>
       <div><div class="num">${t.done||0}／${t.target||0} ${unit(t.kind)}</div><div class="mini"><i style="width:${prog}%"></i></div></div>
       <div class="num muted">SOP ${sopDone}／${sopN}</div>
-      <div class="stack">${pillState(t.state)}${(t.kind==='月部落文'&&t.state==='已驗收')?'<span class="pill info">'+subStage(t)+'</span>':''}${t.late?'<span class="pill bad">逾期 '+diffDays(todayStr(),t.due)+' 天</span>':`<span class="muted mono" style="font-size:12px">截止 ${esc((t.due||'').slice(5))}</span>`}${qbtn}</div>
+      <div class="stack">${pillState(t.state)}${(t.state==='進行中'&&needSent(t)&&((t.links||[]).length||t.noLink)&&!t.clientSent)?'<span class="pill warn">部分完成・未交付客戶</span>':''}${(t.kind==='月部落文'&&t.state==='已驗收')?'<span class="pill info">'+subStage(t)+'</span>':''}${t.late?'<span class="pill bad">逾期 '+diffDays(todayStr(),t.due)+' 天</span>':`<span class="muted mono" style="font-size:12px">截止 ${esc((t.due||'').slice(5))}</span>`}${qbtn}</div>
       ${t.state==='已交付'?`<div class="sub muted">${esc(t.deliveredAt||'')}<br>${esc(t.deliveredVia||'')}</div>`:'<div></div>'}</div>${qr.id===t.id?qrPanel(t):''}`};
   /* 同一個客戶（品牌）的任務收成一筆，點開才展開；只有一項任務的直接顯示 */
   const grp=new Map();list.forEach(t=>{if(!grp.has(t.clientCode))grp.set(t.clientCode,[]);grp.get(t.clientCode).push(t)});
@@ -2211,7 +2213,11 @@ function renderSop(){
 }
 
 /* ---------- 列表內快速回報：貼連結、勾一次 SOP、送出，一個畫面做完（不用開側邊面板） ---------- */
-const qr={id:null,url:'',sop:false,nl:null,note:'',edit:false};
+const qr={id:null,url:'',sop:false,nl:null,note:'',edit:false,cs:false,via:'LINE'};
+/* 員工要自己打勾「已交付給客戶」（LINE 等）：沒勾＝只是部分完成，不能送交驗收。月部落文走自己的流程，不在此列 */
+const needSent=t=>t.kind!=='月部落文';
+const csObj=(on,via,old)=>on?{at:(old&&old.at)||todayStr(),via:via||'LINE'}:null;
+const csBox=(cs,via,pre,dis)=>`<div class="qr-cs"><label class="chk"><input type="checkbox" id="${pre}_cs" data-cs="1" ${cs?'checked':''} ${dis?'disabled':''}><span><b>已交付給客戶</b>（例如 LINE 傳給客戶了）</span></label>${cs?`<select id="${pre}_csvia" aria-label="交付方式" ${dis?'disabled':''}>${VIA.map(v=>`<option ${v===via?'selected':''}>${esc(v)}</option>`).join('')}</select>`:''}</div>`;
 const qrOK=t=>canWrite&&['待處理','進行中','退回'].includes(t.state)&&(isAdmin||isMine(t));
 /* 送交後仍可改連結（員工與管理者皆可），不會重新驗收，只留紀錄 */
 const qeOK=t=>canWrite&&['待驗收','已驗收','已交付'].includes(t.state)&&(isAdmin||isMine(t));
@@ -2221,7 +2227,7 @@ const parseUrls=v=>String(v||'').split(/\s+/).map(x=>x.trim()).filter(Boolean);
 function qrToggle(id){
   if(qr.id===id){qr.id=null}
   else{const t=S.tasks[id]||{},sp=t.sop||[],sub=['待驗收','已驗收','已交付'].includes(tstate(Object.assign({id},t)));
-    qr.id=id;qr.edit=sub;qr.url=sub?linkLines(t):'';qr.sop=sp.length>0&&sp.every((_,i)=>(t.checked||[])[i]);qr.nl=t.noLink||null;qr.note=t.noLinkNote||''}
+    qr.id=id;qr.edit=sub;qr.url=sub?linkLines(t):'';qr.sop=sp.length>0&&sp.every((_,i)=>(t.checked||[])[i]);qr.nl=t.noLink||null;qr.note=t.noLinkNote||'';qr.cs=!!t.clientSent;qr.via=(t.clientSent&&t.clientSent.via)||ls.get('lastVia')||'LINE'}
   queue();setTimeout(()=>{const e=$('#qr_url');if(e)e.focus()},80);
 }
 const nlBox=(pre,cur,note,dis)=>`<div class="qr-nl" role="group" aria-label="沒有連結時">${Object.entries(NOLINK).map(([k,l])=>`<label class="chk"><input type="checkbox" id="${pre}_${k}" data-nl="${k}" ${cur===k?'checked':''} ${dis?'disabled':''}><span>${l}</span></label>`).join('')}${cur?`<input type="text" id="${pre}_note" class="qr-nn" value="${esc(note||'')}" placeholder="${cur==='other'?'用什麼方式？例如：LINE 直接傳給客戶':'補充說明（選填）'}" aria-label="說明" ${dis?'disabled':''}>`:''}</div>`;
@@ -2234,10 +2240,11 @@ function qrPanel(t){
     <div class="qr-row"><button type="button" class="btn primary" data-act="qeditsave" data-id="${esc(t.id)}">儲存修改</button><span class="grow"></span><button type="button" class="btn ghost" data-act="openTask" data-id="${esc(t.id)}">開啟詳情</button></div>
   </div>`;
   return `<div class="qr" role="group" aria-label="回報：${esc(t.title)}">
-    <div class="qr-h"><b>${esc(t.title)}</b><span class="muted">目標 ${esc(t.target||0)} ${esc(unit(t.kind))}・已有 ${nl} 條連結</span></div>
+    <div class="qr-h"><b>${esc(t.title)}</b><span class="muted">目標 ${esc(t.target||0)} ${esc(unit(t.kind))}・已有 ${nl} 條連結${needSent(t)&&!qr.cs?'・<b>還沒交付給客戶＝只算部分完成</b>':''}</span></div>
     ${t.state==='退回'?`<div class="qr-bad"><b>${t.revise?'客戶要求修改':'被退回'}</b>　${esc(t.revise?(t.reviseNote||''):(a&&a.reason||''))}</div>`:''}
     <textarea id="qr_url" class="qr-ta" rows="3" placeholder="直接貼上連結（同一個連結涵蓋多篇也只要貼一條；多條就一行一條）。Ctrl＋Enter 直接送交驗收" aria-label="交付內容連結">${esc(qr.url)}</textarea>
     ${nl?'':nlBox('qr',qr.nl,qr.note)}
+    ${needSent(t)?csBox(qr.cs,qr.via,'qr'):''}
     ${sp.length?`<div class="qr-row"><label class="chk qr-sop"><input type="checkbox" id="qr_sop" ${qr.sop?'checked':''}><span>已依 SOP 全部檢查完成（${sp.length} 項）</span></label></div>`:''}
     ${sp.length?`<details class="qr-d"><summary>看 SOP 檢查項目</summary><ol>${sp.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></details>`:''}
     <div class="qr-row"><button type="button" class="btn primary" data-act="qsubmit" data-id="${esc(t.id)}">送交驗收</button><button type="button" class="btn" data-act="qsave" data-id="${esc(t.id)}">只存連結</button><span class="grow"></span><button type="button" class="btn ghost" data-act="openTask" data-id="${esc(t.id)}">開啟詳情</button></div>
@@ -2251,13 +2258,15 @@ async function qrSave(id,submit){
   const old=t.links||[],nl=old.concat(us.map((url,i)=>({title:'連結 '+(old.length+i+1),url})));
   const noLink=nl.length?null:qr.nl;
   const patch={links:nl,noLink,noLinkNote:noLink?(qr.note.trim()||null):null};
+  if(needSent(t)){patch.clientSent=csObj(qr.cs,qr.via,t.clientSent);if(qr.cs)ls.set('lastVia',qr.via)}
   if(submit){
     const miss=[];
+    if(needSent(t)&&!qr.cs)miss.push('要勾「已交付給客戶」才算完成；還沒交付就先按「只存連結」');
     if(!nl.length&&!noLink)miss.push('請貼連結，或勾「本件不須連結／本件用其它方式交付」');
     if((t.sop||[]).length&&!qr.sop)miss.push('請勾「已依 SOP 全部檢查完成」');
     if(miss.length){toast('不能送交驗收：'+miss.join('；'));return}
     Object.assign(patch,{done:t.target||t.done||0,checked:(t.sop||[]).map(()=>true),submitted:true,subN:(t.subN||0)+1,revise:false,sentAt:null,confirmedAt:null,publishedAt:null,deliveredAt:null});
-  }else if(!us.length&&!noLink&&!t.noLink){toast('沒有要儲存的內容');return}
+  }else if(!us.length&&!noLink&&!t.noLink&&!(needSent(t)&&!!qr.cs!==!!t.clientSent)){toast('沒有要儲存的內容');return}
   await run(async()=>{await tUpd(id,patch,submit?'送交驗收（列表快速回報）':(us.length?'新增 '+us.length+' 條連結':(noLink?NOLINK[noLink]:null)));qr.id=null},submit?'已送交驗收，等待管理者確認':'已儲存');
 }
 async function qrEditSave(id){
@@ -2294,6 +2303,7 @@ function renderTaskPanel(){
   const miss=[];
   if(sop.filter((_,i)=>!chk[i]).length)miss.push('SOP 還沒全部勾完');
   if(!links.length&&!t.noLink)miss.push('還沒貼交付內容連結');
+  if(needSent(t)&&!t.clientSent)miss.push('還沒交付給客戶');
   const isBlog=t.kind==='月部落文';
   const stepCur=isBlog?(st==='待驗收'?1:st==='已驗收'?(!t.sentAt?2:!t.confirmedAt?3:4):st==='已交付'?5:0):(st==='待驗收'?1:st==='已驗收'?1:st==='已交付'?2:0);
   const stepNames=isBlog?['撰寫','驗收','送客戶確認','客戶確認','發佈']:['撰寫','驗收並交付客戶'];
@@ -2313,9 +2323,9 @@ function renderTaskPanel(){
     action='';
   }
   const waits=taskList().filter(x=>x.state==='待驗收'&&x.id!==t.id).sort((x,y)=>(x.due||'').localeCompare(y.due||''));
-  const missShort=[];if(sop.filter((_,i)=>!chk[i]).length)missShort.push('SOP 沒勾完');if(!links.length&&!t.noLink)missShort.push('連結');
+  const missShort=[];if(sop.filter((_,i)=>!chk[i]).length)missShort.push('SOP 沒勾完');if(!links.length&&!t.noLink)missShort.push('連結');if(needSent(t)&&!t.clientSent)missShort.push('交付客戶');
   const submitBar=(!action&&canWrite)?`<div class="stickybar submit"><div class="barmsg${miss.length?'':' ok'}">${miss.length?'還差：'+missShort.join('、'):'都完成了，可以送交'}</div><button class="btn primary" data-act="tsubmit">送交驗收</button></div>`:'';
-  const bar=submitBar||((st==='待驗收'&&isAdmin&&canWrite)?`<div class="stickybar">${isBlog?'<button class="btn primary" data-act="taccept">驗收通過</button>':'<button class="btn primary" data-act="taccdel">驗收通過・已交付並告知客戶</button><button class="btn" data-act="taccept">只驗收，晚點交付</button>'}<button class="btn bad" data-act="treject">退回</button><span class="grow"></span>${waits.length?`<button class="btn" data-act="tnext" data-id="${esc(waits[0].id)}">下一筆待驗收（${waits.length}）</button>`:'<span class="muted">沒有其他待驗收</span>'}</div>`:'');
+  const bar=submitBar||((st==='待驗收'&&isAdmin&&canWrite)?`<div class="stickybar">${isBlog?'<button class="btn primary" data-act="taccept">驗收通過</button>':t.clientSent?'<button class="btn primary" data-act="taccfast">驗收通過（員工已交付客戶，完成）</button>':'<button class="btn primary" data-act="taccdel">驗收通過・已交付並告知客戶</button><button class="btn" data-act="taccept">只驗收，晚點交付</button>'}<button class="btn bad" data-act="treject">退回</button><span class="grow"></span>${waits.length?`<button class="btn" data-act="tnext" data-id="${esc(waits[0].id)}">下一筆待驗收（${waits.length}）</button>`:'<span class="muted">沒有其他待驗收</span>'}</div>`:'');
   const hist=(t.history||[]).map(h=>({at:h.at,text:h.text}));
   if(a)hist.push({at:a.at,text:(a.result==='pass'?'驗收通過':'退回：'+(a.reason||''))});
   hist.sort((x,y)=>y.at.localeCompare(x.at));
@@ -2329,6 +2339,7 @@ function renderTaskPanel(){
     <section class="sec"><header><h3>數量</h3><span class="muted">期別 ${esc(t.period)}・截止 ${esc(t.due||'—')}</span></header><div class="in counter"><button class="btn" data-act="tcount" data-d="-1" ${dis} aria-label="減一">−</button><input type="number" id="t_done" value="${t.done||0}" min="0" ${dis} aria-label="已完成數量"><button class="btn" data-act="tcount" data-d="1" ${dis} aria-label="加一">＋</button><span class="muted">／ 目標 <b class="num">${t.target||0}</b> ${unit(t.kind)}</span></div></section>
     <section class="sec"><header><h3>SOP 核對</h3><span class="muted">${chk.filter(Boolean).length}／${sop.length}</span></header><div class="in chks">${sopHTML||'<span class="muted">這個任務沒有 SOP 項目。</span>'}</div></section>
     <section class="sec"><header><h3>交付內容連結</h3><span class="muted">${links.length} 條${locked&&canLinks?'・已提交，可隨時更新':''}</span></header>${linksHTML}${links.length?'':nlHTML}${addLink}</section>
+    ${needSent(t)?`<section class="sec"><header><h3>交付給客戶</h3><span class="muted">${t.clientSent?'已交付':'沒勾＝只算部分完成'}</span></header><div class="in">${can?csBox(!!t.clientSent,(t.clientSent&&t.clientSent.via)||ls.get('lastVia')||'LINE','t').replace('id="t_cs" data-cs="1"','id="t_cs"').replace('id="t_csvia"','id="t_csvia"'):(t.clientSent?`<b>已交付給客戶</b>　${esc(t.clientSent.at||'')}　${esc(t.clientSent.via||'')}`:'<span class="muted">員工還沒勾交付。</span>')}</div></section>`:''}
     <details class="sec fold" ${t.note?'open':''}><summary>備註${t.note?'':'（沒有可不填）'}</summary><div class="in"><textarea id="t_note" ${dis} placeholder="給管理者的說明，例如只能完成部分的原因">${esc(t.note||'')}</textarea></div></details>
     ${action?`<section class="sec act"><header><h3>驗收與交付</h3></header>${action}</section>`:''}
     <details class="sec fold"><summary>紀錄（${hist.length}）</summary>${histHTML}</details>
@@ -2621,6 +2632,7 @@ document.addEventListener('click',async e=>{
       onSubmit:v=>{const nl=(t.links||[]).map((x,n)=>n===i?Object.assign({},x,{url:v.url.trim()}):x);return tUpd(openTask,{links:nl},'修改連結 '+(i+1))}})}
   else if(a==='tsubmit')trySubmit(openTask);
   else if(a==='taccdel'){if(isAdmin)openAcceptDeliver(openTask)}
+  else if(a==='taccfast'){if(!isAdmin)return;const t=S.tasks[openTask],cs=t.clientSent||{};await run(async()=>{await setDoc('accept',openTask,{result:'pass',forSub:t.subN,at:new Date().toISOString()});await tUpd(openTask,{deliveredAt:cs.at||todayStr(),deliveredVia:cs.via||'LINE'},'驗收通過；員工已交付客戶（'+(cs.via||'LINE')+'，'+(cs.at||todayStr())+'）')},'已驗收，任務完成')}
   else if(a==='taccept'){if(!isAdmin)return;const t=S.tasks[openTask];await run(()=>setDoc('accept',openTask,{result:'pass',forSub:t.subN,at:new Date().toISOString()}),'已驗收通過')}
   else if(a==='treject'){if(isAdmin)openReject(openTask)}
   else if(a==='tnext'){openTask=el.dataset.id;queue()}
@@ -2660,6 +2672,10 @@ function bulkPayForm(){
 }
 document.addEventListener('change',async e=>{
   if(e.target.id==='qr_sop'){qr.sop=e.target.checked;return}
+  if(e.target.id==='qr_cs'){qr.cs=e.target.checked;queue();return}
+  if(e.target.id==='qr_csvia'){qr.via=e.target.value;return}
+  if(e.target.id==='t_cs'&&canWrite&&openTask){const t=S.tasks[openTask],on=e.target.checked,via=ls.get('lastVia')||'LINE';await run(()=>tUpd(openTask,{clientSent:csObj(on,via,t.clientSent)},on?'已交付給客戶（'+via+'）':'取消「已交付給客戶」'));return}
+  if(e.target.id==='t_csvia'&&canWrite&&openTask){const t=S.tasks[openTask];ls.set('lastVia',e.target.value);await run(()=>tUpd(openTask,{clientSent:csObj(true,e.target.value,t.clientSent)},'交付方式改為 '+e.target.value));return}
   if(e.target.dataset&&e.target.dataset.nl&&e.target.id.startsWith('qr_')){const k=e.target.dataset.nl;qr.nl=e.target.checked?k:null;if(!qr.nl)qr.note='';queue();setTimeout(()=>{const n=$('#qr_note');if(n&&qr.nl)n.focus()},60);return}
   if(e.target.dataset&&e.target.dataset.tnl&&canWrite&&openTask){const k=e.target.dataset.tnl,v=e.target.checked?k:null;await run(()=>tUpd(openTask,{noLink:v,noLinkNote:v?(S.tasks[openTask].noLinkNote||null):null},v?NOLINK[v]:'取消「'+NOLINK[k]+'」'));return}
   if(e.target.id==='t_nlnote'&&canWrite&&openTask){await run(()=>tUpd(openTask,{noLinkNote:e.target.value.trim()||null}));return}
