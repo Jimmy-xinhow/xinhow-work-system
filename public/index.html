@@ -1817,17 +1817,28 @@ const weekIdx=s=>Math.floor((toUTC(s)/864e5+3)/7);   // 以週一為起點的週
 const biweekOK=(dt,start)=>(((weekIdx(dt)-weekIdx(start||'1970-01-05'))%2)+2)%2===0;
 const monthIdx=s=>{const [y,m]=s.split('-').map(Number);return y*12+m-1};
 const coverOK=(code,ps,pe)=>{const cs=rows('contracts',code);return !cs.length||cs.some(k=>k.status==='有效'&&(!k.start||k.start<=pe)&&(!k.end||k.end>=ps))};
-function genPlan(p){
+/* opts.force＝即使客戶狀態不是「進行中」也要產生的客戶代碼；why＝這個月沒產生任務的原因（給預覽畫面顯示，不再默默跳過） */
+function genPlan(p,opts){
+  const force=(opts&&opts.force)||new Set();
   const ps=p+'-01',pe=p+'-'+p2(lastDayOf(p));
-  const create=[],skipped=new Set();
+  const create=[],skipped=new Set(),why=[];
   const mk=(id,data)=>{if(!S.tasks[id])create.push({id,data})};
   Object.keys(S.clients).sort().forEach(code=>{
-    if(S.clients[code].status!=='進行中')return;
+    const cst=S.clients[code].status;
+    const plansAll=rows('plans',code);
+    if(cst!=='進行中'&&!force.has(code)){
+      if(plansAll.length&&cst!=='結案')why.push({code,plan:'全部設定',why:'客戶狀態'+(cst?'是「'+cst+'」':'沒有設定')+'，不是「進行中」',fix:(!cst||cst==='洽談中')?'activate':null});
+      return;
+    }
     const cov=coverOK(code,ps,pe);
-    rows('plans',code).filter(x=>x.active!==false).forEach(pl=>{
-      if(!PRESET[pl.preset]&&pl.preset!=='custom')return;
-      const sp=planSpec(pl);if(!(pl.count>0))return;
-      if((pl.start&&pl.start>pe)||(pl.end&&pl.end<ps))return;
+    plansAll.forEach(pl=>{
+      const sp0=PRESET[pl.preset]||pl.preset==='custom'?planSpec(pl):null;
+      const nm=sp0?sp0.label:String(pl.preset||'未命名');
+      if(pl.active===false){why.push({code,plan:nm,why:'這項設定是「暫停」'});return}
+      if(!sp0){why.push({code,plan:nm,why:'任務類型不明，請刪掉重建'});return}
+      if(!(pl.count>0)){why.push({code,plan:nm,why:'數量沒填（要大於 0）'});return}
+      if((pl.start&&pl.start>pe)||(pl.end&&pl.end<ps)){why.push({code,plan:nm,why:'起算日／結束日（'+(pl.start||'')+'～'+(pl.end||'')+'）不涵蓋 '+p});return}
+      const sp=sp0;
       const sop=sopFor(sp.svc,sp.kind);
       const rate=(pl.rate!=null&&pl.rate!=='')?Number(pl.rate):rateFor(sp.kind);
       const due=pl.dueDay?p+'-'+p2(Math.min(pl.dueDay,lastDayOf(p))):dueFor(code,p);
@@ -1843,7 +1854,7 @@ function genPlan(p){
         });
       }else{
         const step=MSTEP[sp.freq]||1;
-        if(step>1){const anchor=pl.start?monthIdx(pl.start):0;if((((monthIdx(p)-anchor)%step)+step)%step!==0)return}
+        if(step>1){const anchor=pl.start?monthIdx(pl.start):0;if((((monthIdx(p)-anchor)%step)+step)%step!==0){why.push({code,plan:nm,why:'頻率是「'+FREQ_NAME[sp.freq]+'」，'+p+' 不是產生月份'});return}}
         cand.push([`${pl.id}_${p}`,fin({title:sp.custom?`${sp.label} ${p}`:`${sp.svc}・${sp.kind}`,target:pl.count,due})]);
         if(sp.id==='blog'&&pl.rewrite>0){
           const rs=sopFor(sp.svc,'批量改寫');
@@ -1851,11 +1862,12 @@ function genPlan(p){
         }
       }
       if(!cand.length)return;
-      if(!pl.start&&!pl.end&&!cov){skipped.add(code);return}
-      cand.forEach(([id,d])=>mk(id,d));
+      if(!pl.start&&!pl.end&&!cov){skipped.add(code);why.push({code,plan:nm,why:'合約期間沒涵蓋 '+p+'（已續約請到客戶頁按「續約」）'});return}
+      const before=create.length;cand.forEach(([id,d])=>mk(id,d));
+      if(create.length===before)why.push({code,plan:nm,why:'已建立過（'+cand.length+' 項都已在任務清單）',info:true});
     });
   });
-  return {create,skipped:[...skipped]};
+  return {create,skipped:[...skipped],why};
 }
 function planForm(code,id){
   const x=id?Object.assign({},S.plans[id],{assignee:lc(S.plans[id].assignee)||defaultAssignee()}):{assignee:defaultAssignee(),active:true};
@@ -1912,10 +1924,18 @@ function planFormCustom(code,id){
 function openGenerate(){
   const plan=genPlan(period);
   const lines=plan.create.map(x=>`${esc(x.data.clientCode)} ${esc(clientName(x.data.clientCode))}　${esc(x.data.title)} ×${x.data.target}　截止 ${esc(x.data.due)}`).join('<br>');
-  const fields=[{k:'p',type:'info',html:plan.create.length?`${esc(period)} 將建立 <b>${plan.create.length}</b> 項任務（已存在的不重複建立）：<br>${lines}`:(Object.keys(S.plans).length?`${esc(period)} 沒有新的任務可建立（已建立過，或沒有進行中的客戶設定任務）。`:'還沒有任何客戶設定週期任務。請到客戶詳情的「週期任務設定」新增，再回來產生。')}];
-  if(plan.skipped.length)fields.push({k:'s',type:'info',warn:true,html:`以下客戶有週期任務設定，但合約期間沒涵蓋 ${esc(period)}，所以沒有產生：<b>${plan.skipped.map(esc).join('、')}</b>。若已續約，請先到客戶頁按「續約」，再重新產生。`});
-  openForm({title:`產生 ${period} 月任務`,submit:plan.create.length?`建立 ${plan.create.length} 項`:'關閉',fields,okMsg:'已建立任務',
-    onSubmit:async()=>{for(const x of plan.create)await setDoc('tasks',x.id,x.data)}});
+  const fields=[{k:'p',type:'info',html:plan.create.length?`${esc(period)} 將建立 <b>${plan.create.length}</b> 項任務（已存在的不重複建立）：<br>${lines}`:(Object.keys(S.plans).length?`${esc(period)} 沒有新的任務可建立。原因看下面。`:'還沒有任何客戶設定週期任務。請到客戶詳情的「週期任務設定」新增，再回來產生。')}];
+  const fixCodes=[...new Set(plan.why.filter(w=>w.fix==='activate').map(w=>w.code))];
+  const forced=fixCodes.length?genPlan(period,{force:new Set(fixCodes)}):null;
+  const extra=forced?forced.create.filter(x=>!plan.create.some(y=>y.id===x.id)):[];
+  const probs=plan.why.filter(w=>!w.info);
+  if(probs.length)fields.push({k:'w',type:'info',warn:true,html:`<b>這些設定這個月沒有產生任務：</b><br>${probs.map(w=>`${esc(w.code)} ${esc(clientName(w.code))}・${esc(w.plan)}：${esc(w.why)}`).join('<br>')}`});
+  if(fixCodes.length)fields.push({k:'act',type:'check',label:`把 ${fixCodes.map(c=>clientName(c)).join('、')} 設為「進行中」，並一起建立他們的任務（共 ${extra.length} 項）`});
+  openForm({title:`產生 ${period} 月任務`,submit:(plan.create.length||fixCodes.length)?'建立任務':'關閉',fields,values:{act:true},okMsg:'已建立任務',
+    onSubmit:async v=>{
+      let list=plan.create;
+      if(v.act&&fixCodes.length){for(const c of fixCodes)await upd('clients',c,{status:'進行中'});list=genPlan(period,{force:new Set(fixCodes)}).create}
+      for(const x of list)await setDoc('tasks',x.id,x.data)}});
 }
 const taskNames=()=>((S.settings.taskNames&&S.settings.taskNames.list)||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant'));
 async function saveTaskName(v){
