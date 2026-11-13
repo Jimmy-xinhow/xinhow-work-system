@@ -1741,7 +1741,17 @@ const ownerOf=t=>lc(t.assignee)||'mio';
 const isMine=t=>ownerOf(t)===meName();
 const ownerLabel=o=>{o=lc(o);if(o===meName())return '我';const u=USERS().find(x=>x.name===o);return u?u.display:o};
 const activeUsers=()=>USERS().filter(u=>!u.disabled);
-const defaultAssignee=()=>{const u=activeUsers().find(x=>x.role==='staff');return u?u.name:meName()};
+const defaultAssignee=()=>{const u=activeUsers().find(x=>x.role==='staff'||x.role==='worker');return u?u.name:meName()};
+/* 改了週期設定的負責人：把這個設定底下還沒驗收／交付的任務一併改派（批量改寫固定是管理者，不動） */
+async function syncPlanAssignee(pid,to){
+  to=lc(to);if(!to)return 0;let n=0;
+  for(const [id,t] of Object.entries(S.tasks)){
+    if(t.planId!==pid||/_rewrite$/.test(id)||lc(t.assignee)===to)continue;
+    const st=tstate(Object.assign({id},t));if(st==='已交付'||st==='已驗收')continue;
+    await tUpd(id,{assignee:to},'改派：'+dispName(t.assignee||'mio')+' → '+dispName(to)+'（隨設定變更）');n++;
+  }
+  return n;
+}
 const dispName=o=>{o=lc(o);const u=USERS().find(x=>x.name===o);return u?u.display:o};
 const rewriteAssignee=()=>{const u=activeUsers().find(x=>x.role==='admin');return u?u.name:meName()};
 const isAdminUser=o=>{const u=USERS().find(x=>x.name===lc(o));return !!u&&u.role==='admin'};
@@ -1898,6 +1908,7 @@ function planForm(code,id){
       delete d.state;delete d.i;if(!(Number(d.firstCount)>0))delete d.firstCount;else d.firstCount=Number(d.firstCount);
       await setDoc('plans',pid,d);
       await addLog(code,id?'修改任務設定':'新增任務設定',PRESET[d.preset].label+' × '+d.count);
+      if(id){const n=await syncPlanAssignee(pid,d.assignee);if(n)toast('已把 '+n+' 項未完成的任務改派給 '+dispName(d.assignee))}
     }});
 }
 function planFormCustom(code,id){
@@ -1924,6 +1935,7 @@ function planFormCustom(code,id){
       delete d.state;delete d.i;if(!(Number(d.firstCount)>0))delete d.firstCount;else d.firstCount=Number(d.firstCount);
       await setDoc('plans',pid,d);
       await addLog(code,id?'修改自訂任務設定':'新增自訂任務設定',d.label+'（'+FREQ_NAME[d.freq]+'）× '+d.count);
+      if(id){const n=await syncPlanAssignee(pid,d.assignee);if(n)toast('已把 '+n+' 項未完成的任務改派給 '+dispName(d.assignee))}
     }});
 }
 function openGenerate(){
